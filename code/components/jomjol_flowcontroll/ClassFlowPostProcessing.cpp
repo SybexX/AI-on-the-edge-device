@@ -863,9 +863,6 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
             else {
                 string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
                 LogFile.WriteToFile(ESP_LOG_INFO, TAG, _zw);
-               /* TODO to be discussed, see https://github.com/jomjol/AI-on-the-edge-device/issues/1617 */
-                NUMBERS[j]->lastvalue = imagetime;
-
                 WriteDataLog(j);
                 continue; // there is no number because there is still an N.
             }
@@ -895,7 +892,7 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
                 if (flowDigit->getCNNType() != Digital) {
                     ESP_LOGD(TAG, "checkDigitIncreaseConsistency = true - ignored due to wrong CNN-Type (not Digital Classification)");
                 }
-                else {
+                else if (PreValueUse && NUMBERS[j]->PreValueOkay) {
                     NUMBERS[j]->Value = checkDigitConsistency(NUMBERS[j]->Value, NUMBERS[j]->DecimalShift, NUMBERS[j]->analog_roi != NULL, NUMBERS[j]->PreValue);
                 }
             }
@@ -910,10 +907,10 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
             ESP_LOGD(TAG, "After checkDigitIncreaseConsistency: Value %f", NUMBERS[j]->Value);
         #endif
 
-        if (!NUMBERS[j]->AllowNegativeRates) {
-            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "handleAllowNegativeRate for device: " + NUMBERS[j]->name);
+        if (PreValueUse && NUMBERS[j]->PreValueOkay) {
+            if ((!NUMBERS[j]->AllowNegativeRates) && (NUMBERS[j]->Value < NUMBERS[j]->PreValue)) {
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "handleAllowNegativeRate for device: " + NUMBERS[j]->name);
 					
-            if ((NUMBERS[j]->Value < NUMBERS[j]->PreValue)) {
                 // more debug if extended resolution is on, see #2447
                 if (NUMBERS[j]->isExtendedResolution) {
                     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Neg: value=" + std::to_string(NUMBERS[j]->Value) 
@@ -923,16 +920,15 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
 
                 // Include inaccuracy of 0.2 for isExtendedResolution.
                 if ((NUMBERS[j]->Value >= (NUMBERS[j]->PreValue-(2/pow(10, NUMBERS[j]->Nachkomma))) && NUMBERS[j]->isExtendedResolution)
-                    // not extended resolution allows -1 on the lowest digit  
-                   || (NUMBERS[j]->Value >= (NUMBERS[j]->PreValue-(1/pow(10, NUMBERS[j]->Nachkomma))) && !NUMBERS[j]->isExtendedResolution)) {
-                        NUMBERS[j]->Value = NUMBERS[j]->PreValue;
-                        NUMBERS[j]->ReturnValue = to_string(NUMBERS[j]->PreValue);
+                // not extended resolution allows -1 on the lowest digit  
+                || (NUMBERS[j]->Value >= (NUMBERS[j]->PreValue-(1/pow(10, NUMBERS[j]->Nachkomma))) && !NUMBERS[j]->isExtendedResolution)) {
+                    NUMBERS[j]->Value = NUMBERS[j]->PreValue;
+                    NUMBERS[j]->ReturnValue = to_string(NUMBERS[j]->PreValue);
                 } 
                 else {
                     NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Neg. Rate - Read: " + zwvalue + " - Raw: " + NUMBERS[j]->ReturnRawValue + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " "; 
                     NUMBERS[j]->Value = NUMBERS[j]->PreValue;
                     NUMBERS[j]->ReturnValue = "";
-                    NUMBERS[j]->lastvalue = imagetime;
 
                     string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
@@ -940,43 +936,42 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
                     continue;
                 }
             }
-        }
 
-        #ifdef SERIAL_DEBUG
-            ESP_LOGD(TAG, "After AllowNegativeRates: Value %f", NUMBERS[j]->Value);
-        #endif
+            #ifdef SERIAL_DEBUG
+                ESP_LOGD(TAG, "After AllowNegativeRates: Value %f", NUMBERS[j]->Value);
+            #endif
 
-        difference /= 60;  
-        NUMBERS[j]->FlowRateAct = (NUMBERS[j]->Value - NUMBERS[j]->PreValue) / difference;
-        NUMBERS[j]->ReturnRateValue =  to_string(NUMBERS[j]->FlowRateAct);
+            difference /= 60;  
+            NUMBERS[j]->FlowRateAct = (NUMBERS[j]->Value - NUMBERS[j]->PreValue) / difference;
+            NUMBERS[j]->ReturnRateValue =  to_string(NUMBERS[j]->FlowRateAct);
 
-        if (NUMBERS[j]->useMaxRateValue && PreValueUse && NUMBERS[j]->PreValueOkay) {
-            double _ratedifference;
+            if ((NUMBERS[j]->useMaxRateValue) && (NUMBERS[j]->Value != NUMBERS[j]->PreValue)) {
+                double _ratedifference;
 					
-            if (NUMBERS[j]->RateType == RateChange) {
-                _ratedifference = NUMBERS[j]->FlowRateAct;
-            }
-            else {
-                _ratedifference = (NUMBERS[j]->Value - NUMBERS[j]->PreValue);
+                if (NUMBERS[j]->RateType == RateChange) {
+                    _ratedifference = NUMBERS[j]->FlowRateAct;
+                }
+                else {
+                    _ratedifference = (NUMBERS[j]->Value - NUMBERS[j]->PreValue);
+                }
+
+                if (abs(_ratedifference) > abs(NUMBERS[j]->MaxRateValue)) {
+                    NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Rate too high - Read: " + RundeOutput(NUMBERS[j]->Value, NUMBERS[j]->Nachkomma) + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " - Rate: " + RundeOutput(_ratedifference, NUMBERS[j]->Nachkomma);
+                    NUMBERS[j]->Value = NUMBERS[j]->PreValue;
+                    NUMBERS[j]->ReturnValue = "";
+                    NUMBERS[j]->ReturnRateValue = "";
+
+                    string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
+                    WriteDataLog(j);
+                    continue;
+                }
             }
 
-            if (abs(_ratedifference) > abs(NUMBERS[j]->MaxRateValue)) {
-                NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Rate too high - Read: " + RundeOutput(NUMBERS[j]->Value, NUMBERS[j]->Nachkomma) + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " - Rate: " + RundeOutput(_ratedifference, NUMBERS[j]->Nachkomma);
-                NUMBERS[j]->Value = NUMBERS[j]->PreValue;
-                NUMBERS[j]->ReturnValue = "";
-                NUMBERS[j]->ReturnRateValue = "";
-                NUMBERS[j]->lastvalue = imagetime;
-
-                string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
-                WriteDataLog(j);
-                continue;
-            }
+            #ifdef SERIAL_DEBUG
+               ESP_LOGD(TAG, "After MaxRateCheck: Value %f", NUMBERS[j]->Value);
+            #endif
         }
-
-        #ifdef SERIAL_DEBUG
-           ESP_LOGD(TAG, "After MaxRateCheck: Value %f", NUMBERS[j]->Value);
-        #endif
         
         NUMBERS[j]->ReturnChangeAbsolute = RundeOutput(NUMBERS[j]->Value - NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma);
         NUMBERS[j]->PreValue = NUMBERS[j]->Value;
