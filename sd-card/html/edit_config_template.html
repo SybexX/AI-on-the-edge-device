@@ -871,19 +871,6 @@
 			<td>$TOOLTIP_PostProcessing_ErrorMessage</td>
 		</tr>
 
-		<tr class="expert" unused_id="ex1dddd">
-			<td class="indent1">
-				<label><class id="PostProcessing_CheckDigitIncreaseConsistency_text" style="color:black;">Check Digit Increase Consistency</class></label>
-			</td>
-			<td>
-				<select id="PostProcessing_CheckDigitIncreaseConsistency_value1">
-					<option value="true">enable</option>
-					<option value="false" selected>disable</option>
-				</select>
-			</td>
-			<td>$TOOLTIP_PostProcessing_CheckDigitIncreaseConsistency</td>
-		</tr>
-
 		<tr style="margin-top:12px">
 			<td class="indent1" style="padding-top:25px" colspan="3">
 				<b>Parameter per number sequence:</b>
@@ -971,6 +958,19 @@
 			<td>$TOOLTIP_PostProcessing_NUMBER.ExtendedResolution</td>
 		</tr>
 
+		<tr class="expert" unused_id="ex1dddd">
+			<td class="indent2">
+				<label><class id="PostProcessing_CheckDigitIncreaseConsistency_text" style="color:black;">Check Digit Increase Consistency</class></label>
+			</td>
+			<td>
+				<select id="PostProcessing_CheckDigitIncreaseConsistency_value1">
+					<option value="true">enable</option>
+					<option value="false" selected>disable</option>
+				</select>
+			</td>
+			<td>$TOOLTIP_PostProcessing_CheckDigitIncreaseConsistency</td>
+		</tr>
+		
 		<tr>
 			<td class="indent2">
 				<label><class id="PostProcessing_IgnoreLeadingNaN_text" style="color:black;">Ignore Leading NaNs</class></label>
@@ -2123,6 +2123,7 @@ function UpdateInputIndividual(sel) {
         ReadParameter(param, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
+        ReadParameter(param, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
@@ -2140,6 +2141,7 @@ function UpdateInputIndividual(sel) {
     WriteParameter(param, category, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
+    WriteParameter(param, category, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
@@ -2218,7 +2220,7 @@ function UpdateInput() {
     WriteParameter(param, category, "PostProcessing", "PreValueUse", false);		
     WriteParameter(param, category, "PostProcessing", "PreValueAgeStartup", true);		
     WriteParameter(param, category, "PostProcessing", "ErrorMessage", false);
-    WriteParameter(param, category, "PostProcessing", "CheckDigitIncreaseConsistency", false);
+    // WriteParameter(param, category, "PostProcessing", "CheckDigitIncreaseConsistency", false);
 
     WriteParameter(param, category, "MQTT", "Uri", true);	
     WriteParameter(param, category, "MQTT", "MainTopic", true);	
@@ -2379,7 +2381,7 @@ function ReadParameterAll() {
     ReadParameter(param, "PostProcessing", "PreValueUse", false);
     ReadParameter(param, "PostProcessing", "PreValueAgeStartup", true);
     ReadParameter(param, "PostProcessing", "ErrorMessage", false);
-    ReadParameter(param, "PostProcessing", "CheckDigitIncreaseConsistency", false);	
+    // ReadParameter(param, "PostProcessing", "CheckDigitIncreaseConsistency", false);	
 
     ReadParameter(param, "MQTT", "Uri", true);
     ReadParameter(param, "MQTT", "MainTopic", true);
