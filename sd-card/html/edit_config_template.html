@@ -983,7 +983,7 @@
 			</td>
 			<td>$TOOLTIP_PostProcessing_NUMBER.IgnoreLeadingNaN</td>
 		</tr>	
-		<!-------------
+
 		<tr>
 			<td class="indent2">
 				<label><class id="PostProcessing_IgnoreAllNaN_text" style="color:black;">Ignore All NaNs</class></label>
@@ -995,8 +995,7 @@
 				</select>
 			</td>
 			<td>$TOOLTIP_PostProcessing_NUMBER.IgnoreAllNaN</td>
-		</tr>		
-		------------------>
+		</tr>
 
 		<!------------- MQTT ------------------>
 		<tr style="border-bottom: 2px solid lightgray;">
@@ -2125,7 +2124,7 @@ function UpdateInputIndividual(sel) {
         ReadParameter(param, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
-        // ReadParameter(param, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
+        ReadParameter(param, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
         ReadParameter(param, "InfluxDB", "Field", true, NUNBERSAkt);
         ReadParameter(param, "InfluxDBv2", "Field", true, NUNBERSAkt);
@@ -2142,7 +2141,7 @@ function UpdateInputIndividual(sel) {
     WriteParameter(param, category, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
-    // WriteParameter(param, category, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
+    WriteParameter(param, category, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
     WriteParameter(param, category, "InfluxDB", "Field", true, NUNBERSAkt);
     WriteParameter(param, category, "InfluxDBv2", "Field", true, NUNBERSAkt);
