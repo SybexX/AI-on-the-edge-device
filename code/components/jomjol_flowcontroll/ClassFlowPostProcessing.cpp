@@ -317,7 +317,6 @@ ClassFlowPostProcessing::ClassFlowPostProcessing(std::vector<ClassFlow*>* lfc, C
     ListFlowControll = lfc;
     flowTakeImage = NULL;
     UpdatePreValueINI = false;
-    IgnoreLeadingNaN = false;
     flowAnalog = _analog;
     flowDigit = _digit;
 
@@ -426,6 +425,60 @@ void ClassFlowPostProcessing::handleAllowNegativeRate(string _decsep, string _va
         // Set to default first (if nothing else is set)
         if ((_digit == "default") || (NUMBERS[j]->name == _digit)) {
             NUMBERS[j]->AllowNegativeRates = _rt;
+        }
+    }
+}
+
+void ClassFlowPostProcessing::handleIgnoreLeadingNaN(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
+    int _pospunkt = _decsep.find_first_of(".");
+
+    // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
+
+    if (_pospunkt > -1) {
+        _digit = _decsep.substr(0, _pospunkt);
+    }
+    else {
+        _digit = "default";
+    }
+
+    for (int j = 0; j < NUMBERS.size(); ++j) {
+        bool _rt = false;
+
+        if (toUpper(_value) == "TRUE") {
+            _rt = true;
+        }
+
+        // Set to default first (if nothing else is set)
+        if ((_digit == "default") || (NUMBERS[j]->name == _digit)) {
+            NUMBERS[j]->IgnoreLeadingNaN = _rt;
+        }
+    }
+}
+
+void ClassFlowPostProcessing::handleIgnoreAllNaN(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
+    int _pospunkt = _decsep.find_first_of(".");
+
+    // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
+
+    if (_pospunkt > -1) {
+        _digit = _decsep.substr(0, _pospunkt);
+    }
+    else {
+        _digit = "default";
+    }
+
+    for (int j = 0; j < NUMBERS.size(); ++j) {
+        bool _rt = false;
+
+        if (toUpper(_value) == "TRUE") {
+            _rt = true;
+        }
+
+        // Set to default first (if nothing else is set)
+        if ((_digit == "default") || (NUMBERS[j]->name == _digit)) {
+            NUMBERS[j]->IgnoreAllNaN = _rt;
         }
     }
 }
@@ -548,9 +601,11 @@ bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, string& aktparamgraph) 
         }
 			
         if ((toUpper(_param) == "IGNORELEADINGNAN") && (splitted.size() > 1)) {
-            if (toUpper(splitted[1]) == "TRUE") {
-                IgnoreLeadingNaN = true;
-            }
+            handleIgnoreLeadingNaN(splitted[0], splitted[1]);
+        }
+
+        if ((toUpper(_param) == "IGNOREALLNAN") && (splitted.size() > 1)) {
+            handleIgnoreAllNaN(splitted[0], splitted[1]);
         }
 
         if ((toUpper(_param) == "PREVALUEAGESTARTUP") && (splitted.size() > 1)) {
@@ -619,6 +674,8 @@ void ClassFlowPostProcessing::InitNUMBERS() {
         _number->ReturnPreValue = "";
         _number->PreValueOkay = false;
         _number->AllowNegativeRates = false;
+        _number->IgnoreAllNaN = false;
+        _number->IgnoreAllNaN = false;
         _number->MaxRateValue = 0.1;
         _number->RateType = AbsoluteChange;
         _number->useMaxRateValue = false;
@@ -772,7 +829,22 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
             ESP_LOGD(TAG, "After ShiftDecimal: ReturnRaw %s", NUMBERS[j]->ReturnRawValue.c_str());
         #endif
 
-        if (IgnoreLeadingNaN) {
+        if (NUMBERS[j]->IgnoreAllNaN)
+        {
+            if (findDelimiterPos(NUMBERS[j]->ReturnRawValue, "N") != std::string::npos)
+            {
+                NUMBERS[j]->Value = NUMBERS[j]->PreValue;
+                NUMBERS[j]->ReturnValue = "";
+
+                NUMBERS[j]->ErrorMessageText = "IgnoreAllNaN activated and NaN available";
+                std::string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
+                WriteDataLog(j);
+                continue;
+            }
+        }
+	    
+        if (NUMBERS[j]->IgnoreLeadingNaN) {
             while ((NUMBERS[j]->ReturnRawValue.length() > 1) && (NUMBERS[j]->ReturnRawValue[0] == 'N')) {
                 NUMBERS[j]->ReturnRawValue.erase(0, 1);
             }
