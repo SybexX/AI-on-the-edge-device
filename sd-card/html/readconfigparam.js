@@ -6,7 +6,6 @@ var ref = new Array(2);
 var NUMBERS = new Array(0);
 var REFERENCES = new Array(0);
 
-
 function getNUMBERSList() {
     _domainname = getDomainname(); 
     var namenumberslist = "";
@@ -32,7 +31,6 @@ function getNUMBERSList() {
 
     return namenumberslist;
 }
-
 
 function getDATAList() {
     _domainname = getDomainname(); 
@@ -62,7 +60,6 @@ function getDATAList() {
     return datalist;
 }
 
-
 function getTFLITEList() {
     _domainname = getDomainname(); 
     tflitelist = "";
@@ -89,7 +86,6 @@ function getTFLITEList() {
 
     return tflitelist;
 }
-
 
 function ParseConfig() {
     config_split = config_gesamt.split("\n");
@@ -181,7 +177,7 @@ function ParseConfig() {
     ParamAddValue(param, catname, "MaxRateType", 1, true);
     ParamAddValue(param, catname, "ExtendedResolution", 1, true, "false");
     ParamAddValue(param, catname, "IgnoreLeadingNaN", 1, true, "false");
-    // ParamAddValue(param, catname, "IgnoreAllNaN", 1, true, "false");
+    ParamAddValue(param, catname, "IgnoreAllNaN", 1, true, "false");
     ParamAddValue(param, catname, "ErrorMessage");
     ParamAddValue(param, catname, "CheckDigitIncreaseConsistency");
 
