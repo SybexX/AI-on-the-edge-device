@@ -39,6 +39,7 @@ protected:
     void handleDecimalExtendedResolution(string _decsep, string _value); 
     void handleMaxRateType(string _decsep, string _value);
     void handleAnalogDigitalTransitionStart(string _decsep, string _value);
+    void handlecheckDigitIncreaseConsistency(string _decsep, string _value);
     void handleAllowNegativeRate(string _decsep, string _value);
     void handleIgnoreLeadingNaN(std::string _decsep, std::string _value);
     void handleIgnoreAllNaN(std::string _decsep, std::string _value);
