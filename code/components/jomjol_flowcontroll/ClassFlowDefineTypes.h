@@ -24,7 +24,6 @@ enum t_RateType {
     RateChange
  };
 
-
 struct NumberPost {
     float MaxRateValue;
     bool useMaxRateValue;
@@ -32,6 +31,8 @@ struct NumberPost {
     bool ErrorMessage;
     bool PreValueOkay;
     bool AllowNegativeRates;
+    bool IgnoreLeadingNaN;
+    bool IgnoreAllNaN;
     bool checkDigitIncreaseConsistency;
     time_t lastvalue;
     time_t timeStampTimeUTC;
