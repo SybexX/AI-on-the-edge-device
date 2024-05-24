@@ -403,6 +403,32 @@ void ClassFlowPostProcessing::handleAnalogDigitalTransitionStart(string _decsep,
     }
 }
 
+void ClassFlowPostProcessing::handlecheckDigitIncreaseConsistency(string _decsep, string _value) {
+    string _digit, _decpos;
+    int _pospunkt = _decsep.find_first_of(".");
+    // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
+
+    if (_pospunkt > -1) {
+        _digit = _decsep.substr(0, _pospunkt);
+    }
+    else {
+        _digit = "default";
+    }
+
+    for (int j = 0; j < NUMBERS.size(); ++j) {
+        bool _rt = false;
+
+        if (toUpper(_value) == "TRUE") {
+            _rt = true;
+        }
+
+        // Set to default first (if nothing else is set)
+        if ((_digit == "default") || (NUMBERS[j]->name == _digit)) {
+            NUMBERS[j]->checkDigitIncreaseConsistency = _rt;
+        }
+    }
+}
+
 void ClassFlowPostProcessing::handleAllowNegativeRate(string _decsep, string _value) {
     string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
@@ -582,12 +608,9 @@ bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, string& aktparamgraph) 
             }
         }
 	    
-        if ((toUpper(_param) == "CHECKDIGITINCREASECONSISTENCY") && (splitted.size() > 1)) {
-            if (toUpper(splitted[1]) == "TRUE") {
-                for (_n = 0; _n < NUMBERS.size(); ++_n) {
-                    NUMBERS[_n]->checkDigitIncreaseConsistency = true;
-                }
-            }
+        if ((toUpper(_param) == "CHECKDIGITINCREASECONSISTENCY") && (splitted.size() > 1))
+        {
+            handlecheckDigitIncreaseConsistency(splitted[0], splitted[1]);
         }
 			
         if ((toUpper(_param) == "ALLOWNEGATIVERATES") && (splitted.size() > 1)) {
