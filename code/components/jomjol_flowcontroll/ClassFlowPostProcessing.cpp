@@ -48,7 +48,7 @@ std::string ClassFlowPostProcessing::GetJSON(std::string _lineend) {
     return json;
 }
 
-string ClassFlowPostProcessing::getJsonFromNumber(int i, std::string _lineend) {
+std::string ClassFlowPostProcessing::getJsonFromNumber(int i, std::string _lineend) {
     std::string json = "";
 
     json += "  {" + _lineend;
@@ -77,7 +77,7 @@ string ClassFlowPostProcessing::getJsonFromNumber(int i, std::string _lineend) {
     return json;
 }
 
-string ClassFlowPostProcessing::GetPreValue(std::string _number) {
+std::string ClassFlowPostProcessing::GetPreValue(std::string _number) {
     std::string result;
     int index = -1;
 
@@ -100,7 +100,7 @@ string ClassFlowPostProcessing::GetPreValue(std::string _number) {
     return result;
 }
 
-bool ClassFlowPostProcessing::SetPreValue(double _newvalue, string _numbers, bool _extern) {
+bool ClassFlowPostProcessing::SetPreValue(double _newvalue, std::string _numbers, bool _extern) {
     //ESP_LOGD(TAG, "SetPrevalue: %f, %s", zw, _numbers.c_str());
 
     for (int j = 0; j < NUMBERS.size(); ++j) {
@@ -150,7 +150,7 @@ bool ClassFlowPostProcessing::LoadPreValue(void) {
     std::vector<string> splitted;
     FILE* pFile;
     char zw[1024];
-    string zwtime, zwvalue, name;
+    std::string zwtime, zwvalue, name;
     bool _done = false;
 
     UpdatePreValueINI = false;       // Conversion to the new format
@@ -278,7 +278,7 @@ bool ClassFlowPostProcessing::LoadPreValue(void) {
 
 void ClassFlowPostProcessing::SavePreValue() {
     FILE* pFile;
-    string _zw;
+    std::string _zw;
 
     // PreValues unchanged --> File does not have to be rewritten
     if (!UpdatePreValueINI) {
@@ -327,8 +327,8 @@ ClassFlowPostProcessing::ClassFlowPostProcessing(std::vector<ClassFlow*>* lfc, C
     }
 }
 
-void ClassFlowPostProcessing::handleDecimalExtendedResolution(string _decsep, string _value) {
-    string _digit, _decpos;
+void ClassFlowPostProcessing::handleDecimalExtendedResolution(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
     // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
 
@@ -353,8 +353,8 @@ void ClassFlowPostProcessing::handleDecimalExtendedResolution(string _decsep, st
     }
 }
 
-void ClassFlowPostProcessing::handleDecimalSeparator(string _decsep, string _value) {
-    string _digit, _decpos;
+void ClassFlowPostProcessing::handleDecimalSeparator(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
     // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
 
@@ -379,8 +379,8 @@ void ClassFlowPostProcessing::handleDecimalSeparator(string _decsep, string _val
     }
 }
 
-void ClassFlowPostProcessing::handleAnalogDigitalTransitionStart(string _decsep, string _value) {
-    string _digit, _decpos;
+void ClassFlowPostProcessing::handleAnalogDigitalTransitionStart(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
     // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
 	
@@ -403,8 +403,8 @@ void ClassFlowPostProcessing::handleAnalogDigitalTransitionStart(string _decsep,
     }
 }
 
-void ClassFlowPostProcessing::handlecheckDigitIncreaseConsistency(string _decsep, string _value) {
-    string _digit, _decpos;
+void ClassFlowPostProcessing::handlecheckDigitIncreaseConsistency(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
     // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
 
@@ -429,8 +429,8 @@ void ClassFlowPostProcessing::handlecheckDigitIncreaseConsistency(string _decsep
     }
 }
 
-void ClassFlowPostProcessing::handleAllowNegativeRate(string _decsep, string _value) {
-    string _digit, _decpos;
+void ClassFlowPostProcessing::handleAllowNegativeRate(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
     // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
 	
@@ -509,8 +509,8 @@ void ClassFlowPostProcessing::handleIgnoreAllNaN(std::string _decsep, std::strin
     }
 }
 
-void ClassFlowPostProcessing::handleMaxRateType(string _decsep, string _value) {
-    string _digit, _decpos;
+void ClassFlowPostProcessing::handleMaxRateType(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
     // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
 	
@@ -535,8 +535,8 @@ void ClassFlowPostProcessing::handleMaxRateType(string _decsep, string _value) {
     }
 }
 
-void ClassFlowPostProcessing::handleMaxRateValue(string _decsep, string _value) {
-    string _digit, _decpos;
+void ClassFlowPostProcessing::handleMaxRateValue(std::string _decsep, std::string _value) {
+    std::string _digit, _decpos;
     int _pospunkt = _decsep.find_first_of(".");
     // ESP_LOGD(TAG, "Name: %s, Pospunkt: %d", _decsep.c_str(), _pospunkt);
 	
@@ -559,7 +559,7 @@ void ClassFlowPostProcessing::handleMaxRateValue(string _decsep, string _value) 
     }
 }
 
-bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, string& aktparamgraph) {
+bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, std::string& aktparamgraph) {
     std::vector<string> splitted;
     int _n;
 
@@ -662,9 +662,7 @@ void ClassFlowPostProcessing::InitNUMBERS() {
 
     for (int _num = 0; _num < name_numbers.size(); ++_num) {
         NumberPost *_number = new NumberPost;
-
         _number->name = name_numbers[_num];
-        
         _number->digit_roi = NULL;
 			
         if (flowDigit) {
@@ -725,14 +723,12 @@ void ClassFlowPostProcessing::InitNUMBERS() {
     }
 }
 
-string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift) {
+std::string ClassFlowPostProcessing::ShiftDecimal(std::string in, int _decShift) {
     if (_decShift == 0) {
         return in;
     }
 
-    int _pos_dec_org, _pos_dec_neu;
-
-    _pos_dec_org = findDelimiterPos(in, ".");
+    int _pos_dec_org = findDelimiterPos(in, ".");
 	
     if (_pos_dec_org == std::string::npos) {
         _pos_dec_org = in.length();
@@ -741,7 +737,7 @@ string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift) {
         in = in.erase(_pos_dec_org, 1);
     }
     
-    _pos_dec_neu = _pos_dec_org + _decShift;
+    int _pos_dec_neu = _pos_dec_org + _decShift;
 
     // comma is before the first digit
     if (_pos_dec_neu <= 0) {
@@ -761,7 +757,7 @@ string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift) {
         return in;      
     }
 
-    string zw;
+    std::string zw;
     zw = in.substr(0, _pos_dec_neu);
     zw = zw + ".";
     zw = zw + in.substr(_pos_dec_neu, in.length() - _pos_dec_neu);
@@ -769,19 +765,15 @@ string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift) {
     return zw;
 }
 
-bool ClassFlowPostProcessing::doFlow(string zwtime) {
-    string result = "";
-    string digit = "";
-    string analog = "";
-    string zwvalue;
-    string zw;
-    time_t imagetime = 0;
-    string rohwert;
+bool ClassFlowPostProcessing::doFlow(std::string zwtime) {
+    std::string result = "";
+    std::string digit = "";
+    std::string analog = "";
+    std::string zwvalue = "";
+    std::string zw = "";
+    time_t imagetime = flowTakeImage->getTimeImageTaken();
+    std::string rohwert = "";
 
-    // Update decimal point, as the decimal places can also change when changing from CNNType Auto --> xyz:
-
-    imagetime = flowTakeImage->getTimeImageTaken();
-	
     if (imagetime == 0) {
         time(&imagetime);
     }
@@ -803,7 +795,7 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
         NUMBERS[j]->Value = -1;
 
         // calculate time difference BEFORE we overwrite the 'timeLastValue'
-        double timeDifference1 = difftime(imagetime, NUMBERS[j]->timeLastValue);    // in seconds
+        // double timeDifference1 = difftime(imagetime, NUMBERS[j]->timeLastValue);    // in seconds
         double timeDifference2 = difftime(imagetime, NUMBERS[j]->timeLastPreValue); // in seconds
 
         UpdateNachkommaDecimalShift();
@@ -855,7 +847,7 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
             {
                 NUMBERS[j]->Value = NUMBERS[j]->PreValue;
                 NUMBERS[j]->ReturnValue = "";
-				NUMBERS[j]->timeLastValue = imagetime;
+                NUMBERS[j]->timeLastValue = imagetime;
 
                 NUMBERS[j]->ErrorMessageText = "IgnoreAllNaN activated and NaN available";
                 std::string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
@@ -884,7 +876,7 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
             else {
                 NUMBERS[j]->timeLastValue = imagetime;
 			
-                string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
+                std::string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
                 LogFile.WriteToFile(ESP_LOG_INFO, TAG, _zw);
                 WriteDataLog(j);
                 continue; // there is no number because there is still an N.
@@ -952,7 +944,7 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
                     NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Neg. Rate - Read: " + zwvalue + " - Raw: " + NUMBERS[j]->ReturnRawValue + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " "; 
                     NUMBERS[j]->Value = NUMBERS[j]->PreValue;
                     NUMBERS[j]->ReturnValue = "";
-					NUMBERS[j]->timeLastValue = imagetime;
+                    NUMBERS[j]->timeLastValue = imagetime;
 
                     string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
@@ -984,7 +976,7 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
                     NUMBERS[j]->Value = NUMBERS[j]->PreValue;
                     NUMBERS[j]->ReturnValue = "";
                     NUMBERS[j]->ReturnRateValue = "";
-					NUMBERS[j]->timeLastValue = imagetime;
+                    NUMBERS[j]->timeLastValue = imagetime;
 
                     string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
@@ -1024,9 +1016,9 @@ void ClassFlowPostProcessing::WriteDataLog(int _index) {
         return;
     }
     
-    string analog = "";
-    string digital = "";
-    string timezw = "";
+    std::string analog = "";
+    std::string digital = "";
+    std::string timezw = "";
     char buffer[80];
     struct tm* timeinfo = localtime(&NUMBERS[_index]->timeLastValue);
     strftime(buffer, 80, PREVALUE_TIME_FORMAT_OUTPUT, timeinfo);
@@ -1041,10 +1033,10 @@ void ClassFlowPostProcessing::WriteDataLog(int _index) {
     }
 	
     LogFile.WriteToData(timezw, NUMBERS[_index]->name, 
-                        NUMBERS[_index]->ReturnRawValue, NUMBERS[_index]->ReturnValue, NUMBERS[_index]->ReturnPreValue, 
-                        NUMBERS[_index]->ReturnRateValue, NUMBERS[_index]->ReturnChangeAbsolute,
-                        NUMBERS[_index]->ErrorMessageText, 
-                        digital, analog);
+        NUMBERS[_index]->ReturnRawValue, NUMBERS[_index]->ReturnValue, NUMBERS[_index]->ReturnPreValue, 
+        NUMBERS[_index]->ReturnRateValue, NUMBERS[_index]->ReturnChangeAbsolute,
+        NUMBERS[_index]->ErrorMessageText, 
+        digital, analog);
     ESP_LOGD(TAG, "WriteDataLog: %s, %s, %s, %s, %s", NUMBERS[_index]->ReturnRawValue.c_str(), NUMBERS[_index]->ReturnValue.c_str(), NUMBERS[_index]->ErrorMessageText.c_str(), digital.c_str(), analog.c_str());
 }
 
@@ -1091,11 +1083,11 @@ void ClassFlowPostProcessing::UpdateNachkommaDecimalShift() {
     }
 }
 
-string ClassFlowPostProcessing::getReadout(int _number) {
+std::string ClassFlowPostProcessing::getReadout(int _number) {
     return NUMBERS[_number]->ReturnValue;
 }
 
-string ClassFlowPostProcessing::getReadoutParam(bool _rawValue, bool _noerror, int _number) {
+std::string ClassFlowPostProcessing::getReadoutParam(bool _rawValue, bool _noerror, int _number) {
     if (_rawValue) {
         return NUMBERS[_number]->ReturnRawValue;
     }
@@ -1107,13 +1099,12 @@ string ClassFlowPostProcessing::getReadoutParam(bool _rawValue, bool _noerror, i
     return NUMBERS[_number]->ReturnValue;
 }
 
-string ClassFlowPostProcessing::ErsetzteN(string input, double _prevalue) {
-    int posN, posPunkt;
+std::string ClassFlowPostProcessing::ErsetzteN(std::string input, double _prevalue) {
     int pot, ziffer;
     float zw;
 
-    posN = findDelimiterPos(input, "N");
-    posPunkt = findDelimiterPos(input, ".");
+    int posN = findDelimiterPos(input, "N");
+    int posPunkt = findDelimiterPos(input, ".");
 	
     if (posPunkt == std::string::npos) {
         posPunkt = input.length();
@@ -1140,11 +1131,10 @@ string ClassFlowPostProcessing::ErsetzteN(string input, double _prevalue) {
 float ClassFlowPostProcessing::checkDigitConsistency(double input, int _decilamshift, bool _isanalog, double _preValue) {
     int aktdigit, olddigit;
     int aktdigit_before, olddigit_before;
-    int pot, pot_max;
     float zw;
     bool no_nulldurchgang = false;
 
-    pot = _decilamshift;
+    int pot = _decilamshift;
 
     // if there are no analogue values, the last one cannot be evaluated
     if (!_isanalog) {
@@ -1155,7 +1145,7 @@ float ClassFlowPostProcessing::checkDigitConsistency(double input, int _decilams
         ESP_LOGD(TAG, "checkDigitConsistency: pot=%d, decimalshift=%d", pot, _decilamshift);
     #endif
 	
-    pot_max = ((int) log10(input)) + 1;
+    int pot_max = ((int) log10(input)) + 1;
 	
     while (pot <= pot_max) {
         zw = input / pow(10, pot-1);
@@ -1192,14 +1182,14 @@ float ClassFlowPostProcessing::checkDigitConsistency(double input, int _decilams
     return input;
 }
 
-string ClassFlowPostProcessing::getReadoutRate(int _number) {
+std::string ClassFlowPostProcessing::getReadoutRate(int _number) {
     return std::to_string(NUMBERS[_number]->FlowRateAct);
 }
 
-string ClassFlowPostProcessing::getReadoutTimeStamp(int _number) {
+std::string ClassFlowPostProcessing::getReadoutTimeStamp(int _number) {
    return NUMBERS[_number]->timeStamp; 
 }
 
-string ClassFlowPostProcessing::getReadoutError(int _number) {
+std::string ClassFlowPostProcessing::getReadoutError(int _number) {
     return NUMBERS[_number]->ErrorMessageText;
 }
