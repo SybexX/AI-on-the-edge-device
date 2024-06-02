@@ -34,8 +34,8 @@ struct NumberPost {
     bool IgnoreLeadingNaN;
     bool IgnoreAllNaN;
     bool checkDigitIncreaseConsistency;
-    time_t timeLastValue;
-    time_t timeLastPreValue;
+    time_t timeStampLastValue;
+    time_t timeStampLastPreValue;
     time_t timeStampTimeUTC;
     string timeStamp;
     double FlowRateAct; // m3 / min
