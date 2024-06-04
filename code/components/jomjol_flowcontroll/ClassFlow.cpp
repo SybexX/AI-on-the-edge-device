@@ -8,7 +8,6 @@
 
 static const char *TAG = "CLASS";
 
-
 void ClassFlow::SetInitialParameter(void)
 {
 	ListFlowControll = NULL;
@@ -33,7 +32,6 @@ bool ClassFlow::GetNextParagraph(FILE* pfile, string& aktparamgraph)
 		return true;
 	return false;
 }
-
 
 ClassFlow::ClassFlow(void)
 {
@@ -67,6 +65,11 @@ string ClassFlow::getHTMLSingleStep(string host){
 	return "";
 }
 
+std::string ClassFlow::getReadout_FC()
+{
+	return std::string();
+}
+
 std::string ClassFlow::GetParameterName(std::string _input)
 {
     string _param;
@@ -82,7 +85,6 @@ std::string ClassFlow::GetParameterName(std::string _input)
 //    ESP_LOGD(TAG, "Parameter: %s, Pospunkt: %d", _param.c_str(), _pospunkt);
 	return _param;
 }
-
 
 bool ClassFlow::getNextLine(FILE* pfile, string *rt)
 {
