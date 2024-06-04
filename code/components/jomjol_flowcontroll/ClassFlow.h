@@ -21,7 +21,6 @@ struct HTMLInfo
 	std::string filename_org;	
 };
 
-
 class ClassFlow
 {
 protected:
@@ -46,6 +45,7 @@ public:
 	virtual bool ReadParameter(FILE* pfile, string &aktparamgraph);
 	virtual bool doFlow(string time);
 	virtual string getHTMLSingleStep(string host);
+	virtual std::string getReadout_FC();
 	virtual string name(){return "ClassFlow";};
 
 };
