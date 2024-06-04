@@ -32,7 +32,6 @@ static const char* TAG = "FLOWCTRL";
 
 //#define DEBUG_DETAIL_ON
 
-
 std::string ClassFlowControll::doSingleStep(std::string _stepname, std::string _host){
     std::string _classname = "";
     std::string result = "";
@@ -78,7 +77,6 @@ std::string ClassFlowControll::doSingleStep(std::string _stepname, std::string _
     return result;
 }
 
-
 std::string ClassFlowControll::TranslateAktstatus(std::string _input)
 {
     if (_input.compare("ClassFlowTakeImage") == 0)
@@ -103,7 +101,6 @@ std::string ClassFlowControll::TranslateAktstatus(std::string _input)
     return "Unkown Status";
 }
 
-
 std::vector<HTMLInfo*> ClassFlowControll::GetAllDigital() 
 {
     if (flowdigit)
@@ -116,7 +113,6 @@ std::vector<HTMLInfo*> ClassFlowControll::GetAllDigital()
     return empty;
 }
 
-
 std::vector<HTMLInfo*> ClassFlowControll::GetAllAnalog()
 {
     if (flowanalog)
@@ -126,7 +122,6 @@ std::vector<HTMLInfo*> ClassFlowControll::GetAllAnalog()
     return empty;
 }
 
-
 t_CNNType ClassFlowControll::GetTypeDigital()
 {
     if (flowdigit)
@@ -134,7 +129,6 @@ t_CNNType ClassFlowControll::GetTypeDigital()
 
     return t_CNNType::None;
 }
-
 
 t_CNNType ClassFlowControll::GetTypeAnalog()
 {
@@ -144,7 +138,6 @@ t_CNNType ClassFlowControll::GetTypeAnalog()
     return t_CNNType::None;
 }
 
-
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
 void ClassFlowControll::DigitalDrawROI(CImageBasis *_zw)
 {
@@ -152,14 +145,12 @@ void ClassFlowControll::DigitalDrawROI(CImageBasis *_zw)
         flowdigit->DrawROI(_zw);
 }
 
-
 void ClassFlowControll::AnalogDrawROI(CImageBasis *_zw)
 {
     if (flowanalog)
         flowanalog->DrawROI(_zw);
 }
 #endif
-
 
 #ifdef ENABLE_MQTT
 bool ClassFlowControll::StartMQTTService() 
@@ -173,7 +164,6 @@ bool ClassFlowControll::StartMQTTService()
     return false;
 }
 #endif //ENABLE_MQTT
-
 
 void ClassFlowControll::SetInitialParameter(void)
 {
@@ -189,18 +179,15 @@ void ClassFlowControll::SetInitialParameter(void)
     aktstatusWithTime = aktstatus;
 }
 
-
 bool ClassFlowControll::getIsAutoStart(void)
 {
     return AutoStart;
 }
 
-
 void ClassFlowControll::setAutoStartInterval(long &_interval)
 {
     _interval = AutoInterval * 60 * 1000; // AutoInterval: minutes -> ms
 }
-
 
 ClassFlow* ClassFlowControll::CreateClassFlow(std::string _type)
 {
@@ -263,7 +250,6 @@ ClassFlow* ClassFlowControll::CreateClassFlow(std::string _type)
     return cfc;
 }
 
-
 void ClassFlowControll::InitFlow(std::string config)
 {
     aktstatus = "Initialization";
@@ -314,25 +300,21 @@ void ClassFlowControll::InitFlow(std::string config)
     fclose(pFile);
 }
 
-
 std::string* ClassFlowControll::getActStatusWithTime()
 {
     return &aktstatusWithTime;
 }
-
 
 std::string* ClassFlowControll::getActStatus()
 {
     return &aktstatus;
 }
 
-
 void ClassFlowControll::setActStatus(std::string _aktstatus)
 {
     aktstatus = _aktstatus;
     aktstatusWithTime = aktstatus;
 }
-
 
 void ClassFlowControll::doFlowTakeImageOnly(string time)
 {
@@ -352,7 +334,6 @@ void ClassFlowControll::doFlowTakeImageOnly(string time)
         }
     }
 }
-
 
 bool ClassFlowControll::doFlow(string time)
 {
@@ -420,7 +401,6 @@ bool ClassFlowControll::doFlow(string time)
     return result;
 }
 
-
 string ClassFlowControll::getReadoutAll(int _type)
 {
     std::string out = "";
@@ -462,15 +442,35 @@ string ClassFlowControll::getReadoutAll(int _type)
     return out;
 }	
 
-
 string ClassFlowControll::getReadout(bool _rawvalue = false, bool _noerror = false, int _number = 0)
 {
     if (flowpostprocessing)
+    {
         return flowpostprocessing->getReadoutParam(_rawvalue, _noerror, _number);
+    }
 
-    return std::string("");
+    std::string zw = "";
+    std::string result = "";
+
+    for (int i = 0; i < FlowControll.size(); ++i)
+    {
+        zw = FlowControll[i]->getReadout_FC();
+
+        if (zw.length() > 0)
+        {
+            if (result.length() == 0)
+            {
+                result = zw;
+            }
+            else
+            {
+                result = result + "\t" + zw;
+            }
+        }
+    }
+
+    return result;
 }
-
 
 string ClassFlowControll::GetPrevalue(std::string _number)	
 {
@@ -479,10 +479,8 @@ string ClassFlowControll::GetPrevalue(std::string _number)
         return flowpostprocessing->GetPreValue(_number);   
     }
 
-
     return std::string("");    
 }
-
 
 bool ClassFlowControll::UpdatePrevalue(std::string _newvalue, std::string _numbers, bool _extern)
 {
