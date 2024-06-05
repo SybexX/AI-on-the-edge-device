@@ -680,7 +680,7 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
                 {
                     if (flowctrl.GetTypeDigital() == Digital)
                     {
-                        if (htmlinfodig[i]->val >= 10)
+                        if ((htmlinfodig[i]->val >= 10) || (htmlinfodig[i]->val < 0))
                         {
                             zw = "NaN";
                         }
@@ -697,7 +697,7 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
                         stream << std::fixed << std::setprecision(1) << htmlinfodig[i]->val;
                         zw = stream.str();
 
-                        if (std::stod(zw) >= 10)
+                        if ((std::stod(zw) >= 10) || (std::stod(zw) < 0))
                         {
                             zw = "NaN";
                         }
@@ -725,7 +725,7 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
                     stream << std::fixed << std::setprecision(1) << htmlinfoana[i]->val;
                     zw = stream.str();
 
-                    if (std::stod(zw) >= 10)
+                    if ((std::stod(zw) >= 10) || (std::stod(zw) < 0))
                     {
                         zw = "NaN";
                     }
