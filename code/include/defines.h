@@ -19,7 +19,6 @@
     //=> CONFIG_SPIRAM_BANKSWITCH_ENABLE=y
     //=> CONFIG_SPIRAM_BANKSWITCH_RESERVE=4
 
-
     // use himem //https://github.com/jomjol/AI-on-the-edge-device/issues/1842
     #if (CONFIG_SPIRAM_BANKSWITCH_ENABLE)
         #define USE_HIMEM_IF_AVAILABLE 1
@@ -34,7 +33,6 @@
     */
     // server_tflite.cpp
     //#define TASK_ANALYSIS_ON
-
 
     //Memory leak tracing
     //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/heap_debug.html#heap-information
@@ -52,15 +50,12 @@
     //#define KEEP_LOGFILE_OPEN_FOR_APPENDING
 
   //****************************************
-
     //compiler optimization for esp-tflite-micro
     #define XTENSA
     //#define CONFIG_IDF_TARGET_ARCH_XTENSA     //not needed with platformio/espressif32 @ 5.2.0
 
-
     //Statusled + ClassControllCamera
     #define BLINK_GPIO GPIO_NUM_33              // PIN for red board LED
-
 
     //ClassControllCamera
     #define FLASH_GPIO GPIO_NUM_4               // PIN for flashlight LED
@@ -68,35 +63,28 @@
     #define CAM_LIVESTREAM_REFRESHRATE 500      // Camera livestream feature: Waiting time in milliseconds to refresh image
     // #define GRAYSCALE_AS_DEFAULT
 
-
     //ClassControllCamera + ClassFlowTakeImage
     #define CAMERA_MODEL_AI_THINKER
     #define BOARD_ESP32CAM_AITHINKER
 
-
     //server_GPIO
     #define __LEDGLOBAL
-
 
     //server_GPIO + server_file + SoftAP
     #define CONFIG_FILE "/sdcard/config/config.ini"
     #define CONFIG_FILE_BACKUP "/sdcard/config/config.bak"
 
-
     //interface_mqtt + read_wlanini
     #define __HIDE_PASSWORD
 
-
     //ClassFlowControll + Main + SoftAP
     #define WLAN_CONFIG_FILE "/sdcard/wlan.ini"
-
 
     //main
     #define __SD_USE_ONE_LINE_MODE__
 
     // server_file + Helper
      #define FILE_PATH_MAX (255) //Max length a file path can have on storage
-    
 
     //server_file +(ota_page.html + upload_script.html)
     #define MAX_FILE_SIZE   (8000*1024) // 8 MB Max size of an individual file. Make sure this value is same as that set in upload_script.html and ota_page.html!
@@ -105,25 +93,21 @@
     #define LOGFILE_LAST_PART_BYTES 80 * 1024 // 80 kBytes  // Size of partial log file to return 
 
     #define SERVER_FILER_SCRATCH_BUFSIZE  4096 
-    #define SERVER_HELPER_SCRATCH_BUFSIZE  8192
+    #define SERVER_HELPER_SCRATCH_BUFSIZE  4096
     #define SERVER_OTA_SCRATCH_BUFSIZE  1024 
-
 
     //server_file + server_help
     #define IS_FILE_EXT(filename, ext) \
     (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
 
-
     //server_ota
     #define HASH_LEN 32 // SHA-256 digest length
     #define OTA_URL_SIZE 256
-
 
     //ClassFlow + ClassFlowImage + server_tflite
     #define LOGFILE_TIME_FORMAT "%Y%m%d-%H%M%S"
     #define LOGFILE_TIME_FORMAT_DATE_EXTR substr(0, 8)
     #define LOGFILE_TIME_FORMAT_HOUR_EXTR substr(9, 2)
-
 
     //ClassFlowControll
     #define READOUT_TYPE_VALUE 0
@@ -131,21 +115,17 @@
     #define READOUT_TYPE_RAWVALUE 2
     #define READOUT_TYPE_ERROR 3
 
-
     //ClassFlowControll: Serve alg_roi.jpg from memory as JPG
     #define ALGROI_LOAD_FROM_MEM_AS_JPG // Load ALG_ROI.JPG as rendered JPG from RAM
-
 
     //ClassFlowMQTT
     #define LWT_TOPIC        "connection"
     #define LWT_CONNECTED    "connected"
     #define LWT_DISCONNECTED "connection lost"
 
-
     //ClassFlowPostProcessing
     #define PREVALUE_TIME_FORMAT_OUTPUT "%Y-%m-%dT%H:%M:%S%z"
     #define PREVALUE_TIME_FORMAT_INPUT "%d-%d-%dT%d:%d:%d"
-
 
     //CImageBasis
     #define HTTP_BUFFER_SENT 1024
@@ -157,16 +137,13 @@
     //#define STB_IMAGE_RESIZE_IMPLEMENTATION
     #define STBI_ONLY_JPEG // (save 2% of Flash, but breaks the alignment mark generation, see https://github.com/jomjol/AI-on-the-edge-device/issues/1721)
 
-
     //interface_influxdb
     #define MAX_HTTP_OUTPUT_BUFFER 2048
-
 
     //server_mqtt
     #define LWT_TOPIC        "connection"
     #define LWT_CONNECTED    "connected"
     #define LWT_DISCONNECTED "connection lost"
-
 
     // connect_wlan.cpp
     //******************************
@@ -184,6 +161,8 @@
     /* WIFI roaming only client triggered by scanning the channels after each round (only if RSSI < RSSIThreshold) and trigger a disconnect to switch AP */
     #define WLAN_USE_ROAMING_BY_SCANNING
 
+    //server_file
+    // #define WLAN_INI_PROTECTED
 
     //ClassFlowCNNGeneral
     #define Analog_error 3
@@ -194,11 +173,7 @@
     #define Digital_Transition_Area_Predecessor 0.7 // 9.3 - 0.7
     #define Digital_Transition_Area_Forward 9.7 // Pre-run zero crossing only happens from approx. 9.7 onwards
 
-
-
-
     //#define DEBUG_DETAIL_ON 
-
 
 /////////////////////////////////////////////
 ////      PSRAM Allocations              ////
@@ -206,6 +181,7 @@
 #define MAX_MODEL_SIZE            (unsigned int)(1.3 * 1024 * 1024) // Space for the currently largest model (1.1 MB) + some spare
 #define TENSOR_ARENA_SIZE         800 * 1024 // Space for the Tensor Arena, (819200 Bytes)
 #define IMAGE_SIZE                640 * 480 * 3 // Space for a extracted image (921600 Bytes)
+
 /////////////////////////////////////////////
 ////      Conditionnal definitions       ////
 /////////////////////////////////////////////
@@ -267,14 +243,12 @@
     #define VSYNC_GPIO_NUM    GPIO_NUM_25
     #define HREF_GPIO_NUM     GPIO_NUM_23
     #define PCLK_GPIO_NUM     GPIO_NUM_22
-
 #else
     #error "Camera model not selected"
 #endif  //camera model
 
 // ******* Board type   
 #ifdef BOARD_WROVER_KIT // WROVER-KIT PIN Map
-
     #define CAM_PIN_PWDN -1  //power down is not used
     #define CAM_PIN_RESET -1 //software reset will be performed
     #define CAM_PIN_XCLK 21
@@ -292,12 +266,9 @@
     #define CAM_PIN_VSYNC 25
     #define CAM_PIN_HREF 23
     #define CAM_PIN_PCLK 22
-
 #endif //// WROVER-KIT PIN Map
 
-    
 #ifdef BOARD_ESP32CAM_AITHINKER // ESP32Cam (AiThinker) PIN Map
-
     #define CAM_PIN_PWDN 32
     #define CAM_PIN_RESET -1 //software reset will be performed
     #define CAM_PIN_XCLK 0
@@ -315,12 +286,10 @@
     #define CAM_PIN_VSYNC 25
     #define CAM_PIN_HREF 23
     #define CAM_PIN_PCLK 22
-
 #endif // ESP32Cam (AiThinker) PIN Map
 
 // ******* LED definition
 #ifdef USE_PWM_LEDFLASH
-
     //// PWM für Flash-LED
     #define LEDC_TIMER              LEDC_TIMER_1 // LEDC_TIMER_0
     #define LEDC_MODE               LEDC_LOW_SPEED_MODE
@@ -329,7 +298,6 @@
     #define LEDC_DUTY_RES           LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
     //#define LEDC_DUTY               (195) // Set duty to 50%. ((2 ** 13) - 1) * 50% = 4095
     #define LEDC_FREQUENCY          (5000) // Frequency in Hertz. Set frequency at 5 kHz
-
 #endif //USE_PWM_LEDFLASH
 
 //softAP
