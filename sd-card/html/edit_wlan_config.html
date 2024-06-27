@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en" xml:lang="en"> 
+
+<head>
+<style>
+    h1 {font-size: 2em;}
+    h2 {font-size: 1.5em; margin-block-start: 0.0em; margin-block-end: 0.2em;}
+    h3 {font-size: 1.2em;}
+    h4 {font-size: 1.05em; margin-bottom: 0;}
+    h5 {font-size: 0.83em; margin-top: 0.2em; margin-bottom: 0;}
+    p {font-size: 1em;}
+
+    .table {
+        border: 0pt;
+        border-collapse: collapse;
+        table-layout: fixed;
+        width:100%;
+    }
+
+    td {
+        padding: 10px;
+        vertical-align: middle;
+    }
+
+    .button {
+        padding: 5px 10px;
+        width: 220px;
+        font-size: 16px;	
+    }
+
+    input[type=number] {
+        width: 60px;
+        min-width: 60px;
+        max-width: 60px;
+        margin-right: 10px;
+        padding: 3px 5px;
+        display: inline-block;
+        border: 1px solid #ccc;
+        font-size: 16px;
+        vertical-align: middle;
+    }
+
+    input[type=text] {
+		width:82%;
+        max-width:96%;
+        margin-right: 10px;
+        padding: 3px 5px;
+        display: inline-block;
+        border: 1px solid #ccc;
+        font-size: 16px;
+        vertical-align: middle;
+    }
+
+    input[type=password] {
+		width:82%;
+        max-width:96%;
+        margin-right: 10px;
+        padding: 3px 5px;
+        display: inline-block;
+        border: 1px solid #ccc;
+        font-size: 16px;
+        vertical-align: middle;
+    }
+
+    select {
+        min-width: 72px;
+        max-width: 100%;
+        padding: 3px 5px;
+        display: inline-block;
+        border: 1px solid #ccc;
+        font-size: 16px; 
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+
+    .select_large {
+        width: 100%;
+        min-width: 200px;
+        max-width: 100%;
+        padding: 3px 5px;
+        display: inline-block;
+        border: 1px solid #ccc;
+        font-size: 16px; 
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+
+    textarea {
+        font-size: 14px;
+    }
+
+    .description {
+        color: black;
+        font-size: 80%;
+    }
+
+    .disabled {
+        color:rgb(122, 122, 122);
+    }
+
+    .invalid-input {
+        background-color: #FFAA00;
+    }
+
+    input:out-of-range {
+        background-color: rgba(255, 0, 0, 0.25);
+        border: 1px solid red;
+    }
+
+    input:invalid {
+        background-color: rgba(255, 0, 0, 0.25);
+        border: 1px solid red;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .indent1 {
+        padding-left: 25px;
+        font-size: 16px;
+    }
+
+    .indent2 {
+        padding-left: 50px;
+        font-size: 16px;
+    }
+
+    .tooltip {
+        position: relative;
+        display: inline-block;
+    }
+
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 600px;
+        background-color: #fcfcfc;
+
+        padding: 5px;
+        padding-bottom: 0;
+
+        border: solid black 2px; 
+
+        /* Position the tooltip */
+        position: absolute;
+        z-index: 1;
+        top: 100%;
+        left: 100%;
+        margin-left: -600px;
+    }
+
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+    }
+
+    .tooltip-content {
+        width: calc(100% - 2px);
+        height: calc(100% - 2px);
+        padding: 1px;
+    }
+	
+    #overlay {
+        position: fixed;
+        display: none;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.8);
+        z-index: 2;
+    }
+
+    #overlaytext{
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        font-size: 150%;
+        color: white;
+        transform: translate(-50%,-50%);
+        -ms-transform: translate(-50%,-50%);
+    }	
+</style>
+
+<link rel="stylesheet" href="mkdocs_theme.css?v=$COMMIT_HASH" />
+<link rel="stylesheet" href="mkdocs_theme_extra.css?v=$COMMIT_HASH" />
+<link rel="stylesheet" href="github.min.css?v=$COMMIT_HASH" />
+
+<link rel="stylesheet" href="ipInput.min.css?v=$COMMIT_HASH" />
+<script type="text/javascript" src="jquery-3.6.0.min.js?v=$COMMIT_HASH"></script>
+<script type="text/javascript" src="ipInput.min.js?v=$COMMIT_HASH"></script>
+
+<link rel="stylesheet" href="firework.css?v=$COMMIT_HASH" />
+<script type="text/javascript" src="firework.js?v=$COMMIT_HASH"></script>
+
+<script type="text/javascript" src="common.js?v=$COMMIT_HASH"></script>
+<script type="text/javascript" src="readconfigparam.js?v=$COMMIT_HASH"></script> 
+<script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script> 
+
+</head>
+	
+<body>
+    <div id="overlay">
+        <div id="overlaytext"></div>
+    </div>
+
+	<h2>Wifi Configuration</h2>
+
+	<hr/>
+
+    <table class="table">
+        <colgroup>
+            <col span="1" style="width:100px">
+            <col span="1" style="width:360px">
+			<col span="1">
+        </colgroup>
+
+<!-------------
+		<tr>
+			<td>Hostname</td>
+			<td>
+				<input type="text" name="myHostname" id="myHostname" onchange="wifiParameterChanged()">
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip">
+						<img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>Hostname</code></h3>
+							<p>Default Value: <code>undefined</code></p>
+							<p>Hostname for the device.
+							It gets automatically transferred to <code>/wlan.ini</code> on the SD-Card at the next startup.</p>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+------------->
+		<tr>
+			<td>SSID</td>
+			<td>
+				<input type="text" name="mySSID" id="mySSID" onchange="wifiParameterChanged()">
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip"><img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>SSID</code></h3>
+							<p>SSID of the WLAN.</p>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+		
+		<tr>
+			<td>Password</td>
+			<td>
+				<input type="password" name="myPassword" id="myPassword" onchange="wifiParameterChanged()">
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip"><img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>Password</code></h3>
+							<p>Password of the WLAN.</p>
+							<div class="admonition warning">
+								<p class="admonition-title">Warning</p>
+								<p>The password will not be encrypted during the sending!</p>
+							</div>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+
+		<!------------- FixedIP ------------------>
+		<tr>
+			<td style="padding-left: 0px; padding-bottom: 3px;">
+				<input type="checkbox" id="Category_FixedIP_enabled" value="1"  onclick = 'UpdateAfterFixedIPCheck()' unchecked >
+				<label for=Category_FixedIP_enabled>Fixed IP</label>
+			</td>
+		</tr>
+		
+		<tr class="FixedIP">
+			<td class="indent1">IP</td>
+			<td>
+				<!----<input type="text" name="myIP" id="myIP" onchange="wifiParameterChanged()">---->
+				<div id="esp32_ip" onchange="wifiParameterChanged()"> </div>
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip"><img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>IP</code></h3>
+							<p>Leave emtpy if set by router.</p>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+		
+		<tr class="FixedIP">
+			<td class="indent1">Gateway</td>
+			<td>
+				<!----<input type="text" name="myGateway" id="myGateway" onchange="wifiParameterChanged()">---->
+				<div id="esp32_gateway" onchange="wifiParameterChanged()"> </div>
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip"><img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>Gateway</code></h3>
+							<p>Leave emtpy if set by router.</p>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+		
+		<tr class="FixedIP">
+			<td class="indent1">Netmask</td>
+			<td>
+				<!----<input type="text" name="myNetmask" id="myNetmask" onchange="wifiParameterChanged()">---->
+				<div id="esp32_netmask" onchange="wifiParameterChanged()"> </div>
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip"><img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>Netmask</code></h3>
+							<p>Leave emtpy if set by router.</p>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+		
+		<tr class="FixedIP">
+			<td class="indent1">DNS</td>
+			<td>
+				<!----<input type="text" name="myDNS" id="myDNS" onchange="wifiParameterChanged()">---->
+				<div id="esp32_dns" onchange="wifiParameterChanged()"> </div>
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip"><img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>DNS</code></h3>
+							<p>Leave emtpy if set by router.</p>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+
+<!-------------
+		<tr>
+			<td>RSSI Threshold</td>
+			<td>
+				<input type="number" name="myThreshold" id="myThreshold" min="-100"  max="0" step="1" value = "0" onchange="wifiParameterChanged()">
+			</td>
+			<td>
+				<div class="rst-content">
+					<div class="tooltip">
+						<img src="help.png" width="32px">
+						<span class="tooltiptext">
+							<h3 style="margin: 0">Parameter <code>RSSIThreshold</code></h3>
+							<p>Default Value: <code>0</code></p>
+							<p>Possible values: <code>-100</code> .. <code>0</code> (<code>0</code> = disabled).</p>
+							<div class="admonition warning">
+								<p class="admonition-title">Warning</p>
+								<p>This is an <strong>Expert Parameter</strong>! Only change it if you understand what it does!</p>
+							</div>
+							<p>This parameter activates a client triggered AP switching functionality (simplified roaming). 
+								If actual RSSI value is lower (more negative) than <code>RSSIThreshold</code>, 
+								all WIFI channels will be scanned for configured access point SSID. 
+								If an access point is in range which has better RSSI value (less negative) than actual RSSI value + 5 dBm, 
+								the device is trying to connect to this access point with the better RSSI value.</p>
+							<div class="admonition note">
+								<p class="admonition-title">Note</p>
+								<p>The RSSI check only gets initiated at the end of each round to avoid any disturbance of processing.</p>
+							</div>
+							<div class="admonition note">
+								<p class="admonition-title">Note</p>
+								<p>It gets automatically transferred to <code>/wlan.ini</code> on the SD-Card at next startup.</p>
+							</div>
+						</span>
+					</div>
+				</div>
+			</td>
+		</tr>
+------------->
+	</table>
+	
+	<hr/>
+	
+	<table style="padding-top:10px">
+		<tr>
+			<input type="checkbox" onclick="set_PW_Visible()">Show Password
+		</tr>
+	
+		<tr>
+			<td>
+				<button class="button" type="button" onclick="write_wlan_config()">Save Wifi Config</button>
+			</td>
+			<td>
+				<button class="button" id="reboot" type="button" onclick="doReboot()">Reboot to activate changes</button>
+			</td>
+		</tr>
+	</table>	
+
+<link rel="stylesheet" href="ipInput.min.css?v=$COMMIT_HASH" />
+<script type="text/javascript" src="jquery-3.6.0.min.js?v=$COMMIT_HASH"></script>
+<script type="text/javascript" src="ipInput.min.js?v=$COMMIT_HASH"></script> 
+
+<link rel="stylesheet" href="firework.css?v=$COMMIT_HASH" />
+<script type="text/javascript" src="firework.js?v=$COMMIT_HASH"></script>
+
+<script type="text/javascript" src="common.js?v=$COMMIT_HASH"></script>
+<script type="text/javascript" src="readconfigparam.js?v=$COMMIT_HASH"></script> 
+<script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script>  
+
+<script language="JavaScript">
+	var domainname = getDomainname(),
+		ipInput = $('#esp32_ip').ipInput(),
+		gatewayInput = $('#esp32_gateway').ipInput(),
+		netmaskInput = $('#esp32_netmask').ipInput(),
+		dnsInput = $('#esp32_dns').ipInput(),
+		wifi_config_gesamt = "",
+		wifi_config_changed = false,
+		fixed_ip_enable = false,
+		wifi_param = [],
+		wifi_ssid = "",
+		wifi_password = "",
+		wifi_hostname = "",
+		wifi_ip = "",
+		wifi_gateway = "",
+		wifi_netmask = "",
+		wifi_dns = "",
+		wifi_threshold = "0";
+
+	function wifiParameterChanged() {
+		wifi_config_changed = true;
+		
+		console.log("wifiParameterChanged");
+
+		// wifi_hostname = document.getElementById("myHostname").value;
+		wifi_ssid = document.getElementById("mySSID").value;
+		wifi_password = document.getElementById("myPassword").value;
+		
+		if (fixed_ip_enable) {
+			if (ipInput.getIp() != null) {
+				wifi_ip = ipInput.getIp();
+			}
+			
+			if (gatewayInput.getIp() != null) {
+				wifi_gateway = gatewayInput.getIp();
+			}
+			
+			if (netmaskInput.getIp() != null) {
+				wifi_netmask = netmaskInput.getIp();
+			}
+			
+			if (dnsInput.getIp() != null) {
+				wifi_dns = dnsInput.getIp();
+			}
+		}
+		else {
+			wifi_ip = "";
+			wifi_gateway = "";
+			wifi_netmask = "";
+			wifi_dns = "";
+		}
+		
+		// wifi_threshold = document.getElementById("myThreshold").value;
+	}
+
+	function write_wlan_config() {
+		if (wifi_config_changed) {
+			SaveWifiConfigToServer(wifi_ssid, wifi_password, wifi_hostname, wifi_ip, wifi_gateway, wifi_netmask, wifi_dns, wifi_threshold, domainname);
+			
+			firework.launch('Wifi Configuration saved. It will get applied after the next reboot!', 'success', 5000);
+		}
+	}
+
+	function UpdateAfterFixedIPCheck() {
+		if (document.getElementById("Category_FixedIP_enabled").checked) {
+			setVisible("FixedIP", true);
+			fixed_ip_enable = true;
+		}
+		else {
+			setVisible("FixedIP", false);
+			fixed_ip_enable = false;
+		}
+		
+		wifiParameterChanged();
+	}
+
+    function setVisible(className, visible) {
+        let elements = document.getElementsByClassName(className);
+	
+        for (i = 0; i < elements.length; i++) {
+            if (visible) {
+                elements[i].classList.remove("hidden");
+            } 
+            else {
+                elements[i].classList.add("hidden");
+            }
+        }
+    }
+
+    function doReboot() {
+        if (confirm("Are you sure you want to reboot?")) {
+            var stringota = domainname + "/reboot";
+            window.location = stringota;
+            window.location.href = stringota;
+            window.location.assign(stringota);
+            window.location.replace(stringota);
+        }
+    }
+	
+	function set_PW_Visible() {
+		var pw = document.getElementById("myPassword");
+		if (pw.type === "password") {
+			pw.type = "text";
+		} 
+		else {
+			pw.type = "password";
+		}
+	}
+
+    function Init() {
+		/*
+        const tooltip = document.querySelectorAll(".tooltip");
+	
+        for (var i = 0; i < tooltip.length; i++) {
+            tooltip[i].style.display = 'none';
+        }*/
+		
+		UpdateAfterFixedIPCheck();
+
+        if (!loadWifiConfig(domainname)) {
+            firework.launch('Configuration could not be loaded! Please reload the page!', 'danger', 30000);
+            return;
+        }
+
+        ParseWifiConfig();
+		
+		wifi_param = getWifiConfigParameters();
+		
+        if (wifi_param != null) {
+			console.log('Wifi Configuration loaded');
+			// console.log(wifi_param);
+			
+			var wifiKeys = Object.keys(wifi_param);
+			var wifiValues = Object.values(wifi_param);
+			
+			for (var i = 0; i < wifiKeys.length; i++) {
+			    if (wifiKeys[i].toUpperCase() == "SSID") {
+				    document.getElementById("mySSID").value = wifiValues[i];
+					wifi_ssid = wifiValues[i];
+			    }
+			    else if (wifiKeys[i].toUpperCase() == "PASSWORD") {
+				    document.getElementById("myPassword").value = wifiValues[i];
+					wifi_password = wifiValues[i];
+			    }
+			    else if (wifiKeys[i].toUpperCase() == "HOSTNAME") {
+				    // document.getElementById("myHostname").value = wifiValues[i];
+					wifi_hostname = wifiValues[i];
+			    }
+			    else if (wifiKeys[i].toUpperCase() == "IP") {
+				    // document.getElementById("myIP").value = wifiValues[i];
+					wifi_ip = wifiValues[i];
+					ipInput.setIp(wifi_ip);
+					document.getElementById("Category_FixedIP_enabled").checked = true;
+					UpdateAfterFixedIPCheck();
+			    }
+			    else if (wifiKeys[i].toUpperCase() == "GATEWAY") {
+				    // document.getElementById("myGateway").value = wifiValues[i];
+					wifi_gateway = wifiValues[i];
+					gatewayInput.setIp(wifi_gateway);
+			    }
+			    else if (wifiKeys[i].toUpperCase() == "NETMASK") {
+				    // document.getElementById("myNetmask").value = wifiValues[i];
+					wifi_netmask = wifiValues[i];
+					netmaskInput.setIp(wifi_netmask);
+			    }
+			    else if (wifiKeys[i].toUpperCase() == "DNS") {
+				    // document.getElementById("myDNS").value = wifiValues[i];
+					wifi_dns = wifiValues[i];
+					dnsInput.setIp(wifi_dns);
+			    }
+			    else if (wifiKeys[i].toUpperCase() == "RSSITHRESHOLD") {
+				    // document.getElementById("myThreshold").value = wifiValues[i];
+					wifi_threshold = wifiValues[i];
+			    }	
+			}
+		}
+		else {
+			console.log('Configuration could not be loaded!');
+		
+			document.getElementById("mySSID").value = "";
+			document.getElementById("myPassword").value = "";
+			// document.getElementById("myHostname").value = "";
+			
+			// document.getElementById("myIP").value = "";
+			ipInput.setIp("");
+			
+			// document.getElementById("myGateway").value = "";
+			gatewayInput.setIp("");
+			
+			// document.getElementById("myNetmask").value = "";
+			netmaskInput.setIp("");
+			
+			// document.getElementById("myDNS").value = "";
+			dnsInput.setIp("");
+			
+			// document.getElementById("myThreshold").value = "0";
+		}
+    }
+
+    Init();
+
+    </script>
+</body>
+</html>
