@@ -6,7 +6,6 @@ var ref = new Array(2);
 var NUMBERS = new Array(0);
 var REFERENCES = new Array(0);
 
-
 function getNUMBERSList() {
     _domainname = getDomainname(); 
     var namenumberslist = "";
@@ -32,7 +31,6 @@ function getNUMBERSList() {
 
     return namenumberslist;
 }
-
 
 function getDATAList() {
     _domainname = getDomainname(); 
@@ -62,7 +60,6 @@ function getDATAList() {
     return datalist;
 }
 
-
 function getTFLITEList() {
     _domainname = getDomainname(); 
     tflitelist = "";
@@ -89,7 +86,6 @@ function getTFLITEList() {
 
     return tflitelist;
 }
-
 
 function ParseConfig() {
     config_split = config_gesamt.split("\n");
@@ -345,7 +341,6 @@ function ParseConfig() {
     }
 }
 
-
 function ParamAddValue(param, _cat, _param, _anzParam = 1, _isNUMBER = false, _defaultValue = "", _checkRegExList = null) {
     param[_cat][_param] = new Object(); 
     param[_cat][_param]["found"] = false;
@@ -356,7 +351,6 @@ function ParamAddValue(param, _cat, _param, _anzParam = 1, _isNUMBER = false, _d
     param[_cat][_param]["Numbers"] = _isNUMBER;
     param[_cat][_param].checkRegExList = _checkRegExList;
 };
-
 
 function ParseConfigParamAll(_aktline, _catname) {
     ++_aktline;
@@ -389,7 +383,6 @@ function ParseConfigParamAll(_aktline, _catname) {
     return _aktline; 
 }
 
-
 function ParamExtractValue(_param, _linesplit, _catname, _paramname, _aktline, _iscom, _anzvalue = 1) {
     if ((_linesplit[0].toUpperCase() == _paramname.toUpperCase()) && (_linesplit.length > _anzvalue)) {
         _param[_catname][_paramname]["found"] = true;
@@ -402,7 +395,6 @@ function ParamExtractValue(_param, _linesplit, _catname, _paramname, _aktline, _
         }
     }
 }
-
 
 function ParamExtractValueAll(_param, _linesplit, _catname, _aktline, _iscom) {
     for (var paramname in _param[_catname]) {
@@ -460,7 +452,6 @@ function ParamExtractValueAll(_param, _linesplit, _catname, _aktline, _iscom) {
         }
     }
 }
-
 
 function getCamConfig() {			
     ParseConfig();		
@@ -633,11 +624,9 @@ function getCamConfig() {
     return param;	
 }
 
-
 function getConfigParameters() {
     return param;
 }
-
 
 function WriteConfigININew() {
     // Cleanup empty NUMBERS
@@ -740,7 +729,6 @@ function WriteConfigININew() {
     }
 }
 
-
 function isCommented(input) {
     let isComment = false;
 		  
@@ -751,7 +739,6 @@ function isCommented(input) {
 		  
     return [isComment, input];
 }    
-
 
 function SaveConfigToServer(_domainname){
     // leere Zeilen am Ende löschen
@@ -772,16 +759,13 @@ function SaveConfigToServer(_domainname){
     FileSendContent(config_gesamt, "/config/config.ini", _domainname);          
 }
 
-	 
 function getConfig() {
     return config_gesamt;
 }
 
-
 function getConfigCategory() {
     return category;
 }
-
 
 function ExtractROIs(_aktline, _type){
     var linesplit = ZerlegeZeile(_aktline);
@@ -796,9 +780,8 @@ function ExtractROIs(_aktline, _type){
     
     if (linesplit.length >= 6) {
         abc["CCW"] = linesplit[5];
-	}
+    }
 }
-
 
 function getNUMBERS(_name, _type, _create = true) {
     _pospunkt = _name.indexOf (".");
@@ -859,7 +842,6 @@ function getNUMBERS(_name, _type, _create = true) {
     return neuroi;
 }
 
- 
 function CopyReferenceToImgTmp(_domainname) {
     for (index = 0; index < 2; ++index) {
         _filenamevon = REFERENCES[index]["name"];
@@ -874,11 +856,9 @@ function CopyReferenceToImgTmp(_domainname) {
     }
 }
 
-
 function GetReferencesInfo(){
     return REFERENCES;
 }
-
 
 function UpdateConfigReferences(_domainname){
     for (var index = 0; index < 2; ++index) {
@@ -894,14 +874,12 @@ function UpdateConfigReferences(_domainname){
     }
 }
 
-
 function UpdateConfigReference(_anzneueref, _domainname){
     var index = 0;
 
     if (_anzneueref == 1) {	
         index = 0;
     }
-
     else if (_anzneueref == 2) {
         index = 1;
     }
@@ -919,11 +897,9 @@ function UpdateConfigReference(_anzneueref, _domainname){
     FileCopyOnServer(_filenamevon, _filenamenach, _domainname);
 }	
 
-
 function getNUMBERInfo(){
      return NUMBERS;
 }
-
 
 function RenameNUMBER(_alt, _neu){
     if ((_neu.indexOf(".") >= 0) || (_neu.indexOf(",") >= 0) || (_neu.indexOf(" ") >= 0) || (_neu.indexOf("\"") >= 0)) {
@@ -933,7 +909,7 @@ function RenameNUMBER(_alt, _neu){
     index = -1;
     found = false;
     
-	for (i = 0; i < NUMBERS.length; ++i) {
+    for (i = 0; i < NUMBERS.length; ++i) {
         if (NUMBERS[i]["name"] == _alt) {
             index = i;
         }
@@ -951,7 +927,6 @@ function RenameNUMBER(_alt, _neu){
      
     return "";
 }
-
 
 function DeleteNUMBER(_delete){
     if (NUMBERS.length == 1) {
@@ -972,7 +947,6 @@ function DeleteNUMBER(_delete){
 
     return "";
 }
-
 
 function CreateNUMBER(_numbernew){
     found = false;
@@ -1021,7 +995,6 @@ function CreateNUMBER(_numbernew){
     return "";
 }
 
-
 function getROIInfo(_typeROI, _number){
     index = -1;
     
@@ -1038,7 +1011,6 @@ function getROIInfo(_typeROI, _number){
         return "";
     }
 }
-
 
 function RenameROI(_number, _type, _alt, _neu){
     if ((_neu.includes("=")) || (_neu.includes(".")) || (_neu.includes(":")) || (_neu.includes(",")) || (_neu.includes(";")) || (_neu.includes(" ")) || (_neu.includes("\""))) {
@@ -1078,7 +1050,6 @@ function RenameROI(_number, _type, _alt, _neu){
     return "";
 }
 
-
 function DeleteNUMBER(_delte) {
     if (NUMBERS.length == 1) {
         return "The last number cannot be deleted"
@@ -1098,7 +1069,6 @@ function DeleteNUMBER(_delte) {
 
     return "";
 }
-
 
 function CreateROI(_number, _type, _pos, _roinew, _x, _y, _dx, _dy, _CCW){
     _indexnumber = -1;
@@ -1137,4 +1107,54 @@ function CreateROI(_number, _type, _pos, _roinew, _x, _y, _dx, _dy, _CCW){
     NUMBERS[_indexnumber][_type].splice(_pos+1, 0, _ret);
 
     return "";
+}
+
+function getWifiConfigParameters() {
+    return wifi_param;
+}
+
+function getWifiConfig() {
+    return wifi_config_gesamt;
+}
+
+function ParseWifiConfig() {
+    wifi_config_split = wifi_config_gesamt.split("\n");
+    var aktline = 0;
+	
+    wifi_param = new Object();
+	
+    while (aktline < wifi_config_split.length) {
+        var _wifi_input = wifi_config_split[aktline];
+        let [wifi_isCom, wifi_input] = isCommented(_wifi_input);
+        var wifi_linesplit = ZerlegeZeile(wifi_input);
+		
+        if ((!wifi_isCom) && (wifi_linesplit != null)) {
+            if (wifi_linesplit[0].toUpperCase() == "SSID") {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1].substring(1, wifi_linesplit[1].length - 1);
+            }
+            else if (wifi_linesplit[0].toUpperCase() == "PASSWORD") {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1].substring(1, wifi_linesplit[1].length - 1);
+            }
+            else if (wifi_linesplit[0].toUpperCase() == "HOSTNAME") {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1].substring(1, wifi_linesplit[1].length - 1);
+            }			
+            else if (wifi_linesplit[0].toUpperCase() == "IP") {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1].substring(1, wifi_linesplit[1].length - 1);
+            }
+            else if (wifi_linesplit[0].toUpperCase() == "GATEWAY") {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1].substring(1, wifi_linesplit[1].length - 1);
+            }
+            else if (wifi_linesplit[0].toUpperCase() == "NETMASK") {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1].substring(1, wifi_linesplit[1].length - 1);
+            }
+            else if ((wifi_linesplit[0].toUpperCase() == "DNS") && (wifi_linesplit[1].toUpperCase() != "SERVER") && (wifi_linesplit[1].toUpperCase() != "ERVE")) {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1].substring(1, wifi_linesplit[1].length - 1);
+            }
+            else if (wifi_linesplit[0].toUpperCase() == "RSSITHRESHOLD") {
+                wifi_param[wifi_linesplit[0]] = wifi_linesplit[1];
+            }
+        }
+		
+        aktline++;
+    }
 }
