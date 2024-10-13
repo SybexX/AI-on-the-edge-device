@@ -228,8 +228,7 @@ void FindReplace(std::string &line, std::string &oldString, std::string &newStri
 		{
 			return;
 		}
-
-		if (oldSize == newSize)
+		else if (oldSize == newSize)
 		{
 			// if they're same size, use std::string::replace
 			line.replace(pos, oldSize, newString);
@@ -297,12 +296,7 @@ bool MakeDir(std::string path)
 
 bool ctype_space(const char c, string adddelimiter)
 {
-	if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == 11)
-	{
-		return true;
-	}
-
-	if (adddelimiter.find(c) != string::npos)
+	if ((c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == 11) || (adddelimiter.find(c) != string::npos))
 	{
 		return true;
 	}
@@ -377,7 +371,6 @@ bool RenameFile(string from, string to)
 	}
 
 	fclose(fpSourceFile);
-
 	rename(from.c_str(), to.c_str());
 
 	return true;
@@ -481,15 +474,14 @@ string getDirectory(string filename)
 	if (lastpos == string::npos)
 	{
 		lastpos = filename.find('\\');
-	}
 
-	if (lastpos == string::npos)
-	{
-		return "";
+		if (lastpos == string::npos)
+		{
+			return "";
+		}
 	}
 
 	//	ESP_LOGD(TAG, "Directory: %d", lastpos);
-
 	string zw = filename.substr(0, lastpos - 1);
 	return zw;
 }
@@ -1107,7 +1099,7 @@ string getResetReason(void)
 std::string getFormatedUptime(bool compact)
 {
 	char buf[20];
-#pragma GCC diagnostic ignored "-Wformat-truncation"
+	#pragma GCC diagnostic ignored "-Wformat-truncation"
 
 	int uptime = getUpTime(); // in seconds
 
