@@ -1,5 +1,6 @@
 #ifdef ENABLE_MQTT
 #include "interface_mqtt.h"
+#include "esp_crt_bundle.h"
 
 #include "esp_log.h"
 #if DEBUG_DETAIL_ON
@@ -285,6 +286,7 @@ int MQTT_Init() {
     esp_mqtt_client_config_t mqtt_cfg = { };
 
     mqtt_cfg.broker.address.uri = uri.c_str();
+    mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
     mqtt_cfg.credentials.client_id = client_id.c_str();
     mqtt_cfg.network.disable_auto_reconnect = false;     // Reconnection routine active (Default: false)
     mqtt_cfg.network.reconnect_timeout_ms = 15000;       // Try to reconnect to broker (Default: 10000ms)
@@ -295,7 +297,7 @@ int MQTT_Init() {
     mqtt_cfg.session.last_will.msg = lwt_disconnected.c_str();
     mqtt_cfg.session.last_will.msg_len = (int)(lwt_disconnected.length());
     mqtt_cfg.session.keepalive = keepalive;
-    mqtt_cfg.buffer.size = 1536;                         // size of MQTT send/receive buffer (Default: 1024)
+    mqtt_cfg.buffer.size = 2048;                         // size of MQTT send/receive buffer (Default: 1024)
 
     if (caCert.length()){
         mqtt_cfg.broker.verification.certificate = caCert.c_str();
