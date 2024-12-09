@@ -1,5 +1,6 @@
 #ifdef ENABLE_MQTT
 #include "interface_mqtt.h"
+#include "esp_crt_bundle.h"
 
 #include "esp_log.h"
 #if DEBUG_DETAIL_ON
@@ -15,7 +16,6 @@
 #if DEBUG_DETAIL_ON
 #include "esp_timer.h"
 #endif
-
 
 static const char *TAG = "MQTT IF";
 
@@ -39,7 +39,6 @@ std::string caCert, clientCert, clientKey;
 int keepalive;
 bool SetRetainFlag;
 void (*callbackOnConnected)(std::string, bool) = NULL;
-
 
 bool MQTTPublish(std::string _key, std::string _content, int qos, bool retained_flag) 
 {
@@ -94,7 +93,6 @@ bool MQTTPublish(std::string _key, std::string _content, int qos, bool retained_
         return false;
     }
 }
-
 
 static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
     std::string topic = "";
@@ -197,12 +195,10 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
     return ESP_OK;
 }
 
-
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, (int)event_id);
     mqtt_event_handler_cb((esp_mqtt_event_handle_t) event_data);
 }
-
 
 bool MQTT_Configure(std::string _mqttURI, std::string _clientid, std::string _user, std::string _password,
         std::string _maintopic, std::string _domoticz_in_topic, std::string _lwt, std::string _lwt_connected, std::string _lwt_disconnected,
@@ -261,7 +257,6 @@ bool MQTT_Configure(std::string _mqttURI, std::string _clientid, std::string _us
     return true;
 }
 
-
 int MQTT_Init() { 
     if (mqtt_initialized) {
         return 0;
@@ -285,6 +280,7 @@ int MQTT_Init() {
     esp_mqtt_client_config_t mqtt_cfg = { };
 
     mqtt_cfg.broker.address.uri = uri.c_str();
+    mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
     mqtt_cfg.credentials.client_id = client_id.c_str();
     mqtt_cfg.network.disable_auto_reconnect = false;     // Reconnection routine active (Default: false)
     mqtt_cfg.network.reconnect_timeout_ms = 15000;       // Try to reconnect to broker (Default: 10000ms)
@@ -295,7 +291,7 @@ int MQTT_Init() {
     mqtt_cfg.session.last_will.msg = lwt_disconnected.c_str();
     mqtt_cfg.session.last_will.msg_len = (int)(lwt_disconnected.length());
     mqtt_cfg.session.keepalive = keepalive;
-    mqtt_cfg.buffer.size = 1536;                         // size of MQTT send/receive buffer (Default: 1024)
+    mqtt_cfg.buffer.size = 2048;                         // size of MQTT send/receive buffer (Default: 1024)
 
     if (caCert.length()){
         mqtt_cfg.broker.verification.certificate = caCert.c_str();
@@ -356,7 +352,6 @@ int MQTT_Init() {
 
 }
 
-
 void MQTTdestroy_client(bool _disable = false) {
     if (client) {
         if (mqtt_connected) {
@@ -374,16 +369,13 @@ void MQTTdestroy_client(bool _disable = false) {
         mqtt_configOK = false;
 }
 
-
 bool getMQTTisEnabled() {
     return mqtt_enabled;
 }
 
-
 bool getMQTTisConnected() {
     return mqtt_connected;
 }
-
 
 bool mqtt_handler_flow_start(std::string _topic, char* _data, int _data_len) 
 {
@@ -392,7 +384,6 @@ bool mqtt_handler_flow_start(std::string _topic, char* _data, int _data_len)
     MQTTCtrlFlowStart(_topic);
     return ESP_OK;
 }
-
 
 bool mqtt_handler_set_prevalue(std::string _topic, char* _data, int _data_len) 
 {
@@ -429,7 +420,6 @@ bool mqtt_handler_set_prevalue(std::string _topic, char* _data, int _data_len)
     return ESP_FAIL;
 }
 
-
 void MQTTconnected(){
     if (mqtt_connected) {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Connected to broker");
@@ -464,7 +454,6 @@ void MQTTconnected(){
     }
 }
 
-
 void MQTTregisterConnectFunction(std::string name, std::function<void()> func){
     ESP_LOGD(TAG, "MQTTregisteronnectFunction %s\r\n", name.c_str());
     if (connectFunktionMap == NULL) {
@@ -483,14 +472,12 @@ void MQTTregisterConnectFunction(std::string name, std::function<void()> func){
     }
 }
 
-
 void MQTTunregisterConnectFunction(std::string name){
     ESP_LOGD(TAG, "unregisterConnnectFunction %s\r\n", name.c_str());
     if ((connectFunktionMap != NULL) && (connectFunktionMap->find(name) != connectFunktionMap->end())) {
         connectFunktionMap->erase(name);
     }
 }
-
 
 void MQTTregisterSubscribeFunction(std::string topic, std::function<bool(std::string, char*, int)> func){
     ESP_LOGD(TAG, "registerSubscribeFunction %s", topic.c_str());
@@ -505,7 +492,6 @@ void MQTTregisterSubscribeFunction(std::string topic, std::function<bool(std::st
 
     (*subscribeFunktionMap)[topic] = func;
 }
-
 
 void MQTTdestroySubscribeFunction(){
     if (subscribeFunktionMap != NULL) {
