@@ -295,7 +295,7 @@ int MQTT_Init() {
     mqtt_cfg.session.last_will.msg = lwt_disconnected.c_str();
     mqtt_cfg.session.last_will.msg_len = (int)(lwt_disconnected.length());
     mqtt_cfg.session.keepalive = keepalive;
-    mqtt_cfg.buffer.size = 1536;                         // size of MQTT send/receive buffer (Default: 1024)
+    mqtt_cfg.buffer.size = 2048;                         // size of MQTT send/receive buffer (Default: 1024)
 
     if (caCert.length()){
         mqtt_cfg.broker.verification.certificate = caCert.c_str();
@@ -309,6 +309,8 @@ int MQTT_Init() {
         
         mqtt_cfg.credentials.authentication.key = clientKey.c_str();
         mqtt_cfg.credentials.authentication.key_len = clientKey.length() + 1;
+
+        mqtt_cfg.credentials.authentication.use_secure_element = true;
     }
 
     if (user.length() && password.length()){
