@@ -98,13 +98,15 @@ esp_err_t handler_capture(httpd_req_t *req)
 
     if (Camera.getCameraInitSuccessful())
     {
+        Camera.CameraDeepSleep(false);
+
         // If the camera settings were changed by creating a new reference image, they must be reset
-        if (CFstatus.changedCameraSettings)
+        if (CFstatus.CameraSettingschanged)
         {
             Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
-            CFstatus.changedCameraSettings = false;
+            CFstatus.CameraSettingschanged = false;
         }
 
 #ifdef DEBUG_DETAIL_ON
@@ -117,6 +119,8 @@ esp_err_t handler_capture(httpd_req_t *req)
 #ifdef DEBUG_DETAIL_ON
         LogFile.WriteHeapInfo("handler_capture - Done");
 #endif
+
+        Camera.CameraDeepSleep(true);
 
         return result;
     }
@@ -135,6 +139,8 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
 
     if (Camera.getCameraInitSuccessful())
     {
+        Camera.CameraDeepSleep(false);
+
         char _query[100];
         char _delay[10];
         int delay = 2500;
@@ -158,17 +164,17 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
         }
 
         // If the camera settings were changed by creating a new reference image, they must be reset
-        if (CFstatus.changedCameraSettings)
+        if (CFstatus.CameraSettingschanged)
         {
             Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
-            CFstatus.changedCameraSettings = false;
+            CFstatus.CameraSettingschanged = false;
         }
 
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
-#endif        
+#endif
 
         Camera.LightOnOff(true);
         const TickType_t xDelay = delay / portTICK_PERIOD_MS;
@@ -182,6 +188,8 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
 #ifdef DEBUG_DETAIL_ON
         LogFile.WriteHeapInfo("handler_capture_with_light - Done");
 #endif
+
+        Camera.CameraDeepSleep(true);
 
         return result;
     }
@@ -200,6 +208,8 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
 
     if (Camera.getCameraInitSuccessful())
     {
+        Camera.CameraDeepSleep(false);
+
         char _query[100];
         char _delay[10];
         int delay = 0;
@@ -241,12 +251,12 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
         }
 
         // If the camera settings were changed by creating a new reference image, they must be reset
-        if (CFstatus.changedCameraSettings)
+        if (CFstatus.CameraSettingschanged)
         {
             Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
-            CFstatus.changedCameraSettings = false;
+            CFstatus.CameraSettingschanged = false;
         }
 
 #ifdef DEBUG_DETAIL_ON
@@ -262,6 +272,8 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
 #ifdef DEBUG_DETAIL_ON
         LogFile.WriteHeapInfo("handler_capture_save_to_file - Done");
 #endif
+
+        Camera.CameraDeepSleep(true);
 
         return result;
     }

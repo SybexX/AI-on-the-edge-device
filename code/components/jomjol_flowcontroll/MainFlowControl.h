@@ -13,6 +13,7 @@
 
 typedef struct
 {
+    board_typ_t board_typ;
     uint16_t CamSensor_id;
 
     framesize_t ImageFrameSize = FRAMESIZE_VGA; // 0 - 10
@@ -58,7 +59,9 @@ typedef struct
     bool isImageSize;
 
     bool CameraInitSuccessful;
-    bool changedCameraSettings;
+    bool CameraSettingschanged;
+    bool CameraDeepSleepEnable;
+	
     bool DemoMode;
     bool SaveAllFiles;
 } camera_flow_config_temp_t;

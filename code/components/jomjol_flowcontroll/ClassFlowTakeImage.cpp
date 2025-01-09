@@ -540,50 +540,60 @@ string ClassFlowTakeImage::getHTMLSingleStep(string host)
 // wird bei jeder Auswertrunde aufgerufen
 bool ClassFlowTakeImage::doFlow(string zwtime)
 {
-    psram_init_shared_memory_for_take_image_step();
-
-    string logPath = CreateLogFolder(zwtime);
-
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
-
-#ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
-#endif
-
-#ifdef WIFITURNOFF
-    esp_wifi_stop(); // to save power usage and
-#endif
-
-    // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
-    if (CFstatus.changedCameraSettings)
+    if (Camera.getCameraInitSuccessful())
     {
-        Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
-        Camera.LedIntensity = CCstatus.ImageLedIntensity;
-        CFstatus.changedCameraSettings = false;
-    }
+        Camera.CameraDeepSleep(false);
 
-    takePictureWithFlash(flash_duration);
+        psram_init_shared_memory_for_take_image_step();
+
+        string logPath = CreateLogFolder(zwtime);
+
+        int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+
+#ifdef DEBUG_DETAIL_ON
+        LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
+#endif
 
 #ifdef WIFITURNOFF
-    esp_wifi_start();
+        esp_wifi_stop(); // to save power usage and
+#endif
+
+        // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
+        if (CFstatus.CameraSettingschanged)
+        {
+            Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
+            Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
+            Camera.LedIntensity = CCstatus.ImageLedIntensity;
+            CFstatus.CameraSettingschanged = false;
+        }
+
+        takePictureWithFlash(flash_duration);
+
+#ifdef WIFITURNOFF
+        esp_wifi_start();
 #endif
 
 #ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After takePictureWithFlash");
+        LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After takePictureWithFlash");
 #endif
 
-    LogImage(logPath, "raw", NULL, NULL, zwtime, rawImage);
+        LogImage(logPath, "raw", NULL, NULL, zwtime, rawImage);
 
-    RemoveOldLogs();
+        RemoveOldLogs();
 
 #ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After RemoveOldLogs");
+        LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After RemoveOldLogs");
 #endif
 
-    psram_deinit_shared_memory_for_take_image_step();
+        psram_deinit_shared_memory_for_take_image_step();
 
-    return true;
+        Camera.CameraDeepSleep(true);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)

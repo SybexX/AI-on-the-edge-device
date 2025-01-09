@@ -15,8 +15,16 @@
 #include "CImageBasis.h"
 #include "../../include/defines.h"
 
+typedef enum
+{
+    AI_THINKER,
+    WROVER_KIT_ESP32,
+    FREENOVE_ESP32S3,
+} board_typ_t;
+
 typedef struct
 {
+    board_typ_t board_typ;
     uint16_t CamSensor_id;
 
     framesize_t ImageFrameSize = FRAMESIZE_VGA; // 0 - 10
@@ -62,7 +70,9 @@ typedef struct
     bool isImageSize;
 
     bool CameraInitSuccessful;
-    bool changedCameraSettings;
+    bool CameraSettingschanged;
+    bool CameraDeepSleepEnable;
+	
     bool DemoMode;
     bool SaveAllFiles;
 } camera_controll_config_temp_t;
@@ -91,6 +101,7 @@ public:
     esp_err_t setSensorDatenFromCCstatus(void);
     esp_err_t getSensorDatenToCCstatus(void);
 
+    void CameraDeepSleep(bool enable);
     int SetCamGainceiling(sensor_t *s, gainceiling_t gainceilingLevel);
     void SetCamSharpness(bool autoSharpnessEnabled, int sharpnessLevel);
     void SetCamSpecialEffect(sensor_t *s, int specialEffect);

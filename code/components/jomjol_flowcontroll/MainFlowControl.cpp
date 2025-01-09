@@ -254,6 +254,11 @@ esp_err_t setCFstatusToCam(void)
 
     if (s != NULL)
     {
+        TickType_t xDelay = 100 / portTICK_PERIOD_MS;
+
+        Camera.CameraDeepSleep(false);
+        vTaskDelay(xDelay);
+		
         s->set_framesize(s, CFstatus.ImageFrameSize);
 
         // s->set_contrast(s, CFstatus.ImageContrast);     // -2 to 2
@@ -293,8 +298,8 @@ esp_err_t setCFstatusToCam(void)
         Camera.SetCamSharpness(CFstatus.ImageAutoSharpness, CFstatus.ImageSharpness);
         s->set_denoise(s, CFstatus.ImageDenoiseLevel); // The OV2640 does not support it, OV3660 and OV5640 (0 to 8)
 
-        TickType_t xDelay2 = 100 / portTICK_PERIOD_MS;
-        vTaskDelay(xDelay2);
+        Camera.CameraDeepSleep(true);
+        vTaskDelay(xDelay);
 
         return ESP_OK;
     }
@@ -1375,7 +1380,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 setCFstatusToCCstatus(); // CFstatus >>> CCstatus
 
                 // Kameraeinstellungen wurden verädert
-                CFstatus.changedCameraSettings = true;
+                CFstatus.CameraSettingschanged = true;
 
                 ESP_LOGD(TAG, "Cam Settings set");
                 std::string _zw = "CamSettingsSet";
@@ -1392,7 +1397,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 // Camera.SetZoomSize(CFstatus.ImageZoomEnabled, CFstatus.ImageZoomOffsetX, CFstatus.ImageZoomOffsetY, CFstatus.ImageZoomSize, CFstatus.ImageVflip);
 
                 // Kameraeinstellungen wurden verädert
-                CFstatus.changedCameraSettings = true;
+                CFstatus.CameraSettingschanged = true;
 
                 ESP_LOGD(TAG, "test_take - vor TakeImage");
                 std::string image_temp = flowctrl.doSingleStep("[TakeImage]", _host);

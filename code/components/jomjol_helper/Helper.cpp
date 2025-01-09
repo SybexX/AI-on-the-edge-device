@@ -613,12 +613,42 @@ string toLower(string in)
 	return in;
 }
 
+#ifdef CONFIG_SOC_TEMP_SENSOR_SUPPORTED
+// Temperature sensor
+temperature_sensor_handle_t temp_handle = NULL;
+
+void initTempSensor()
+{
+    temperature_sensor_config_t temp_sensor_config = {
+        .range_min = 20,
+        .range_max = 100,
+    };
+
+    ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor_config, &temp_handle));
+    // ESP_ERROR_CHECK(temperature_sensor_enable(temp_sensor));
+}
+
+float temperatureRead()
+{
+    float tsens_value;
+
+    ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
+    ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_handle, &tsens_value));
+    // Powering down the peripheral can save more power,
+    // but at the cost of more memory consumed to save the register context.
+    ESP_ERROR_CHECK(temperature_sensor_disable(temp_handle));
+
+    return tsens_value;
+}
+#else
 // CPU Temp
 extern "C" uint8_t temprature_sens_read();
 float temperatureRead()
 {
-	return (temprature_sens_read() - 32) / 1.8;
+    // convert Fahrenheit to Celsius (F-32) *(5/9) = degree Celsius
+    return (temprature_sens_read() - 32) * (5 / 9);
 }
+#endif
 
 time_t addDays(time_t startTime, int days)
 {

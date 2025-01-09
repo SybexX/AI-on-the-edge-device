@@ -18,16 +18,17 @@ extern "C" {
 #include "esp_log.h"
 
 #include "Helper.h"
+#include "minizip.h"
 
 #include "esp_http_server.h"
 
 #include "../../include/defines.h"
-
+#include "ClassLogFile.h"
 
 static const char *TAG = "SERVER HELP";
 
+string SUFFIX_ZW = "_0xge";
 char scratch[SERVER_HELPER_SCRATCH_BUFSIZE];
-
 
 bool endsWith(std::string const &str, std::string const &suffix) {
     if (str.length() < suffix.length()) {
@@ -35,7 +36,6 @@ bool endsWith(std::string const &str, std::string const &suffix) {
     }
     return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
-
 
 esp_err_t send_file(httpd_req_t *req, std::string filename)
 {
@@ -48,7 +48,6 @@ esp_err_t send_file(httpd_req_t *req, std::string filename)
     }
 
     ESP_LOGD(TAG, "Sending file: %s ...", filename.c_str());
-//    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     /* For all files with the following file extention tell
        the webbrowser to cache them for 24h */
@@ -99,9 +98,6 @@ esp_err_t send_file(httpd_req_t *req, std::string filename)
     return ESP_OK;    
 }
 
-
-
-
 /* Copies the full path into destination buffer and returns
  * pointer to path (skipping the preceding base path) */
 const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize)
@@ -131,7 +127,6 @@ const char* get_path_from_uri(char *dest, const char *base_path, const char *uri
     return dest + base_pathlen;
 }
 
-
 /* Set HTTP response content type according to file extension */
 esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename)
 {
@@ -153,4 +148,224 @@ esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename)
     /* This is a limited set only */
     /* For any other type always set as plain text */
     return httpd_resp_set_type(req, "text/plain");
+}
+
+void delete_all_in_directory(std::string _directory)
+{
+    struct dirent *entry;
+    DIR *dir = opendir(_directory.c_str());
+    std::string filename;
+
+    if (!dir) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to stat dir: " + _directory);
+        return;
+    }
+
+    /* Iterate over all files / folders and fetch their names and sizes */
+    while ((entry = readdir(dir)) != NULL) {
+        if (!(entry->d_type == DT_DIR)){
+            if (strcmp("wlan.ini", entry->d_name) != 0){                    
+                // auf wlan.ini soll nicht zugegriffen werden !!!
+                filename = _directory + "/" + std::string(entry->d_name);
+                LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Deleting file: " + filename);
+                /* Delete file */
+                unlink(filename.c_str());    
+            }
+        };
+    }
+    closedir(dir);
+}
+
+std::string unzip_ota_data(std::string _in_zip_file, std::string _target_zip, std::string _target_bin, std::string _main, bool _initial_setup)
+{
+    int sort_iter;
+    size_t uncomp_size;
+    mzip_zip_archive zip_archive;
+    void* pzip;
+    char archive_filename[256];
+    std::string filename, ret_filename = "";
+    std::string directory = "";
+
+    ESP_LOGD(TAG, "minizip.c version: %s", MZIP_VERSION);
+    ESP_LOGD(TAG, "Zipfile: %s", _in_zip_file.c_str());
+
+    // Now try to open the archive.
+    memset(&zip_archive, 0, sizeof(zip_archive));
+    mzip_bool status = mzip_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), 0);
+    if (!status) {
+        ESP_LOGD(TAG, "mzip_zip_reader_init_file() failed!");
+        return "ERROR";
+    }
+
+    // Get and print information about each file in the archive.
+    int numberoffiles = (int)mzip_zip_reader_get_num_files(&zip_archive);
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Files to be extracted: " + to_string(numberoffiles));
+
+    memset(&zip_archive, 0, sizeof(zip_archive));
+    status = mzip_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), sort_iter ? MZIP_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY : 0);
+    if (!status) {
+        ESP_LOGD(TAG, "mzip_zip_reader_init_file() failed!");
+        return "ERROR";
+    }
+
+    for (int i = 0; i < numberoffiles; i++) {
+        mzip_zip_archive_file_stat file_stat;
+        mzip_zip_reader_file_stat(&zip_archive, i, &file_stat);
+        sprintf(archive_filename, file_stat.m_filename);
+            
+        if (!file_stat.m_is_directory) {
+            // Try to extract all the files to the heap.
+            pzip = mzip_zip_reader_extract_file_to_heap(&zip_archive, archive_filename, &uncomp_size, 0);
+            if (!pzip) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mzip_zip_reader_extract_file_to_heap() failed on file " + string(archive_filename));
+                mzip_zip_reader_end(&zip_archive);
+                return "ERROR";
+            }
+            
+            // Save to File.
+            filename = std::string(archive_filename);
+            ESP_LOGD(TAG, "Rohfilename: %s", filename.c_str());
+
+            if (toUpper(filename) == "FIRMWARE.BIN") {
+                filename = _target_bin + filename;
+                ret_filename = filename;
+            }
+            else {
+                std::string _dir = getDirectory(filename);
+                if ((_dir == "config-initial") && !_initial_setup) {
+                    continue;
+                }
+                else {
+                    _dir = "config";
+                    std::string _s1 = "config-initial";
+                    FindReplace(filename, _s1, _dir);
+                }
+
+                if (_dir.length() > 0) {
+                    filename = _main + filename;
+                }
+                else {
+                    filename = _target_zip + filename;
+                }
+
+            }
+            
+            string filename_zw = filename + SUFFIX_ZW;
+
+            ESP_LOGI(TAG, "File to extract: %s, Temp. Filename: %s", filename.c_str(), filename_zw.c_str());
+
+            std::string folder = filename_zw.substr(0, filename_zw.find_last_of('/'));
+            MakeDir(folder);
+
+            // extrahieren in zwischendatei
+            DeleteFile(filename_zw);
+
+            FILE* fpTargetFile = fopen(filename_zw.c_str(), "wb");
+            uint writtenbytes = fwrite(pzip, 1, (uint)uncomp_size, fpTargetFile);
+            fclose(fpTargetFile);
+                
+            bool isokay = true;
+
+            if (writtenbytes == (uint)uncomp_size) {
+                isokay = true;
+            }
+            else {
+                isokay = false;
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in writting extracted file (function fwrite) extracted file \"" +
+                            string(archive_filename) + "\", size " + to_string(uncomp_size));
+            }
+
+            DeleteFile(filename);
+            if (!isokay) {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in fwrite \"" + string(archive_filename) + "\", size " + to_string(uncomp_size));
+            }
+            isokay = isokay && RenameFile(filename_zw, filename);
+            if (!isokay) {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in Rename \"" + filename_zw + "\" to \"" + filename);
+            }
+
+            if (isokay) {
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Successfully extracted file \"" + string(archive_filename) + "\", size " + to_string(uncomp_size));
+            }
+            else {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in extracting file \"" + string(archive_filename) + "\", size " + to_string(uncomp_size));
+                ret_filename = "ERROR";
+            }
+            mzip_free(pzip);
+        }
+    }
+
+    // Close the archive, freeing any resources it was using
+    mzip_zip_reader_end(&zip_archive);
+
+    ESP_LOGD(TAG, "Success.");
+    return ret_filename;
+}
+
+void unzip_data(std::string _in_zip_file, std::string _target_directory){
+    size_t uncomp_size;
+    mzip_zip_archive zip_archive;
+    void* pzip;
+    char archive_filename[256];
+    std::string filepath;
+
+    ESP_LOGD(TAG, "miniz.c version: %s", MZIP_VERSION);
+    ESP_LOGD(TAG, "Zipfile: %s", _in_zip_file.c_str());
+    ESP_LOGD(TAG, "Target Dir: %s", _target_directory.c_str());
+
+    // Now try to open the archive.
+    memset(&zip_archive, 0, sizeof(zip_archive));
+    mzip_bool status = mzip_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), 0);
+    if (!status)
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mzip_zip_reader_init_file() failed!");
+        return;
+    }
+
+    // Get and print information about each file in the archive.
+    int numberoffiles = (int)mzip_zip_reader_get_num_files(&zip_archive);
+    for (int sort_iter = 0; sort_iter < 2; sort_iter++)
+    {
+        memset(&zip_archive, 0, sizeof(zip_archive));
+        status = mzip_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), sort_iter ? MZIP_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY : 0);
+        if (!status)
+        {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mzip_zip_reader_init_file() failed!");
+            return;
+        }
+
+        for (int i = 0; i < numberoffiles; i++)
+        {
+            mzip_zip_archive_file_stat file_stat;
+            mzip_zip_reader_file_stat(&zip_archive, i, &file_stat);
+            sprintf(archive_filename, file_stat.m_filename);
+ 
+            // Try to extract all the files to the heap.
+            pzip = mzip_zip_reader_extract_file_to_heap(&zip_archive, archive_filename, &uncomp_size, 0);
+            if (!pzip)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mzip_zip_reader_extract_file_to_heap() failed!");
+                mzip_zip_reader_end(&zip_archive);
+                return;
+            }
+
+            // Save to File.
+            filepath = std::string(archive_filename);
+            filepath = _target_directory + filepath;
+            ESP_LOGD(TAG, "File to extract: %s", filepath.c_str());
+            FILE* fpTargetFile = fopen(filepath.c_str(), "wb");
+            fwrite(pzip, 1, (uint)uncomp_size, fpTargetFile);
+            fclose(fpTargetFile);
+
+            ESP_LOGD(TAG, "Successfully extracted file \"%s\", size %u", archive_filename, (uint)uncomp_size);
+
+            // We're done.
+            mzip_free(pzip);
+        }
+
+        // Close the archive, freeing any resources it was using
+        mzip_zip_reader_end(&zip_archive);
+    }
+
+    ESP_LOGD(TAG, "Success.");
 }
