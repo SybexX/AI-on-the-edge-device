@@ -13,7 +13,8 @@
 
 #include "../stb/stb_image.h"
 #include "../stb/stb_image_write.h"
-#include "../stb/deprecated/stb_image_resize.h"
+#include "../stb/stb_image_resize.h"
+// #include "../stb/deprecated/stb_image_resize.h" // für die neuere Version
 
 #include "esp_heap_caps.h"
 
@@ -22,8 +23,6 @@ struct ImageData
     uint8_t data[MAX_JPG_SIZE];
     size_t size = 0;
 };
-
-
 
 class CImageBasis
 {
@@ -66,7 +65,6 @@ class CImageBasis
         void CreateEmptyImage(int _width, int _height, int _channels);
         void EmptyImage();
 
-
         CImageBasis(std::string name);
         CImageBasis(std::string name, std::string _image);
         CImageBasis(std::string name, uint8_t* _rgb_image, int _channels, int _width, int _height, int _bpp);
@@ -91,6 +89,4 @@ class CImageBasis
         void SaveToFile(std::string _imageout);
 };
 
-
 #endif //CIMAGEBASIS_H
-

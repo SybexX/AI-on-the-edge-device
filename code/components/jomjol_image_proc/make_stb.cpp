@@ -4,7 +4,6 @@
 
 #include "../../include/defines.h"
 
-
 #define USE_SHARED_PSRAM_FOR_STBI
 
 #ifdef USE_SHARED_PSRAM_FOR_STBI
@@ -17,7 +16,6 @@
 #define STBI_FREE(p)              free_psram_heap("STBI", p)
 #endif
 
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb/stb_image.h"
 
@@ -25,4 +23,5 @@
 #include "../stb/stb_image_write.h"
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "../stb/deprecated/stb_image_resize.h"
+#include "../stb/stb_image_resize.h"
+// #include "../stb/deprecated/stb_image_resize.h" // für die neuere Version
