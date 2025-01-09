@@ -178,7 +178,7 @@ void delete_all_in_directory(std::string _directory)
 
 std::string unzip_ota_data(std::string _in_zip_file, std::string _target_zip, std::string _target_bin, std::string _main, bool _initial_setup)
 {
-    int sort_iter;
+    int sort_iter = 0;
     size_t uncomp_size;
     mzip_zip_archive zip_archive;
     void* pzip;
