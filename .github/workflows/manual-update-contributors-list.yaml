@@ -9,7 +9,7 @@ on:
 
 jobs:
   manually-update-contributors-list: 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: A job to automatically update the contributors list in the README.md
     permissions:
       contents: write
