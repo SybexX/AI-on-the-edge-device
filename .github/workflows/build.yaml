@@ -7,7 +7,7 @@ jobs:
 ## Build Firmware
 #########################################################################################
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - id: skip_check
@@ -104,7 +104,7 @@ jobs:
     #  - (optional) /html/* (inkl. subfolders)
     #  - (optional) /config/*.tfl
     #  - (optional) /demo/*
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
@@ -171,7 +171,7 @@ jobs:
     #  - /html/* (inkl. subfolders)
     #  - /demo/*
     #  - /config/*
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
@@ -231,7 +231,7 @@ jobs:
 #########################################################################################
   pack-for-manual_setup:
     # creates old style binaries for fresh installation (backward compatible to wiki)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
 
     steps:
@@ -291,7 +291,7 @@ jobs:
 ## Prepare and create release
 #########################################################################################
   prepare-release: 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [pack-for-update, pack-for-manual_setup, pack-for-remote_setup]
     if: startsWith(github.ref, 'refs/tags/') 
 
@@ -400,7 +400,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
     permissions:
