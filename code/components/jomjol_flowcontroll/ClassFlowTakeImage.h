@@ -3,11 +3,12 @@
 #ifndef CLASSFFLOWTAKEIMAGE_H
 #define CLASSFFLOWTAKEIMAGE_H
 
+#include <string>
+
 #include "ClassFlowImage.h"
 #include "ClassControllCamera.h"
-#include "../../include/defines.h"
 
-#include <string>
+#include "../../include/defines.h"
 
 class ClassFlowTakeImage : public ClassFlowImage
 {

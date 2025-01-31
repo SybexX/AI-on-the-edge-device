@@ -3,26 +3,24 @@
 #ifndef CLASSFFLOWPOSTPROCESSING_H
 #define CLASSFFLOWPOSTPROCESSING_H
 
+#include <string>
+
 #include "ClassFlow.h"
 #include "ClassFlowTakeImage.h"
 #include "ClassFlowCNNGeneral.h"
 #include "ClassFlowDefineTypes.h"
 
-#include <string>
-
-
-class ClassFlowPostProcessing :
-    public ClassFlow
+class ClassFlowPostProcessing : public ClassFlow
 {
 protected:
     bool UpdatePreValueINI;
 
-    int PreValueAgeStartup; 
+    int PreValueAgeStartup;
     bool ErrorMessage;
-    bool IgnoreLeadingNaN;          // SPECIAL CASE for User Gustl ???
+    bool IgnoreLeadingNaN; // SPECIAL CASE for User Gustl ???
 
-    ClassFlowCNNGeneral* flowAnalog;
-    ClassFlowCNNGeneral* flowDigit;    
+    ClassFlowCNNGeneral *flowAnalog;
+    ClassFlowCNNGeneral *flowDigit;
 
     string FilePreValue;
 
@@ -37,23 +35,23 @@ protected:
     void InitNUMBERS();
     void handleDecimalSeparator(string _decsep, string _value);
     void handleMaxRateValue(string _decsep, string _value);
-    void handleDecimalExtendedResolution(string _decsep, string _value); 
+    void handleDecimalExtendedResolution(string _decsep, string _value);
     void handleMaxRateType(string _decsep, string _value);
     void handleAnalogToDigitTransitionStart(string _decsep, string _value);
     void handleAllowNegativeRate(string _decsep, string _value);
     void handleChangeRateThreshold(string _decsep, string _value);
-    
+
     std::string GetStringReadouts(general);
 
     void WriteDataLog(int _index);
 
 public:
     bool PreValueUse;
-    std::vector<NumberPost*> NUMBERS;
+    std::vector<NumberPost *> NUMBERS;
 
-    ClassFlowPostProcessing(std::vector<ClassFlow*>* lfc, ClassFlowCNNGeneral *_analog, ClassFlowCNNGeneral *_digit);
-    virtual ~ClassFlowPostProcessing(){};
-    bool ReadParameter(FILE* pfile, string& aktparamgraph);
+    ClassFlowPostProcessing(std::vector<ClassFlow *> *lfc, ClassFlowCNNGeneral *_analog, ClassFlowCNNGeneral *_digit);
+    virtual ~ClassFlowPostProcessing() {};
+    bool ReadParameter(FILE *pfile, string &aktparamgraph);
     bool doFlow(string time);
     string getReadout(int _number);
     string getReadoutParam(bool _rawValue, bool _noerror, int _number = 0);
@@ -70,10 +68,9 @@ public:
 
     void UpdateNachkommaDecimalShift();
 
-    std::vector<NumberPost*>* GetNumbers(){return &NUMBERS;};
+    std::vector<NumberPost *> *GetNumbers() { return &NUMBERS; };
 
-    string name(){return "ClassFlowPostProcessing";};
+    string name() { return "ClassFlowPostProcessing"; };
 };
 
-
-#endif //CLASSFFLOWPOSTPROCESSING_H
+#endif // CLASSFFLOWPOSTPROCESSING_H

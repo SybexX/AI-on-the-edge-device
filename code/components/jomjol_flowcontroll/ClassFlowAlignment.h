@@ -3,12 +3,13 @@
 #ifndef CLASSFLOWALIGNMENT_H
 #define CLASSFLOWALIGNMENT_H
 
-#include "ClassFlow.h"
-#include "Helper.h"
-#include "CAlignAndCutImage.h"
-#include "CFindTemplate.h"
-
 #include <string>
+
+#include "ClassFlow.h"
+#include "CAlignAndCutImage.h"
+
+#include "Helper.h"
+#include "../../include/defines.h"
 
 using namespace std;
 
