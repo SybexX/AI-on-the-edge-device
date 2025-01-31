@@ -654,6 +654,8 @@ esp_err_t handler_editflow(httpd_req_t *req)
     char _valuechar[30];
     std::string _task;
 
+    std::string *sys_status = flowctrl.getActStatus();
+
     if (httpd_req_get_url_query_str(req, _query, 512) == ESP_OK)
     {
         if (httpd_query_key_value(_query, "task", _valuechar, 30) == ESP_OK)
@@ -671,19 +673,19 @@ esp_err_t handler_editflow(httpd_req_t *req)
         return get_numbers_file_handler(req);
     }
 
-    if (_task.compare("data") == 0)
+    else if (_task.compare("data") == 0)
     {
         ESP_LOGD(TAG, "Get data list");
         return get_data_file_handler(req);
     }
 
-    if (_task.compare("tflite") == 0)
+    else if (_task.compare("tflite") == 0)
     {
         ESP_LOGD(TAG, "Get tflite list");
         return get_tflite_file_handler(req);
     }
 
-    if (_task.compare("copy") == 0)
+    else if (_task.compare("copy") == 0)
     {
         std::string in, out, zw;
 
@@ -706,7 +708,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
         httpd_resp_send(req, zw.c_str(), zw.length());
     }
 
-    if (_task.compare("cutref") == 0)
+    else if (_task.compare("cutref") == 0)
     {
         std::string in, out, zw;
         int x = 0, y = 0, dx = 20, dy = 20;
@@ -770,7 +772,8 @@ esp_err_t handler_editflow(httpd_req_t *req)
 
         std::string out2 = out.substr(0, out.length() - 4) + "_org.jpg";
 
-        if ((flowctrl.SetupModeActive || (*flowctrl.getActStatus() == std::string("Flow finished"))) && psram_init_shared_memory_for_take_image_step())
+        // if ((flowctrl.SetupModeActive || (*flowctrl.getActStatus() == std::string("Flow finished"))) && psram_init_shared_memory_for_take_image_step()) // bloked too long
+        if ((flowctrl.SetupModeActive || (sys_status->c_str() != std::string("Take Image"))) && psram_init_shared_memory_for_take_image_step())
         {
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Taking image for Alignment Mark Update...");
 
@@ -800,13 +803,12 @@ esp_err_t handler_editflow(httpd_req_t *req)
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_send(req, zw.c_str(), zw.length());
     }
-
+    
     // wird beim Erstellen eines neuen Referenzbildes aufgerufen
-    std::string *sys_status = flowctrl.getActStatus();
-
-    if ((sys_status->c_str() != std::string("Take Image")) && (sys_status->c_str() != std::string("Aligning")))
+    // if ((sys_status->c_str() != std::string("Take Image")) && (sys_status->c_str() != std::string("Aligning"))) // bloked too long
+    else if ((_task.compare("test_take") == 0) || (_task.compare("cam_settings") == 0)) 
     {
-        if ((_task.compare("test_take") == 0) || (_task.compare("cam_settings") == 0))
+        if (sys_status->c_str() != std::string("Take Image"))
         {
             std::string _host = "";
 
@@ -1235,7 +1237,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
             {
                 // wird aufgerufen, wenn das Referenzbild + Kameraeinstellungen gespeichert wurden
                 Camera.setCFstatusToCCstatus(); // CFstatus >>> CCstatus
-                Camera.setSensorConfig(&CFstatus.CamConfig);
+                // Camera.setSensorConfig(&CFstatus.CamConfig); // possibly not necessary
 
                 // Kameraeinstellungen wurden verädert
                 CCstatus.CameraSettingsChanged = true;
@@ -1263,8 +1265,11 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 httpd_resp_send(req, image_temp.c_str(), image_temp.length());
             }
         }
+    }
 
-        else if (_task.compare("test_align") == 0)
+    else if (_task.compare("test_align") == 0)
+    {
+        if (sys_status->c_str() != std::string("Take Image"))
         {
             std::string _host = "";
 
@@ -1278,6 +1283,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
             httpd_resp_send(req, zw.c_str(), zw.length());
         }
     }
+        
     else
     {
         std::string _zw = "DeviceIsBusy";
