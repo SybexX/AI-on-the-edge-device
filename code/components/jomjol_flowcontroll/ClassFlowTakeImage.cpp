@@ -35,9 +35,17 @@ esp_err_t ClassFlowTakeImage::camera_capture(void)
 
 void ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
 {
-    // in case the image is flipped, it must be reset here //
-    rawImage->width = CCstatus.ImageWidth;
-    rawImage->height = CCstatus.ImageHeight;
+    // in case the image is flipped, it must be reset here
+    if (CFstatus.isTempImage)
+    {
+        rawImage->width = CFstatus.ImageWidth;
+        rawImage->height = CFstatus.ImageHeight;
+	}
+	else
+	{
+        rawImage->width = CCstatus.ImageWidth;
+        rawImage->height = CCstatus.ImageHeight;
+	}
 
     ESP_LOGD(TAG, "flash_duration: %d", flash_duration);
 
@@ -46,10 +54,14 @@ void ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    if (CCstatus.SaveAllFiles)
+    if (CFstatus.isTempImage && CFstatus.SaveAllFiles)
     {
         rawImage->SaveToFile(namerawimage);
-    }
+	}
+	else if (CCstatus.SaveAllFiles)
+    {
+        rawImage->SaveToFile(namerawimage);
+	}
 }
 
 void ClassFlowTakeImage::SetInitialParameter(void)
@@ -516,6 +528,7 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
 
     Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
     Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
+	Camera.LedIntensity = CCstatus.ImageLedIntensity;
 
     rawImage = new CImageBasis("rawImage");
     rawImage->CreateEmptyImage(CCstatus.ImageWidth, CCstatus.ImageHeight, 3);
@@ -545,6 +558,10 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
     string logPath = CreateLogFolder(zwtime);
 
     int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    if (CFstatus.isTempImage)
+    {
+		flash_duration = (int)(CFstatus.WaitBeforePicture * 1000);
+	}
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
@@ -553,15 +570,6 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 #ifdef WIFITURNOFF
     esp_wifi_stop(); // to save power usage and
 #endif
-
-    // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
-    if (CFstatus.changedCameraSettings)
-    {
-        Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
-        Camera.LedIntensity = CCstatus.ImageLedIntensity;
-        CFstatus.changedCameraSettings = false;
-    }
 
     takePictureWithFlash(flash_duration);
 
@@ -589,6 +597,10 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
 {
     int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    if (CFstatus.isTempImage)
+    {
+		flash_duration = (int)(CFstatus.WaitBeforePicture * 1000);
+	}
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
@@ -600,6 +612,10 @@ ImageData *ClassFlowTakeImage::SendRawImage(void)
     CImageBasis *zw = new CImageBasis("SendRawImage", rawImage);
     ImageData *id;
     int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    if (CFstatus.isTempImage)
+    {
+		flash_duration = (int)(CFstatus.WaitBeforePicture * 1000);
+	}
     Camera.CaptureToBasisImage(zw, flash_duration);
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);

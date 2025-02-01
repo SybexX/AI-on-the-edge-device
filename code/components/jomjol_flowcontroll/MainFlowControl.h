@@ -55,20 +55,17 @@ typedef struct
     int ImageZoomSize;
 
     int WaitBeforePicture;
-    bool isImageSize;
 
     bool CameraInitSuccessful;
-    bool changedCameraSettings;
+    bool CameraSettingsChanged;
+    bool isTempImage;
+	
     bool DemoMode;
     bool SaveAllFiles;
 } camera_flow_config_temp_t;
-
 extern camera_flow_config_temp_t CFstatus;
-extern ClassFlowControll flowctrl;
 
-esp_err_t setCCstatusToCFstatus(void); // CCstatus >>> CFstatus
-esp_err_t setCFstatusToCCstatus(void); // CFstatus >>> CCstatus
-esp_err_t setCFstatusToCam(void);      // CFstatus >>> Kamera
+extern ClassFlowControll flowctrl;
 
 void register_server_main_flow_task_uri(httpd_handle_t server);
 

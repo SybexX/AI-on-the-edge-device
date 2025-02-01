@@ -59,14 +59,14 @@ typedef struct
     int ImageZoomSize;
 
     int WaitBeforePicture;
-    bool isImageSize;
 
     bool CameraInitSuccessful;
-    bool changedCameraSettings;
+    bool CameraSettingsChanged;
+    bool isTempImage;
+	
     bool DemoMode;
     bool SaveAllFiles;
 } camera_controll_config_temp_t;
-
 extern camera_controll_config_temp_t CCstatus;
 
 class CCamera
@@ -75,7 +75,9 @@ protected:
     void ledc_init(void);
     bool loadNextDemoImage(camera_fb_t *fb);
     long GetFileSize(std::string filename);
-    void SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip);
+	int CheckCamSettingsChanged(void);
+	int SetZoomSize(sensor_t *sensor, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
+    int SetCamWindow(sensor_t *sensor, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip);
     void SetImageWidthHeightFromResolution(framesize_t resol);
     void SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, int &imageWidth, int &imageHeight, int &zoomOffsetX, int &zoomOffsetY);
 
@@ -89,18 +91,22 @@ public:
     void LEDOnOff(bool status);
 
     esp_err_t setSensorDatenFromCCstatus(void);
+	esp_err_t setSensorDatenFromCFstatus(void);
+	
     esp_err_t getSensorDatenToCCstatus(void);
+	
+	esp_err_t setCCstatusToCFstatus(void); // CCstatus >>> CFstatus
+    esp_err_t setCFstatusToCCstatus(void); // CFstatus >>> CCstatus
 
-    int SetCamGainceiling(sensor_t *s, gainceiling_t gainceilingLevel);
-    void SetCamSharpness(bool autoSharpnessEnabled, int sharpnessLevel);
-    void SetCamSpecialEffect(sensor_t *s, int specialEffect);
-    void SetCamContrastBrightness(sensor_t *s, int _contrast, int _brightness);
+    int SetCamGainceiling(sensor_t *sensor, gainceiling_t gainceilingLevel);
+    int SetCamSharpness(sensor_t *sensor, bool autoSharpnessEnabled, int sharpnessLevel);
+    int SetCamSpecialEffect(sensor_t *sensor, int specialEffect);
+    int SetCamContrastBrightness(sensor_t *sensor, int _contrast, int _brightness);
 
     esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0);
     esp_err_t CaptureToStream(httpd_req_t *req, bool FlashlightOn);
 
-    void SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
-    void SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
+    int SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
 
     int SetLEDIntensity(int _intrel);
     bool testCamera(void);
