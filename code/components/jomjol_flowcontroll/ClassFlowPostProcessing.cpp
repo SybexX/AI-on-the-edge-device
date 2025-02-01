@@ -868,17 +868,10 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
 
         if (NUMBERS[j]->checkDigitIncreaseConsistency) {
             if (flowDigit) {
-                if (flowDigit->getCNNType() != Digit) {
-                    ESP_LOGD(TAG, "checkDigitIncreaseConsistency = true - ignored due to wrong CNN-Type (not Digit Classification)");
-                }
-                else {
-                    NUMBERS[j]->Value = checkDigitConsistency(NUMBERS[j]->Value, NUMBERS[j]->DecimalShift, NUMBERS[j]->analog_roi != NULL, NUMBERS[j]->PreValue);
-                }
+                NUMBERS[j]->Value = checkDigitConsistency(NUMBERS[j]->Value, NUMBERS[j]->DecimalShift, NUMBERS[j]->analog_roi != NULL, NUMBERS[j]->PreValue);
             }
             else {
-                #ifdef SERIAL_DEBUG
-                    ESP_LOGD(TAG, "checkDigitIncreaseConsistency = true - no digit numbers defined!");
-                #endif
+                ESP_LOGD(TAG, "checkDigitIncreaseConsistency = true - no digit numbers defined!");
             }
         }
 
