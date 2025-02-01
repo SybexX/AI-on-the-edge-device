@@ -268,8 +268,7 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     char *base_path = (char *)req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri - 1, sizeof(filepath));
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri - 1, sizeof(filepath));
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     if ((strcmp(req->uri, "/") == 0))
@@ -282,6 +281,7 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     {
         filetosend = filetosend + "/html" + std::string(req->uri);
         _pos = filetosend.find("?");
+		
         if (_pos > -1)
         {
             filetosend = filetosend.substr(0, _pos);
@@ -341,7 +341,9 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     httpd_resp_send_chunk(req, NULL, 0);
 
     if (res != ESP_OK)
+	{
         return res;
+	}
 
     /* Respond with an empty chunk to signal HTTP response completion */
     //    httpd_resp_sendstr(req, "");
@@ -362,19 +364,22 @@ esp_err_t img_tmp_handler(httpd_req_t *req)
     char *base_path = (char *)req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri + sizeof("/img_tmp/") - 1, sizeof(filepath));
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri + sizeof("/img_tmp/") - 1, sizeof(filepath));
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     filetosend = filetosend + "/img_tmp/" + std::string(filename);
     ESP_LOGD(TAG, "File to upload: %s", filetosend.c_str());
 
     esp_err_t res = send_file(req, filetosend);
+	
     if (res != ESP_OK)
+	{
         return res;
+	}
 
     /* Respond with an empty chunk to signal HTTP response completion */
     httpd_resp_send_chunk(req, NULL, 0);
+	
     return ESP_OK;
 }
 
@@ -391,8 +396,7 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
     char *base_path = (char *)req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri + sizeof("/img_tmp/") - 1, sizeof(filepath));
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri + sizeof("/img_tmp/") - 1, sizeof(filepath));
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     filetosend = std::string(filename);
@@ -400,11 +404,15 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
 
     // Serve raw.jpg
     if (filetosend == "raw.jpg")
+	{
         return GetRawJPG(req);
+	}
 
     // Serve alg.jpg, alg_roi.jpg or digit and analog ROIs
     if (ESP_OK == GetJPG(filetosend, req))
+	{
         return ESP_OK;
+	}
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("img_tmp_virtual_handler - Done");
@@ -535,8 +543,7 @@ void stop_webserver(httpd_handle_t server)
     httpd_stop(server);
 }
 
-void disconnect_handler(void *arg, esp_event_base_t event_base,
-                        int32_t event_id, void *event_data)
+void disconnect_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     httpd_handle_t *server = (httpd_handle_t *)arg;
     if (*server)
@@ -547,8 +554,7 @@ void disconnect_handler(void *arg, esp_event_base_t event_base,
     }
 }
 
-void connect_handler(void *arg, esp_event_base_t event_base,
-                     int32_t event_id, void *event_data)
+void connect_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     httpd_handle_t *server = (httpd_handle_t *)arg;
     if (*server == NULL)
