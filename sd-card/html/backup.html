@@ -20,7 +20,7 @@
 
         .button {
             padding: 5px 10px;
-            width: 205px;
+            width: 300px;
             font-size: 16px;
         }
     </style>
@@ -31,20 +31,22 @@
     <h2>Backup Configuration</h2>
     <p>With the following action the <a href="/fileserver/config/" target="_self">config</a> folder on the SD-card gets zipped and provided as a download.</p>
 
-    <button class="button" id="startBackup" type="button" onclick="startBackup()">Create Backup</button>
+    <button class="button" id="startBackupConfig" type="button" onclick="startBackupConfig()">Create Backup</button>
+    <p id=progress></p>
+    <p>With the following action the <a href="/fileserver/log/data/" target="_self">data(CSV)</a> folder on the SD-card gets zipped and provided as a download.</p>
+    <button class="button" id="startBackupCSV" type="button" onclick="startBackupCSV()">Create Backup</button>
     <p id=progress></p>
     <hr>
     <h2>Restore Configuration</h2>
     <p>Use the <a href="/fileserver/config/" target="_self">File Server</a> to upload individual files.</p>
 </body>
 
-
 <script type="text/javascript" src="common.js?v=$COMMIT_HASH"></script>
 <script type="text/javascript" src="jszip.min.js?v=$COMMIT_HASH"></script>
 <script type="text/javascript" src="FileSaver.min.js?v=$COMMIT_HASH"></script>
 <script>
 
-function startBackup() {  
+function startBackupConfig() {  
     document.getElementById("progress").innerHTML = "Creating backup...<br>\n";
     
     // Get hostname
@@ -62,7 +64,7 @@ function startBackup() {
     // get date/time
     var dateTime = new Date().toJSON().slice(0,10) + "_" + new Date().toJSON().slice(11,19).replaceAll(":", "-");
     
-    zipFilename = hostname + "_" + dateTime + ".zip";
+    zipFilename = hostname + "_" + dateTime + "_config_backup" + ".zip";
     console.log(zipFilename);
 
     // Get files list
@@ -98,6 +100,59 @@ function startBackup() {
     }
 }
 
+function startBackupCSV() {  
+    document.getElementById("progress").innerHTML = "Creating backup...<br>\n";
+    
+    // Get hostname
+    try {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open("GET", getDomainname() + "/info?type=Hostname", false);
+        xhttp.send();
+        hostname = xhttp.responseText;
+    }
+    catch(err) {
+        setStatus("<span style=\"color: red\">Failed to fetch hostname: " + err.message + "!</span>");
+        return;
+    }
+    
+    // get date/time
+    var dateTime = new Date().toJSON().slice(0,10) + "_" + new Date().toJSON().slice(11,19).replaceAll(":", "-");
+    
+    zipFilename = hostname + "_" + dateTime + "_csv_backup" + ".zip";
+    console.log(zipFilename);
+
+    // Get files list
+    setStatus("Fetching File List...");
+    try {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open("GET", getDomainname() + "/fileserver/log/data/", false);
+        xhttp.send();
+        
+        var parser = new DOMParser();
+        var content = parser.parseFromString(xhttp.responseText, 'text/html');    }
+    catch(err) {
+        setStatus("Failed to fetch files list: " + err.message);
+        return;
+    }
+    
+    const list = content.querySelectorAll("a");
+    
+    var urls = [];
+    
+    for (a of list) {
+        url = a.getAttribute("href");
+        urls.push(getDomainname() + url);
+    }
+    
+    // Pack as zip and download
+    try {
+        backup(urls, zipFilename);
+        }
+    catch(err) {
+        setStatus("<span style=\"color: red\">Failed to zip files: " + err.message + "!</span>");
+        return;
+    }
+}
 
 function fetchFiles(urls, filesData, index, retry, zipFilename) {
     url = urls[index];

@@ -21,13 +21,12 @@
 ///////////////////////////////
 
 #include "ClassLogFile.h"
-#include "MainFlowControl.h"
-#include "ClassControllCamera.h"
 
 #include "connect_wlan.h"
 #include "read_wlanini.h"
 
 #include "server_main.h"
+#include "MainFlowControl.h"
 #include "server_file.h"
 #include "server_ota.h"
 #include "time_sntp.h"
@@ -90,14 +89,217 @@ extern std::string getHTMLversion(void);
 extern std::string getHTMLcommit(void);
 
 std::vector<std::string> splitString(const std::string &str);
+
+bool Init_NVS_SDCard(void);
+bool Init_SDCard(void);
+bool Init_external_PSRAM(void);
+bool Init_Camera(void);
+bool Init_Wifi(void);
+bool Start_Webserver(void);
 void migrateConfiguration(void);
 bool setCpuFrequency(void);
 
 static const char *TAG = "MAIN";
 
 #define MOUNT_POINT "/sdcard"
+TickType_t xDelay = 2000 / portTICK_PERIOD_MS;
 
-bool Init_NVS_SDCard()
+extern "C" void app_main(void)
+{
+// #ifdef CONFIG_HEAP_TRACING_STANDALONE
+#if defined HEAP_TRACING_MAIN_WIFI || defined HEAP_TRACING_MAIN_START
+    // register a buffer to record the memory trace
+    ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, NUM_RECORDS));
+#endif
+
+#ifdef DISABLE_BROWNOUT_DETECTOR
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // disable brownout detector
+#endif
+
+#ifdef HEAP_TRACING_MAIN_START
+    ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
+#endif
+
+    // ********************************************
+    // Highlight start of app_main
+    // ********************************************
+    ESP_LOGI(TAG, "\n\n\n\n================ Start app_main =================");
+
+    // Init SD card
+    // ********************************************
+    if (!Init_NVS_SDCard())
+    {
+        ESP_LOGE(TAG, "Device init aborted!");
+        return; // No way to continue without working SD card!
+    }
+
+    if (!Init_SDCard())
+    {
+        ESP_LOGE(TAG, "Device init aborted!");
+        return; // No way to continue without working SD card!
+    }
+
+    // Migrate parameter in config.ini to new naming (firmware 15.0 and newer)
+    // ********************************************
+    migrateConfiguration();
+
+    // ********************************************
+    // Highlight start of logfile logging
+    // Default Log Level: INFO -> Everything which needs to be logged during boot should be have level INFO, WARN OR ERROR
+    // ********************************************
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "=================================================");
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "==================== Start ======================");
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "=================================================");
+
+    if (!Init_external_PSRAM())
+    {
+        ESP_LOGE(TAG, "Device init aborted!");
+        return; // No way to continue without working PSRAM!
+    }
+
+    // Init time (as early as possible, but SD card needs to be initialized)
+    // ********************************************
+    setupTime(); // NTP time service: Status of time synchronization will be checked after every round (server_tflite.cpp)
+
+    // Set CPU Frequency
+    // ********************************************
+    setCpuFrequency();
+
+    // Check for updates
+    // ********************************************
+    CheckOTAUpdate();
+    CheckUpdate();
+
+    Init_Camera();
+
+// Start SoftAP for initial remote setup
+// Note: Start AP if no wlan.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
+// ********************************************
+#ifdef ENABLE_SOFTAP
+    CheckStartAPMode();
+#endif
+
+    // Check version information
+    // ********************************************
+    std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) +
+                                  ", Web UI: " + getHTMLversion();
+
+    if (std::string(GIT_TAG) != "")
+    {
+        // We are on a tag, add it as prefix
+        versionFormated = "Tag: '" + std::string(GIT_TAG) + "', " + versionFormated;
+    }
+
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, versionFormated);
+
+    if (getHTMLcommit().substr(0, 7) == "?")
+    {
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, std::string("Failed to read file html/version.txt to parse Web UI version"));
+    }
+
+    if (getHTMLcommit().substr(0, 7) != std::string(GIT_REV).substr(0, 7))
+    {
+        // Compare the first 7 characters of both hashes
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Web UI version (" + getHTMLcommit() + ") does not match firmware version (" + std::string(GIT_REV) + ")");
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Recommendation: Repeat installation using AI-on-the-edge-device__update__*.zip");
+    }
+
+    // Check reboot reason
+    // ********************************************
+    CheckIsPlannedReboot();
+    if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC))
+    {
+        // If system reboot was not triggered by user and reboot was caused by execption
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reset reason: " + getResetReason());
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Device was rebooted due to a software exception! Log level is set to DEBUG until the next reboot. "
+                                               "Flow init is delayed by 5 minutes to check the logs or do an OTA update");
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Keep device running until crash occurs again and check logs after device is up again");
+        LogFile.setLogLevel(ESP_LOG_DEBUG);
+    }
+    else
+    {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Reset reason: " + getResetReason());
+    }
+
+#ifdef HEAP_TRACING_MAIN_START
+    ESP_ERROR_CHECK(heap_trace_stop());
+    heap_trace_dump();
+#endif
+
+#ifdef HEAP_TRACING_MAIN_WIFI
+    ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
+#endif
+
+    if (!Init_Wifi())
+    {
+        ESP_LOGE(TAG, "Device init aborted!");
+        return; // No way to continue without working Wifi!
+    }
+
+    // manual reset the time
+    // ********************************************
+    if (!time_manual_reset_sync())
+    {
+        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Manual Time Sync failed during startup");
+    }
+
+#ifdef HEAP_TRACING_MAIN_WIFI
+    ESP_ERROR_CHECK(heap_trace_stop());
+    heap_trace_dump();
+#endif
+
+#ifdef DEBUG_ENABLE_SYSINFO
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 0, 0)
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device Info : " + get_device_info());
+    ESP_LOGD(TAG, "Device infos %s", get_device_info().c_str());
+#endif
+#endif // DEBUG_ENABLE_SYSINFO
+
+#ifdef USE_HIMEM_IF_AVAILABLE
+#ifdef DEBUG_HIMEM_MEMORY_CHECK
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Himem mem check : " + himem_memory_check());
+    ESP_LOGD(TAG, "Himem mem check %s", himem_memory_check().c_str());
+#endif
+#endif
+
+    // Print Device info
+    // ********************************************
+    esp_chip_info_t chipInfo;
+    esp_chip_info(&chipInfo);
+
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device info: CPU cores: " + std::to_string(chipInfo.cores) + ", Chip revision: " + std::to_string(chipInfo.revision));
+
+    // Print SD-Card info
+    // ********************************************
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "SD card info: Name: " + getSDCardName() + ", Capacity: " + getSDCardCapacity() + "MB, Free: " + getSDCardFreePartitionSpace() + "MB");
+
+    ESP_LOGD(TAG, "main: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
+    vTaskDelay(xDelay);
+
+    Start_Webserver();
+
+    // Check main init + start TFlite task
+    // ********************************************
+    if (getSystemStatus() == 0)
+    {
+        // No error flag is set
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initialization completed successfully");
+        InitializeFlowTask();
+    }
+    else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD))
+    {
+        // Non critical errors occured, we try to continue...
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Initialization completed with non-critical errors!");
+        InitializeFlowTask();
+    }
+    else
+    {
+        // Any other error is critical and makes running the flow impossible. Init is going to abort.
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Initialization failed. Flow task start aborted. Loading reduced web interface...");
+    }
+}
+
+bool Init_NVS_SDCard(void)
 {
     esp_err_t ret = nvs_flash_init();
 
@@ -213,157 +415,13 @@ bool Init_NVS_SDCard()
 
     // sdmmc_card_print_info(stdout, card);  // With activated CONFIG_NEWLIB_NANO_FORMAT --> capacity not printed correctly anymore
     SaveSDCardInfo(card);
+
     return true;
 }
 
-extern "C" void app_main(void)
+bool Init_SDCard(void)
 {
-// #ifdef CONFIG_HEAP_TRACING_STANDALONE
-#if defined HEAP_TRACING_MAIN_WIFI || defined HEAP_TRACING_MAIN_START
-    // register a buffer to record the memory trace
-    ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, NUM_RECORDS));
-#endif
-
-    TickType_t xDelay;
-
-#ifdef DISABLE_BROWNOUT_DETECTOR
-    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // disable brownout detector
-#endif
-
-#ifdef HEAP_TRACING_MAIN_START
-    ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
-#endif
-
-    // ********************************************
-    // Highlight start of app_main
-    // ********************************************
-    ESP_LOGI(TAG, "\n\n\n\n================ Start app_main =================");
-
-    // Init SD card
-    // ********************************************
-    if (!Init_NVS_SDCard())
-    {
-        ESP_LOGE(TAG, "Device init aborted!");
-        return; // No way to continue without working SD card!
-    }
-
-    // SD card: Create log directories (if not already existing)
-    // ********************************************
-    LogFile.CreateLogDirectories(); // mandatory for logging + image saving
-
-    // ********************************************
-    // Highlight start of logfile logging
-    // Default Log Level: INFO -> Everything which needs to be logged during boot should be have level INFO, WARN OR ERROR
-    // ********************************************
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "=================================================");
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "==================== Start ======================");
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "=================================================");
-
-    // Init external PSRAM
-    // ********************************************
-    esp_err_t PSRAMStatus = esp_psram_init();
-    if (PSRAMStatus == ESP_FAIL)
-    { // ESP_FAIL -> Failed to init PSRAM
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM init failed (" + std::to_string(PSRAMStatus) + ")! PSRAM not found or defective");
-        setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-        StatusLED(PSRAM_INIT, 1, true);
-    }
-    else
-    {                                             // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
-        size_t psram_size = esp_psram_get_size(); // size_t psram_size = esp_psram_get_size(); // comming in IDF 5.0
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size / 1024 / 1024) + "MB / " + std::to_string(psram_size / 1024 / 1024 * 8) + "MBit)");
-
-        // Check PSRAM size
-        // ********************************************
-        if (psram_size < (4 * 1024 * 1024))
-        { // PSRAM is below 4 MBytes (32Mbit)
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM size >= 4MB (32Mbit) is mandatory to run this application");
-            setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-            StatusLED(PSRAM_INIT, 2, true);
-        }
-        else
-        { // PSRAM size OK --> continue to check heap size
-            size_t _hsize = getESPHeapSize();
-            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Total heap: " + std::to_string(_hsize) + " byte");
-
-            // Check heap memory
-            // ********************************************
-            if (_hsize < 4000000)
-            { // Check available Heap memory for a bit less than 4 MB (a test on a good device showed 4187558 bytes to be available)
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Total heap >= 4000000 byte is mandatory to run this application");
-                setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
-                StatusLED(PSRAM_INIT, 3, true);
-            }
-            else
-            { // HEAP size OK --> continue to reserve shared memory block and check camera init
-                /* Allocate static PSRAM memory regions */
-                if (!reserve_psram_shared_region())
-                {
-                    setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
-                    StatusLED(PSRAM_INIT, 3, true);
-                }
-                else
-                { // OK
-                    // Init camera
-                    // ********************************************
-                    PowerResetCamera();
-                    esp_err_t camStatus = Camera.InitCam();
-                    Camera.LightOnOff(false);
-
-                    xDelay = 2000 / portTICK_PERIOD_MS;
-                    ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
-                    vTaskDelay(xDelay);
-
-                    // Check camera init
-                    // ********************************************
-                    if (camStatus != ESP_OK)
-                    { // Camera init failed, retry to init
-                        char camStatusHex[33];
-                        sprintf(camStatusHex, "0x%02x", camStatus);
-                        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Camera init failed (" + std::string(camStatusHex) + "), retrying...");
-
-                        PowerResetCamera();
-                        camStatus = Camera.InitCam();
-                        Camera.LightOnOff(false);
-
-                        xDelay = 2000 / portTICK_PERIOD_MS;
-                        ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
-                        vTaskDelay(xDelay);
-
-                        if (camStatus != ESP_OK)
-                        { // Camera init failed again
-                            sprintf(camStatusHex, "0x%02x", camStatus);
-                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Check camera module and/or proper electrical connection");
-                            setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
-                            StatusLED(CAM_INIT, 1, true);
-                        }
-                    }
-                    else
-                    { // ESP_OK -> Camera init OK --> continue to perform camera framebuffer check
-                        // Camera framebuffer check
-                        // ********************************************
-                        if (!Camera.testCamera())
-                        {
-                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera framebuffer check failed");
-                            // Easiest would be to simply restart here and try again,
-                            // how ever there seem to be systems where it fails at startup but still work correctly later.
-                            // Therefore we treat it still as successed! */
-                            setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
-                            StatusLED(CAM_INIT, 2, false);
-                        }
-                        Camera.LightOnOff(false); // make sure flashlight is off before start of flow
-
-                        // Print camera infos
-                        // ********************************************
-                        char caminfo[50];
-                        sensor_t *s = esp_camera_sensor_get();
-                        sprintf(caminfo, "PID: 0x%02x, VER: 0x%02x, MIDL: 0x%02x, MIDH: 0x%02x", s->id.PID, s->id.VER, s->id.MIDH, s->id.MIDL);
-                        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Camera info: " + std::string(caminfo));
-                    }
-                }
-            }
-        }
-    }
+    bool ret = true;
 
     // SD card: basic R/W check
     // ********************************************
@@ -371,51 +429,37 @@ extern "C" void app_main(void)
     if (iSDCardStatus < 0)
     {
         if (iSDCardStatus <= -1 && iSDCardStatus >= -2)
-        { // write error
+        {
+            // write error
             StatusLED(SDCARD_CHECK, 1, true);
         }
         else if (iSDCardStatus <= -3 && iSDCardStatus >= -5)
-        { // read error
+        {
+            // read error
             StatusLED(SDCARD_CHECK, 2, true);
         }
         else if (iSDCardStatus == -6)
-        { // delete error
+        {
+            // delete error
             StatusLED(SDCARD_CHECK, 3, true);
         }
+
         setSystemStatusFlag(SYSTEM_STATUS_SDCARD_CHECK_BAD); // reduced web interface going to be loaded
+
+        return false;
     }
-
-    // Migrate parameter in config.ini to new naming (firmware 15.0 and newer)
-    // ********************************************
-    migrateConfiguration();
-
-    // Init time (as early as possible, but SD card needs to be initialized)
-    // ********************************************
-    setupTime(); // NTP time service: Status of time synchronization will be checked after every round (server_tflite.cpp)
-
-    // Set CPU Frequency
-    // ********************************************
-    setCpuFrequency();
 
     // SD card: Create further mandatory directories (if not already existing)
     // Correct creation of these folders will be checked with function "SDCardCheckFolderFilePresence"
     // ********************************************
-    MakeDir("/sdcard/firmware");     // mandatory for OTA firmware update
-    MakeDir("/sdcard/img_tmp");      // mandatory for setting up alignment marks
-    MakeDir("/sdcard/demo");         // mandatory for demo mode
-    MakeDir("/sdcard/config/certs"); // mandatory for mqtt certificates
+    ret |= MakeDir("/sdcard/firmware"); // mandatory for OTA firmware update
+    ret |= MakeDir("/sdcard/img_tmp");  // mandatory for setting up alignment marks
+    ret |= MakeDir("/sdcard/demo");     // mandatory for demo mode
+    ret |= MakeDir("/sdcard/config/certs"); // mandatory for mqtt certificates
 
-    // Check for updates
+    // SD card: Create log directories (if not already existing)
     // ********************************************
-    CheckOTAUpdate();
-    CheckUpdate();
-
-// Start SoftAP for initial remote setup
-// Note: Start AP if no wlan.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
-// ********************************************
-#ifdef ENABLE_SOFTAP
-    CheckStartAPMode();
-#endif
+    ret |= LogFile.CreateLogDirectories(); // mandatory for logging + image saving
 
     // SD card: Check presence of some mandatory folders / files
     // ********************************************
@@ -423,53 +467,149 @@ extern "C" void app_main(void)
     {
         StatusLED(SDCARD_CHECK, 4, true);
         setSystemStatusFlag(SYSTEM_STATUS_FOLDER_CHECK_BAD); // reduced web interface going to be loaded
+
+        return false;
     }
 
-    // Check version information
+    return ret;
+}
+
+bool Init_external_PSRAM(void)
+{
+    // Init external PSRAM
     // ********************************************
-    std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) +
-                                  ", Web UI: " + getHTMLversion();
+    esp_err_t PSRAMStatus = esp_psram_init();
 
-    if (std::string(GIT_TAG) != "")
-    { // We are on a tag, add it as prefix
-        versionFormated = "Tag: '" + std::string(GIT_TAG) + "', " + versionFormated;
-    }
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, versionFormated);
+    if (PSRAMStatus == ESP_FAIL)
+    {
+        // ESP_FAIL -> Failed to init PSRAM
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM init failed (" + std::to_string(PSRAMStatus) + ")! PSRAM not found or defective");
+        setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
+        StatusLED(PSRAM_INIT, 1, true);
 
-    if (getHTMLcommit().substr(0, 7) == "?")
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, std::string("Failed to read file html/version.txt to parse Web UI version"));
-
-    if (getHTMLcommit().substr(0, 7) != std::string(GIT_REV).substr(0, 7))
-    { // Compare the first 7 characters of both hashes
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Web UI version (" + getHTMLcommit() + ") does not match firmware version (" + std::string(GIT_REV) + ")");
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Recommendation: Repeat installation using AI-on-the-edge-device__update__*.zip");
-    }
-
-    // Check reboot reason
-    // ********************************************
-    CheckIsPlannedReboot();
-    if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC))
-    { // If system reboot was not triggered by user and reboot was caused by execption
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reset reason: " + getResetReason());
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Device was rebooted due to a software exception! Log level is set to DEBUG until the next reboot. "
-                                               "Flow init is delayed by 5 minutes to check the logs or do an OTA update");
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Keep device running until crash occurs again and check logs after device is up again");
-        LogFile.setLogLevel(ESP_LOG_DEBUG);
+        return false;
     }
     else
     {
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Reset reason: " + getResetReason());
+        // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
+        size_t psram_size = esp_psram_get_size(); // size_t psram_size = esp_psram_get_size(); // comming in IDF 5.0
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size / 1024 / 1024) + "MB / " + std::to_string(psram_size / 1024 / 1024 * 8) + "MBit)");
+
+        // Check PSRAM size
+        // ********************************************
+        if (psram_size < (4 * 1024 * 1024))
+        {
+            // PSRAM is below 4 MBytes (32Mbit)
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM size >= 4MB (32Mbit) is mandatory to run this application");
+            setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
+            StatusLED(PSRAM_INIT, 2, true);
+
+            return false;
+        }
+        else
+        {
+            // PSRAM size OK --> continue to check heap size
+            size_t _hsize = getESPHeapSize();
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Total heap: " + std::to_string(_hsize) + " byte");
+
+            // Check heap memory
+            // ********************************************
+            if (_hsize < 4000000)
+            {
+                // Check available Heap memory for a bit less than 4 MB (a test on a good device showed 4187558 bytes to be available)
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Total heap >= 4000000 byte is mandatory to run this application");
+                setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
+                StatusLED(PSRAM_INIT, 3, true);
+
+                return false;
+            }
+            else
+            {
+                // HEAP size OK --> continue to reserve shared memory block and check camera init
+                /* Allocate static PSRAM memory regions */
+                if (!reserve_psram_shared_region())
+                {
+                    setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
+                    StatusLED(PSRAM_INIT, 3, true);
+
+                    return false;
+                }
+            }
+        }
     }
 
-#ifdef HEAP_TRACING_MAIN_START
-    ESP_ERROR_CHECK(heap_trace_stop());
-    heap_trace_dump();
-#endif
+    return true;
+}
 
-#ifdef HEAP_TRACING_MAIN_WIFI
-    ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
-#endif
+bool Init_Camera(void)
+{
+    // Init camera
+    // ********************************************
+    PowerResetCamera();
+    esp_err_t camStatus = Camera.InitCam();
+    Camera.LightOnOff(false);
 
+    ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
+    vTaskDelay(xDelay);
+
+    // Check camera init
+    // ********************************************
+    if (camStatus != ESP_OK)
+    {
+        // Camera init failed, retry to init
+        char camStatusHex[33];
+        sprintf(camStatusHex, "0x%02x", camStatus);
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Camera init failed (" + std::string(camStatusHex) + "), retrying...");
+
+        PowerResetCamera();
+        camStatus = Camera.InitCam();
+        Camera.LightOnOff(false);
+
+        ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
+        vTaskDelay(xDelay);
+
+        if (camStatus != ESP_OK)
+        {
+            // Camera init failed again
+            sprintf(camStatusHex, "0x%02x", camStatus);
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Check camera module and/or proper electrical connection");
+            setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
+            StatusLED(CAM_INIT, 1, true);
+            return false;
+        }
+    }
+    else
+    {
+        // ESP_OK -> Camera init OK --> continue to perform camera framebuffer check
+        // Camera framebuffer check
+        // ********************************************
+        if (!Camera.testCamera())
+        {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera framebuffer check failed");
+            // Easiest would be to simply restart here and try again,
+            // how ever there seem to be systems where it fails at startup but still work correctly later.
+            // Therefore we treat it still as successed! */
+            setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
+            StatusLED(CAM_INIT, 2, false);
+
+            return false;
+        }
+
+        Camera.LightOnOff(false); // make sure flashlight is off before start of flow
+
+        // Print camera infos
+        // ********************************************
+        char caminfo[50];
+        sensor_t *s = esp_camera_sensor_get();
+        sprintf(caminfo, "PID: 0x%02x, VER: 0x%02x, MIDL: 0x%02x, MIDH: 0x%02x", s->id.PID, s->id.VER, s->id.MIDH, s->id.MIDL);
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Camera info: " + std::string(caminfo));
+    }
+
+    return true;
+}
+
+bool Init_Wifi(void)
+{
     // Read WLAN parameter and start WIFI
     // ********************************************
     int iWLANStatus = LoadWlanFromFile(WLAN_CONFIG_FILE);
@@ -480,71 +620,36 @@ extern "C" void app_main(void)
         {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "WIFI init failed. Device init aborted!");
             StatusLED(WLAN_INIT, 3, true);
-            return;
+            return false;
         }
 
         init_basic_auth();
     }
     else if (iWLANStatus == -1)
-    { // wlan.ini not available, potentially empty or content not readable
+    {
+        // wlan.ini not available, potentially empty or content not readable
         StatusLED(WLAN_INIT, 1, true);
-        return; // No way to continue without reading the wlan.ini
+        return false; // No way to continue without reading the wlan.ini
     }
     else if (iWLANStatus == -2)
-    { // SSID or password not configured
+    {
+        // SSID or password not configured
         StatusLED(WLAN_INIT, 2, true);
-        return; // No way to continue with empty SSID or password!
+        return false; // No way to continue with empty SSID or password!
     }
 
-    xDelay = 2000 / portTICK_PERIOD_MS;
     ESP_LOGD(TAG, "main: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
     vTaskDelay(xDelay);
-
-    // manual reset the time
-    // ********************************************
-    if (!time_manual_reset_sync())
-    {
-        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Manual Time Sync failed during startup");
-    }
 
     // Set log level for wifi component to WARN level (default: INFO; only relevant for serial console)
     // ********************************************
     esp_log_level_set("wifi", ESP_LOG_WARN);
 
-#ifdef HEAP_TRACING_MAIN_WIFI
-    ESP_ERROR_CHECK(heap_trace_stop());
-    heap_trace_dump();
-#endif
+    return true;
+}
 
-#ifdef DEBUG_ENABLE_SYSINFO
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 0, 0)
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device Info : " + get_device_info());
-    ESP_LOGD(TAG, "Device infos %s", get_device_info().c_str());
-#endif
-#endif // DEBUG_ENABLE_SYSINFO
-
-#ifdef USE_HIMEM_IF_AVAILABLE
-#ifdef DEBUG_HIMEM_MEMORY_CHECK
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Himem mem check : " + himem_memory_check());
-    ESP_LOGD(TAG, "Himem mem check %s", himem_memory_check().c_str());
-#endif
-#endif
-
-    // Print Device info
-    // ********************************************
-    esp_chip_info_t chipInfo;
-    esp_chip_info(&chipInfo);
-
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device info: CPU cores: " + std::to_string(chipInfo.cores) + ", Chip revision: " + std::to_string(chipInfo.revision));
-
-    // Print SD-Card info
-    // ********************************************
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "SD card info: Name: " + getSDCardName() + ", Capacity: " + getSDCardCapacity() + "MB, Free: " + getSDCardFreePartitionSpace() + "MB");
-
-    xDelay = 2000 / portTICK_PERIOD_MS;
-    ESP_LOGD(TAG, "main: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
-    vTaskDelay(xDelay);
-
+bool Start_Webserver(void)
+{
     // Start webserver + register handler
     // ********************************************
     ESP_LOGD(TAG, "starting servers");
@@ -554,6 +659,7 @@ extern "C" void app_main(void)
     register_server_main_flow_task_uri(server);
     register_server_file_uri(server, "/sdcard");
     register_server_ota_sdcard_uri(server);
+
 #ifdef ENABLE_MQTT
     register_server_mqtt_uri(server);
 #endif // ENABLE_MQTT
@@ -563,27 +669,7 @@ extern "C" void app_main(void)
     ESP_LOGD(TAG, "Before reg server main");
     register_server_main_uri(server, "/sdcard");
 
-    // Only for testing purpose
-    // setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
-    // setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-
-    // Check main init + start TFlite task
-    // ********************************************
-    if (getSystemStatus() == 0)
-    { // No error flag is set
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initialization completed successfully");
-        InitializeFlowTask();
-    }
-    else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || // Non critical errors occured, we try to continue...
-             isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD))
-    {
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Initialization completed with non-critical errors!");
-        InitializeFlowTask();
-    }
-    else
-    { // Any other error is critical and makes running the flow impossible. Init is going to abort.
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Initialization failed. Flow task start aborted. Loading reduced web interface...");
-    }
+    return true;
 }
 
 void migrateConfiguration(void)
