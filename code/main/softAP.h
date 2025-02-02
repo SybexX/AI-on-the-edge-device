@@ -18,6 +18,6 @@
 
 void CheckStartAPMode();
 
-#endif  //SOFTAP_H
+#endif // SOFTAP_H
 
-#endif //#ifdef ENABLE_SOFTAP
+#endif // #ifdef ENABLE_SOFTAP

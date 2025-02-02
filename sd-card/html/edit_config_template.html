@@ -317,8 +317,8 @@
 				<class id="TakeImage_CamQuality_text" style="color:black;">Image Quality</class>
 			</td>
 			<td>
-				<input required type="number" id="TakeImage_CamQuality_value1" size="13" min="5" max="63" onchange="cameraParameterChanged()"
-					oninput="(!validity.rangeUnderflow||(value=5)) && (!validity.rangeOverflow||(value=63)) &&
+				<input required type="number" id="TakeImage_CamQuality_value1" size="13" min="10" max="63" onchange="cameraParameterChanged()"
+					oninput="(!validity.rangeUnderflow||(value=10)) && (!validity.rangeOverflow||(value=63)) &&
 						(!validity.stepMismatch||(value=parseInt(this.value)));">
 			</td>
 			<td>$TOOLTIP_TakeImage_CamQuality</td>
