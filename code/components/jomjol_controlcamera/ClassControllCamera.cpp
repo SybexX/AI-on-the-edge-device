@@ -388,26 +388,31 @@ int CCamera::SetCamDeepSleep(bool enable)
     {
         CCstatus.CameraDeepSleepEnable = enable;
 
-        if (CCstatus.CamConfig.CamSensor_id == OV2640_PID)
+        sensor_t *s = esp_camera_sensor_get();
+        if (s != NULL)
         {
-            // OV2640 (Normal mode >>> Standby mode = OK), (Standby mode >>> Normal mode = n.OK)
-            // ret |= s->set_reg(s, 0x109, 0x10, enable ? 0x10 : 0);
-            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "DeepSleep is not supported by OV2640");
-            // ESP_LOGD(TAG, "DeepSleep is not supported by OV2640");
-        }
-        else
-        {
-            sensor_t *s = esp_camera_sensor_get();
-            if (s != NULL)
+            if (CCstatus.CamConfig.CamSensor_id == OV2640_PID)
+            {
+                // OV2640 (Normal mode >>> Standby mode = OK), (Standby mode >>> Normal mode = n.OK)
+                // ret |= s->set_reg(s, 0x109, 0x10, enable ? 0x10 : 0);
+                // LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "DeepSleep is not supported by OV2640");
+
+                uint8_t reg = s->get_reg(s, 0x09, 0xff);
+                ret = s->set_reg(s, 0x09, 0xff, enable ? (reg |= 0x10) : (reg &= ~0x10));
+            }
+            else
             {
                 ret = s->set_reg(s, 0x3008, 0x42, enable ? 0x42 : 0x02);
             }
 
             std::string state = enable ? "enabled" : "disabled";
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "DeepSleep: " + state);
-            // ESP_LOGD(TAG, "DeepSleep: %s", state);
 
             vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+        else
+        {
+            return -1;
         }
     }
 
