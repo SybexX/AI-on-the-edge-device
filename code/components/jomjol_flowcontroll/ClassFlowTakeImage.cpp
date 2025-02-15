@@ -76,7 +76,7 @@ void ClassFlowTakeImage::SetInitialParameter(void)
 // wird beim Start aufgerufen
 bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
 {
-    Camera.getSensorDatenToCCstatus(); // Kamera >>> CCstatus
+    Camera.GetSensorControllConfig(&CCstatus); // Kamera >>> CCstatus
 
     std::vector<string> splitted;
     aktparamgraph = trim(aktparamgraph);
@@ -534,8 +534,8 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
         }
     }
 
-    Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-    Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
+    Camera.SetSensorControllConfig(&CCstatus); // CCstatus >>> Kamera
+    Camera.SetQualityZoomSize(&CCstatus);
 	Camera.LedIntensity = CCstatus.ImageLedIntensity;
 
     rawImage = new CImageBasis("rawImage");

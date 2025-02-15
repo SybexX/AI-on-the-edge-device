@@ -35,7 +35,7 @@
 #endif
 
 ClassFlowControll flowctrl;
-camera_flow_config_temp_t CFstatus;
+camera_controll_config_temp_t CFstatus;
 
 TaskHandle_t xHandletask_autodoFlow = NULL;
 
@@ -807,7 +807,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
             std::string _host = "";
 
             // laden der aktuellen Kameraeinstellungen(CCstatus) in den Zwischenspeicher(CFstatus)
-            Camera.setCCstatusToCFstatus(); // CCstatus >>> CFstatus
+            Camera.SetCCstatusToCFstatus(); // CCstatus >>> CFstatus
 
             if (httpd_query_key_value(_query, "host", _valuechar, 30) == ESP_OK)
             {
@@ -1222,7 +1222,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
             if (_task.compare("cam_settings") == 0)
             {
                 // wird aufgerufen, wenn das Referenzbild + Kameraeinstellungen gespeichert wurden
-                Camera.setCFstatusToCCstatus(); // CFstatus >>> CCstatus
+                Camera.SetCFstatusToCCstatus(); // CFstatus >>> CCstatus
 
                 // Kameraeinstellungen wurden verädert
                 Camera.CamSettingsChanged = true;
