@@ -17,7 +17,7 @@
 
 typedef struct
 {
-    uint16_t CamSensor_id;
+    int CamXclkFreqMhz;
 
     framesize_t ImageFrameSize = FRAMESIZE_VGA; // 0 - 10
     gainceiling_t ImageGainceiling;             // Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)
@@ -60,10 +60,6 @@ typedef struct
 
     int WaitBeforePicture;
 
-    bool CameraInitSuccessful;
-    bool CameraSettingsChanged;
-    bool isTempImage;
-	
     bool DemoMode;
     bool SaveAllFiles;
 } camera_controll_config_temp_t;
@@ -83,6 +79,11 @@ protected:
 
 public:
     int LedIntensity = 4096;
+
+    uint16_t CamSensor_id;
+    bool CamInitSuccessful = false;
+    bool CamSettingsChanged = false;
+    bool CamTempImage = false;
 
     CCamera(void);
     esp_err_t InitCam(void);

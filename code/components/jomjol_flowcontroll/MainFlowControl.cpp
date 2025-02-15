@@ -221,7 +221,7 @@ esp_err_t handler_stream(httpd_req_t *req)
 
     if (httpd_req_get_url_query_str(req, _query, 50) == ESP_OK)
     {
-        //        ESP_LOGD(TAG, "Query: %s", _query);
+        // ESP_LOGD(TAG, "Query: %s", _query);
         if (httpd_query_key_value(_query, "flashlight", _value, 10) == ESP_OK)
         {
 #ifdef DEBUG_DETAIL_ON
@@ -492,7 +492,7 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
 
         std::string *status = flowctrl.getActStatus();
         std::string query = std::string(_query);
-        //    ESP_LOGD(TAG, "Query: %s, query.c_str());
+        // ESP_LOGD(TAG, "Query: %s, query.c_str());
 
         if (query.find("full") != std::string::npos)
         {
@@ -823,6 +823,16 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 }
             }
 
+            if (httpd_query_key_value(_query, "xclk", _valuechar, 30) == ESP_OK)
+            {
+                std::string _xclk = std::string(_valuechar);
+                if (isStringNumeric(_xclk))
+                {
+                    int _xclk_ = std::stoi(_valuechar);
+                    CFstatus.CamXclkFreqMhz = clipInt(_xclk_, 20, 1);
+                }
+            }
+
             if (httpd_query_key_value(_query, "aecgc", _valuechar, 30) == ESP_OK)
             {
                 std::string _aecgc = std::string(_valuechar);
@@ -925,7 +935,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_shp))
                 {
                     int _shp_ = std::stoi(_valuechar);
-                    if (CCstatus.CamSensor_id == OV2640_PID)
+                    if (Camera.CamSensor_id == OV2640_PID)
                     {
                         CFstatus.ImageSharpness = clipInt(_shp_, 2, -2);
                     }
@@ -1034,7 +1044,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_ael))
                 {
                     int _ael_ = std::stoi(_valuechar);
-                    if (CCstatus.CamSensor_id == OV2640_PID)
+                    if (Camera.CamSensor_id == OV2640_PID)
                     {
                         CFstatus.ImageAeLevel = clipInt(_ael_, 2, -2);
                     }
@@ -1119,7 +1129,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_idlv))
                 {
                     int _ImageDenoiseLevel = std::stoi(_valuechar);
-                    if (CCstatus.CamSensor_id == OV2640_PID)
+                    if (Camera.CamSensor_id == OV2640_PID)
                     {
                         CFstatus.ImageDenoiseLevel = 0;
                     }
@@ -1142,15 +1152,15 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_zoomx))
                 {
                     int _ImageZoomOffsetX = std::stoi(_valuechar);
-                    if (CCstatus.CamSensor_id == OV2640_PID)
+                    if (Camera.CamSensor_id == OV2640_PID)
                     {
                         CFstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 480, -480);
                     }
-                    else if (CCstatus.CamSensor_id == OV3660_PID)
+                    else if (Camera.CamSensor_id == OV3660_PID)
                     {
                         CFstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 704, -704);
                     }
-                    else if (CCstatus.CamSensor_id == OV5640_PID)
+                    else if (Camera.CamSensor_id == OV5640_PID)
                     {
                         CFstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 960, -960);
                     }
@@ -1163,15 +1173,15 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_zoomy))
                 {
                     int _ImageZoomOffsetY = std::stoi(_valuechar);
-                    if (CCstatus.CamSensor_id == OV2640_PID)
+                    if (Camera.CamSensor_id == OV2640_PID)
                     {
                         CFstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 360, -360);
                     }
-                    else if (CCstatus.CamSensor_id == OV3660_PID)
+                    else if (Camera.CamSensor_id == OV3660_PID)
                     {
                         CFstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 528, -528);
                     }
-                    else if (CCstatus.CamSensor_id == OV5640_PID)
+                    else if (Camera.CamSensor_id == OV5640_PID)
                     {
                         CFstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 720, -720);
                     }
@@ -1184,15 +1194,15 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_zooms))
                 {
                     int _ImageZoomSize = std::stoi(_valuechar);
-                    if (CCstatus.CamSensor_id == OV2640_PID)
+                    if (Camera.CamSensor_id == OV2640_PID)
                     {
                         CFstatus.ImageZoomSize = clipInt(_ImageZoomSize, 29, 0);
                     }
-                    else if (CCstatus.CamSensor_id == OV3660_PID)
+                    else if (Camera.CamSensor_id == OV3660_PID)
                     {
                         CFstatus.ImageZoomSize = clipInt(_ImageZoomSize, 43, 0);
                     }
-                    else if (CCstatus.CamSensor_id == OV5640_PID)
+                    else if (Camera.CamSensor_id == OV5640_PID)
                     {
                         CFstatus.ImageZoomSize = clipInt(_ImageZoomSize, 59, 0);
                     }
@@ -1215,8 +1225,8 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 Camera.setCFstatusToCCstatus(); // CFstatus >>> CCstatus
 
                 // Kameraeinstellungen wurden verädert
-                CFstatus.CameraSettingsChanged = true;
-				CFstatus.isTempImage = false;
+                Camera.CamSettingsChanged = true;
+                Camera.CamTempImage = false;
 
                 ESP_LOGD(TAG, "Cam Settings set");
                 std::string _zw = "CamSettingsSet";
@@ -1227,8 +1237,8 @@ esp_err_t handler_editflow(httpd_req_t *req)
             {
                 // wird aufgerufen, wenn ein neues Referenzbild erstellt oder aktualisiert wurde
                 // Kameraeinstellungen wurden verädert
-                CFstatus.CameraSettingsChanged = true;
-				CFstatus.isTempImage = true;
+                Camera.CamSettingsChanged = true;
+                Camera.CamTempImage = true;
 
                 ESP_LOGD(TAG, "test_take - vor TakeImage");
                 std::string image_temp = flowctrl.doSingleStep("[TakeImage]", _host);

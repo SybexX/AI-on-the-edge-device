@@ -66,8 +66,8 @@ uint8_t *demoImage = NULL;    // Buffer holding the demo image in bytes
 // Originally: config.xclk_freq_mhz = 20000000, but this lead to visual artifacts on many modules.
 // See https://github.com/espressif/esp32-camera/issues/150#issuecomment-726473652 et al.
 #if !defined(XCLK_FREQ_MHZ)
-// int xclk = 8;
-int xclk = 20; // Orginal value
+int xclk = 8;
+// int xclk = 20; // Orginal value
 #else
 int xclk = XCLK_FREQ_MHZ;
 #endif
@@ -130,6 +130,8 @@ esp_err_t CCamera::InitCam(void)
     esp_camera_deinit();
     vTaskDelay(cam_xDelay);
 
+    // CCstatus.CamXclkFreqMhz = (camera_config.xclk_freq_hz / 1000000);
+
     // initialize the camera
     esp_err_t err = esp_camera_init(&camera_config);
     vTaskDelay(cam_xDelay);
@@ -140,34 +142,36 @@ esp_err_t CCamera::InitCam(void)
         return err;
     }
 
-    CCstatus.CameraInitSuccessful = true;
+    Camera.CamInitSuccessful = false;
 
     // Get a reference to the sensor
     sensor_t *sensor = esp_camera_sensor_get();
 
     if (sensor != NULL)
     {
-        CCstatus.CamSensor_id = sensor->id.PID;
+        Camera.CamSensor_id = sensor->id.PID;
 
         // Dump camera module, warn for unsupported modules.
-        switch (CCstatus.CamSensor_id)
+        switch (Camera.CamSensor_id)
         {
         case OV2640_PID:
             ESP_LOGI(TAG, "OV2640 camera module detected");
+            Camera.CamInitSuccessful = true;
             break;
         case OV3660_PID:
             ESP_LOGI(TAG, "OV3660 camera module detected");
+            Camera.CamInitSuccessful = true;
             break;
         case OV5640_PID:
             ESP_LOGI(TAG, "OV5640 camera module detected");
+            Camera.CamInitSuccessful = true;
             break;
         default:
             ESP_LOGE(TAG, "Camera module is unknown and not properly supported!");
-            CCstatus.CameraInitSuccessful = false;
         }
     }
 
-    if (CCstatus.CameraInitSuccessful)
+    if (Camera.CamInitSuccessful)
     {
         return ESP_OK;
     }
@@ -235,7 +239,7 @@ int CCamera::SetLEDIntensity(int _intrel)
 
 bool CCamera::getCameraInitSuccessful(void)
 {
-    return CCstatus.CameraInitSuccessful;
+    return Camera.CamInitSuccessful;
 }
 
 esp_err_t CCamera::setSensorDatenFromCCstatus(void)
@@ -244,6 +248,8 @@ esp_err_t CCamera::setSensorDatenFromCCstatus(void)
 
     if (sensor != NULL)
     {
+        sensor->set_xclk(sensor, camera_config.ledc_timer, (CCstatus.CamXclkFreqMhz * 1000000));
+
         sensor->set_framesize(sensor, CCstatus.ImageFrameSize);
 		
         // sensor->set_contrast(sensor, CCstatus.ImageContrast);     // -2 to 2
@@ -300,6 +306,8 @@ esp_err_t CCamera::setSensorDatenFromCFstatus(void)
 
     if (sensor != NULL)
     {
+        sensor->set_xclk(sensor, camera_config.ledc_timer, (CFstatus.CamXclkFreqMhz * 1000000));
+
         sensor->set_framesize(sensor, CFstatus.ImageFrameSize);
 
         // sensor->set_contrast(sensor, CFstatus.ImageContrast);     // -2 to 2
@@ -356,7 +364,8 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
 
     if (sensor != NULL)
     {
-        CCstatus.CamSensor_id = sensor->id.PID;
+        Camera.CamSensor_id = sensor->id.PID;
+        CCstatus.CamXclkFreqMhz = (sensor->xclk_freq_hz / 1000000);
 
         CCstatus.ImageFrameSize = (framesize_t)sensor->status.framesize;
 		
@@ -402,7 +411,7 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
 
 esp_err_t CCamera::setCCstatusToCFstatus(void)
 {
-    CFstatus.CamSensor_id = CCstatus.CamSensor_id;
+    CFstatus.CamXclkFreqMhz = CCstatus.CamXclkFreqMhz;
 
     CFstatus.ImageFrameSize = CCstatus.ImageFrameSize;
 
@@ -454,7 +463,7 @@ esp_err_t CCamera::setCCstatusToCFstatus(void)
 
 esp_err_t CCamera::setCFstatusToCCstatus(void)
 {
-    // CCstatus.CamSensor_id = CFstatus.CamSensor_id;
+    CCstatus.CamXclkFreqMhz = CFstatus.CamXclkFreqMhz;
 
     CCstatus.ImageFrameSize = CFstatus.ImageFrameSize;
 
@@ -509,23 +518,23 @@ int CCamera::CheckCamSettingsChanged(void)
 	int ret = 0;
 	
     // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
-    if (CFstatus.CameraSettingsChanged)
+    if (Camera.CamSettingsChanged)
     {
-        if (CFstatus.isTempImage)
+        if (Camera.CamTempImage)
         {
             Camera.setSensorDatenFromCFstatus(); // CFstatus >>> Kamera
             Camera.SetQualityZoomSize(CFstatus.ImageQuality, CFstatus.ImageFrameSize, CFstatus.ImageZoomEnabled, CFstatus.ImageZoomOffsetX, CFstatus.ImageZoomOffsetY, CFstatus.ImageZoomSize, CFstatus.ImageVflip);
             Camera.LedIntensity = CFstatus.ImageLedIntensity;
-            CFstatus.CameraSettingsChanged = false;
-			CFstatus.isTempImage = false;
+            Camera.CamSettingsChanged = false;
+            Camera.CamTempImage = false;
         }
 	    else
 	    {
             Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
-            CFstatus.CameraSettingsChanged = false;
-	    }
+            Camera.CamSettingsChanged = false;
+        }
 	}
 	
     return ret;
@@ -535,8 +544,8 @@ int CCamera::CheckCamSettingsChanged(void)
 int CCamera::SetCamGainceiling(sensor_t *sensor, gainceiling_t gainceilingLevel)
 {
 	int ret = 0;
-		
-    if (CCstatus.CamSensor_id == OV2640_PID)
+
+    if (Camera.CamSensor_id == OV2640_PID)
     {
         ret = sensor->set_gainceiling(sensor, gainceilingLevel); // Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)
     }
@@ -559,8 +568,8 @@ int CCamera::SetCamGainceiling(sensor_t *sensor, gainceiling_t gainceilingLevel)
 int CCamera::SetCamSharpness(sensor_t *sensor, bool autoSharpnessEnabled, int sharpnessLevel)
 {
 	int ret = 0;
-	
-    if (CCstatus.CamSensor_id == OV2640_PID)
+
+    if (Camera.CamSensor_id == OV2640_PID)
     {
         // The OV2640 does not officially support sharpness, so the detour is made with the ov2640_sharpness.cpp.
         if (autoSharpnessEnabled)
@@ -592,8 +601,8 @@ int CCamera::SetCamSharpness(sensor_t *sensor, bool autoSharpnessEnabled, int sh
 int CCamera::SetCamSpecialEffect(sensor_t *sensor, int specialEffect)
 {
 	int ret = 0;
-	
-    if (CCstatus.CamSensor_id == OV2640_PID)
+
+    if (Camera.CamSensor_id == OV2640_PID)
     {
         ret = ov2640_set_special_effect(sensor, specialEffect);
     }
@@ -608,8 +617,8 @@ int CCamera::SetCamSpecialEffect(sensor_t *sensor, int specialEffect)
 int CCamera::SetCamContrastBrightness(sensor_t *sensor, int _contrast, int _brightness)
 {
 	int ret = 0;
-	
-    if (CCstatus.CamSensor_id == OV2640_PID)
+
+    if (Camera.CamSensor_id == OV2640_PID)
     {
         ret = ov2640_set_contrast_brightness(sensor, _contrast, _brightness);
     }
@@ -630,7 +639,7 @@ void CCamera::SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, 
 {
     // for OV2640, This works only if the aspect ratio of 4:3 is preserved in the window size.
     // use only values divisible by 8 without remainder
-    if (CFstatus.isTempImage)
+    if (Camera.CamTempImage)
     {
         imageWidth = CFstatus.ImageWidth + (imageSize * 4 * 8);
         imageHeight = CFstatus.ImageHeight + (imageSize * 3 * 8);
@@ -701,7 +710,7 @@ int CCamera::SetZoomSize(sensor_t *sensor, bool zoomEnabled, int zoomOffsetX, in
 		
         int _imageWidth = CCstatus.ImageWidth;
         int _imageHeight = CCstatus.ImageHeight;
-        if (CFstatus.isTempImage)
+        if (Camera.CamTempImage)
         {
             _imageWidth = CFstatus.ImageWidth;
             _imageHeight = CFstatus.ImageHeight;
@@ -712,7 +721,7 @@ int CCamera::SetZoomSize(sensor_t *sensor, bool zoomEnabled, int zoomOffsetX, in
         int frameSizeX = 1600;
         int frameSizeY = 1200;
 
-        switch (CCstatus.CamSensor_id)
+        switch (Camera.CamSensor_id)
         {
             case OV5640_PID:
                 frameSizeX = 2592;
@@ -753,8 +762,8 @@ int CCamera::SetZoomSize(sensor_t *sensor, bool zoomEnabled, int zoomOffsetX, in
         }
 		
 		SanitizeZoomParams(_imageSize_temp, frameSizeX, frameSizeY, _imageWidth, _imageHeight, _offsetx, _offsety);
-		
-        if (CFstatus.isTempImage)
+
+        if (Camera.CamTempImage)
         {
             ret = SetCamWindow(sensor, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CFstatus.ImageWidth, CFstatus.ImageHeight, imageVflip);
 		}
@@ -765,7 +774,7 @@ int CCamera::SetZoomSize(sensor_t *sensor, bool zoomEnabled, int zoomOffsetX, in
     }
     else
     {
-        if (CFstatus.isTempImage)
+        if (Camera.CamTempImage)
         {
             ret = sensor->set_framesize(sensor, CFstatus.ImageFrameSize);
 		}
@@ -802,8 +811,8 @@ int CCamera::SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, i
 int CCamera::SetCamWindow(sensor_t *sensor, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip)
 {
 	int ret = 0;
-	
-    if (CCstatus.CamSensor_id == OV2640_PID)
+
+    if (Camera.CamSensor_id == OV2640_PID)
     {
         ret = sensor->set_res_raw(sensor, 0, 0, 0, 0, xOffset, yOffset, xTotal, yTotal, xOutput, yOutput, false, false);
     }
@@ -931,7 +940,7 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
     int channels = 3;
     int width = CCstatus.ImageWidth;
     int height = CCstatus.ImageHeight;
-    if (CFstatus.isTempImage)
+    if (Camera.CamTempImage)
     {
     int width = CFstatus.ImageWidth;
     int height = CFstatus.ImageHeight;
@@ -1028,7 +1037,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         if (fb->format != PIXFORMAT_JPEG)
         {
 			bool jpeg_converted = false;
-            if (CFstatus.isTempImage)
+            if (Camera.CamTempImage)
             {
                 jpeg_converted = frame2jpg(fb, CFstatus.ImageQuality, &buf, &buf_len);
             }
@@ -1362,7 +1371,7 @@ void CCamera::SetImageWidthHeightFromResolution(framesize_t resol)
         _ImageHeight = 1920;
     }
 
-    if (CFstatus.isTempImage)
+    if (Camera.CamTempImage)
     {
         CFstatus.ImageWidth = _ImageWidth;
         CFstatus.ImageHeight = _ImageHeight;
