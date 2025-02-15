@@ -294,6 +294,18 @@
 			<td>$TOOLTIP_TakeImage_WaitBeforeTakingPicture</td>
 		</tr>
 
+		<tr class="expert" unused_id="TakeImage_CamXclkFreqMhz_ex3">
+			<td class="indent1">
+				<class id="TakeImage_CamXclkFreqMhz_text" style="color:black;">CamXclkFreqMhz</class>
+			</td>
+			<td>
+				<input required type="number" id="TakeImage_CamXclkFreqMhz_value1" size="13" min="1" max="20" onchange="cameraParameterChanged()"
+					oninput="(!validity.rangeUnderflow||(value=1)) && (!validity.rangeOverflow||(value=20)) &&
+						(!validity.stepMismatch||(value=parseInt(this.value)));">
+			</td>
+			<td>$TOOLTIP_TakeImage_CamXclkFreqMhz</td>
+		</tr>
+
 		<tr class="expert" unused_id="TakeImage_CamGainceiling_ex3">
 			<td class="indent1">
 				<class id="TakeImage_CamGainceiling_text" style="color:black;">CamGainceiling</class>
@@ -2307,6 +2319,7 @@ function UpdateInput() {
     WriteParameter(param, category, "TakeImage", "RawImagesRetention", true);
 
     WriteParameter(param, category, "TakeImage", "WaitBeforeTakingPicture", false);
+    WriteParameter(param, category, "TakeImage", "CamXclkFreqMhz", false);
     WriteParameter(param, category, "TakeImage", "CamGainceiling", false);	
     WriteParameter(param, category, "TakeImage", "CamQuality", false);
     WriteParameter(param, category, "TakeImage", "CamBrightness", false);
@@ -2474,6 +2487,7 @@ function ReadParameterAll() {
     ReadParameter(param, "TakeImage", "RawImagesLocation", true);
     ReadParameter(param, "TakeImage", "RawImagesRetention", true);
     ReadParameter(param, "TakeImage", "WaitBeforeTakingPicture", false);
+    ReadParameter(param, "TakeImage", "CamXclkFreqMhz", false);
     ReadParameter(param, "TakeImage", "CamGainceiling", false);	
     ReadParameter(param, "TakeImage", "CamQuality", false);	
     ReadParameter(param, "TakeImage", "CamBrightness", false);
@@ -2690,6 +2704,8 @@ function camSettingsSet(){
 	
     var _waitb_temp = document.getElementById("TakeImage_WaitBeforeTakingPicture_value1").value;
 
+    var _xclk_temp = document.getElementById("TakeImage_CamXclkFreqMhz_value1").value;
+
     var _aecgc_temp = document.getElementById("TakeImage_CamGainceiling_value1").selectedIndex;
     var _qual_temp = document.getElementById("TakeImage_CamQuality_value1").value;	
                 
@@ -2832,7 +2848,7 @@ function camSettingsSet(){
         url = url + "&host=" + domainname;		
     }
 	
-    url = url + "&waitb=" + _waitb_temp + "&aecgc=" + _aecgc_temp + "&qual=" + _qual_temp;
+    url = url + "&waitb=" + _waitb_temp + "&xclk=" + _xclk_temp + "&aecgc=" + _aecgc_temp + "&qual=" + _qual_temp;
     url = url + "&bri=" + _bri_temp + "&con=" + _con_temp + "&sat=" + _sat_temp + "&shp=" + _shp_temp + "&ashp=" + _ashp_temp;
     url = url + "&spe=" + _spe_temp + "&wbm=" + _wbm_temp + "&awb=" + _awb_temp + "&awbg=" + _awbg_temp;
     url = url + "&aec=" + _aec_temp + "&aec2=" + _aec2_temp + "&ael=" + _ael_temp + "&aecv=" + _aecv_temp;
