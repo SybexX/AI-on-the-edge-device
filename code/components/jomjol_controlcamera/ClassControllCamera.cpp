@@ -458,7 +458,9 @@ esp_err_t CCamera::SetCFstatusToCCstatus(void)
 int CCamera::CheckCamSettingsChanged(void)
 {
     int ret = 0;
-	
+
+    SetCamDeepSleep(false);
+
     // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
     if (Camera.CamSettingsChanged)
     {
@@ -469,15 +471,55 @@ int CCamera::CheckCamSettingsChanged(void)
             Camera.LedIntensity = CFstatus.ImageLedIntensity;
             Camera.CamTempImage = false;
         }
-	    else
-	    {
+        else
+        {
             Camera.SetSensorControllConfig(&CCstatus); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(&CCstatus);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
             Camera.CamSettingsChanged = false;
         }
     }
-	
+
+    return ret;
+}
+
+// only available on OV3660 and OV5640
+// https://github.com/espressif/esp32-camera/issues/672
+int CCamera::SetCamDeepSleep(bool enable)
+{
+    int ret = 0;
+    if (Camera.CameraDeepSleepEnable != enable)
+    {
+        Camera.CameraDeepSleepEnable = enable;
+
+        sensor_t *s = esp_camera_sensor_get();
+        if (s != NULL)
+        {
+            if (Camera.CamSensor_id == OV2640_PID)
+            {
+                // OV2640 (Normal mode >>> Standby mode = OK), (Standby mode >>> Normal mode = n.OK)
+                // ret |= s->set_reg(s, 0x109, 0x10, enable ? 0x10 : 0);
+                // LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "DeepSleep is not supported by OV2640");
+
+                uint8_t reg = s->get_reg(s, 0x09, 0xff);
+                ret = s->set_reg(s, 0x09, 0xff, enable ? (reg |= 0x10) : (reg &= ~0x10));
+            }
+            else
+            {
+                ret = s->set_reg(s, 0x3008, 0x42, enable ? 0x42 : 0x02);
+            }
+
+            std::string state = enable ? "enabled" : "disabled";
+            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "DeepSleep: " + state);
+
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
     return ret;
 }
 
@@ -550,7 +592,7 @@ int CCamera::SetCamSpecialEffect(sensor_t *sensor, int specialEffect)
     {
         ret = sensor->set_special_effect(sensor, specialEffect);
     }
-	
+
     return ret;
 }
 
@@ -567,7 +609,7 @@ int CCamera::SetCamContrastBrightness(sensor_t *sensor, int _contrast, int _brig
         ret = sensor->set_contrast(sensor, _contrast);     // -2 to 2
         ret |= sensor->set_brightness(sensor, _brightness); // -2 to 2
     }
-	
+
     return ret;
 }
 
@@ -715,7 +757,7 @@ int CCamera::SetQualityZoomSize(camera_controll_config_temp_t *camConfig)
         ret = -1;
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SetQualityZoomSize, Failed to get Cam control structure");
     }
-	
+
     return ret;
 }
 
@@ -742,7 +784,7 @@ int CCamera::SetCamWindow(sensor_t *sensor, camera_controll_config_temp_t *camCo
             ret = sensor->set_res_raw(sensor, xOffset, yOffset, xOffset + xTotal, yOffset + yTotal, 0, 0, frameSizeX, frameSizeY, camConfig->ImageWidth, camConfig->ImageHeight, scale, binning);
         }
     }
-	
+
     return ret;
 }
 
@@ -799,7 +841,7 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
 
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "is not working anymore (CaptureToBasisImage) - most probably caused "
                                                 "by a hardware problem (instablility, ...). System will reboot.");
-        // doReboot();
+        SetCamDeepSleep(true);
         return ESP_FAIL;
     }
 
@@ -876,6 +918,8 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
 
     delete _zwImage;
 
+    SetCamDeepSleep(true);
+
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("CaptureToBasisImage - Done");
 #endif
@@ -885,6 +929,10 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
 
 esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
 {
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CaptureToFile - Start");
+#endif
+
     CheckCamSettingsChanged();
 
     LEDOnOff(true); // Status-LED on
@@ -906,7 +954,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         LightOnOff(false); // Flash-LED off
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToFile: Capture Failed. "
                                                 "Check camera module and/or proper electrical connection");
-        // doReboot();
+        SetCamDeepSleep(true);
         return ESP_FAIL;
     }
 
@@ -951,7 +999,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
             {
                 jpeg_converted = frame2jpg(fb, CCstatus.ImageQuality, &buf, &buf_len);
             }
-			
+
             converted = true;
 
             if (!jpeg_converted)
@@ -991,11 +1039,21 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         LightOnOff(false); // Flash-LED off
     }
 
+    SetCamDeepSleep(true);
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CaptureToFile - Done");
+#endif
+
     return ESP_OK;
 }
 
 esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
 {
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CaptureToHTTP - Start");
+#endif
+
     esp_err_t res = ESP_OK;
     size_t fb_len = 0;
     int64_t fr_start = esp_timer_get_time();
@@ -1019,10 +1077,10 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
     {
         LEDOnOff(false);   // Status-LED off
         LightOnOff(false); // Flash-LED off
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToFile: Capture Failed. "
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToHTTP: Capture Failed. "
                                                 "Check camera module and/or proper electrical connection");
         httpd_resp_send_500(req);
-        // doReboot();
+        SetCamDeepSleep(true);
         return ESP_FAIL;
     }
 
@@ -1072,17 +1130,27 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
         LightOnOff(false); // Flash-LED off
     }
 
+    SetCamDeepSleep(true);
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CaptureToHTTP - Done");
+#endif
+
     return res;
 }
 
 esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
 {
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("Live stream started");
+#else
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Live stream started");
+#endif
+
     esp_err_t res = ESP_OK;
     size_t fb_len = 0;
     int64_t fr_start;
     char *part_buf[64];
-
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Live stream started");
 
     CheckCamSettingsChanged();
 
@@ -1150,7 +1218,13 @@ esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
     LEDOnOff(false);   // Status-LED off
     LightOnOff(false); // Flash-LED off
 
+    SetCamDeepSleep(true);
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("Live stream stopped");
+#else
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Live stream stopped");
+#endif
 
     return res;
 }

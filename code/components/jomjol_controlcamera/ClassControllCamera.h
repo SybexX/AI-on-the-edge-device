@@ -71,7 +71,8 @@ protected:
     void ledc_init(void);
     bool loadNextDemoImage(camera_fb_t *fb);
     long GetFileSize(std::string filename);
-	int CheckCamSettingsChanged(void);
+    int CheckCamSettingsChanged(void);
+    int SetCamDeepSleep(bool enable);
     int SetZoomSize(sensor_t *sensor, camera_controll_config_temp_t *camConfig);
     int SetCamWindow(sensor_t *sensor, camera_controll_config_temp_t *camConfig, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal);
     void SetImageWidthHeightFromResolution(camera_controll_config_temp_t *camConfig);
@@ -81,6 +82,7 @@ public:
     int LedIntensity = 4096;
 
     uint16_t CamSensor_id;
+    bool CameraDeepSleepEnable = false;
     bool CamInitSuccessful = false;
     bool CamSettingsChanged = false;
     bool CamTempImage = false;
