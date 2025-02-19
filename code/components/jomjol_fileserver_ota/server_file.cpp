@@ -292,7 +292,7 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
                 }
             }
 
-            ESP_LOGI(TAG, "Found %s: %s (%s bytes)", entrytype, entry->d_name, entrysize);
+            ESP_LOGD(TAG, "Found %s: %s (%s bytes)", entrytype, entry->d_name, entrysize);
 
             // Send chunk of HTML file containing table entries with file name and size
             httpd_resp_sendstr_chunk(req, "<tr><td><a href=\"");
@@ -383,7 +383,7 @@ static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
         }
         else {
             long pos = ftell(fd); // Number of bytes in the file
-            ESP_LOGI(TAG, "File contains %ld bytes", pos);
+            ESP_LOGD(TAG, "File contains %ld bytes", pos);
 
             if (fseek(fd, pos - std::min((long)LOGFILE_LAST_PART_BYTES, pos), SEEK_SET)) { // Go LOGFILE_LAST_PART_BYTES bytes back from EOF
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to go back " + to_string(std::min((long)LOGFILE_LAST_PART_BYTES, pos)) + " bytes within the file!");
@@ -422,7 +422,7 @@ static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
 
     /* Close file after sending complete */
     fclose(fd);
-    ESP_LOGI(TAG, "File sending complete");
+    ESP_LOGD(TAG, "File sending complete");
 
     /* Respond with an empty chunk to signal HTTP response completion */
     httpd_resp_send_chunk(req, NULL, 0);
@@ -434,7 +434,7 @@ static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "log_get_last_part_handler");
     FILE *fd = NULL;
     //struct stat file_stat;
-    ESP_LOGI(TAG, "uri: %s", req->uri);
+    ESP_LOGD(TAG, "uri: %s", req->uri);
 
     const char* filename = ""; 
     std::string currentfilename = LogFile.GetCurrentFileName();
@@ -465,7 +465,7 @@ static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
         }
         else {
             long pos = ftell(fd); // Number of bytes in the file
-            ESP_LOGI(TAG, "File contains %ld bytes", pos);
+            ESP_LOGD(TAG, "File contains %ld bytes", pos);
 
             if (fseek(fd, pos - std::min((long)LOGFILE_LAST_PART_BYTES, pos), SEEK_SET)) { // Go LOGFILE_LAST_PART_BYTES bytes back from EOF
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to go back " + to_string(std::min((long)LOGFILE_LAST_PART_BYTES, pos)) + " bytes within the file!");
@@ -538,11 +538,11 @@ static esp_err_t download_get_handler(httpd_req_t *req)
         if (buf_len > 1) {
             char buf[buf_len];
             if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-                ESP_LOGI(TAG, "Found URL query => %s", buf);
+                ESP_LOGD(TAG, "Found URL query => %s", buf);
                 char param[32];
                 /* Get value of expected key from query string */
                 if (httpd_query_key_value(buf, "readonly", param, sizeof(param)) == ESP_OK) {
-                    ESP_LOGI(TAG, "Found URL query parameter => readonly=%s", param);
+                    ESP_LOGD(TAG, "Found URL query parameter => readonly=%s", param);
                     readonly = (strcmp(param,"true") == 0);
                 }
             }
@@ -660,7 +660,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Receiving file: %s...", filename);
+    ESP_LOGD(TAG, "Receiving file: %s...", filename);
 
     /* Retrieve the pointer to scratch buffer for temporary storage */
     char *buf = ((struct file_server_data *)req->user_ctx)->scratch;
@@ -671,7 +671,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
     int remaining = req->content_len;
 
     while (remaining > 0) {
-        ESP_LOGI(TAG, "Remaining size: %d", remaining);
+        ESP_LOGD(TAG, "Remaining size: %d", remaining);
         /* Receive the file part by part into a buffer */
         if ((received = httpd_req_recv(req, buf, MIN(remaining, SERVER_FILER_SCRATCH_BUFSIZE))) <= 0) {
             if (received == HTTPD_SOCK_ERR_TIMEOUT) {
@@ -711,7 +711,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
     /* Close file upon upload completion */
     fclose(fd);
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "File saved: " + string(filename));
-    ESP_LOGI(TAG, "File reception completed");
+    ESP_LOGD(TAG, "File reception completed");
 
     std::string directory = std::string(filepath);
     size_t zw = directory.find("/");
@@ -830,7 +830,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
         /* Delete file */
         unlink(filepath);
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "File deleted: " + string(filename));
-        ESP_LOGI(TAG, "File deletion completed");
+        ESP_LOGD(TAG, "File deletion completed");
 
         directory = std::string(filepath);
         size_t zw = directory.find("/");
@@ -976,7 +976,7 @@ std::string unzip_new(std::string _in_zip_file, std::string _target_zip, std::st
             
             string filename_zw = zw + SUFFIX_ZW;
 
-            ESP_LOGI(TAG, "File to extract: %s, Temp. Filename: %s", zw.c_str(), filename_zw.c_str());
+            ESP_LOGD(TAG, "File to extract: %s, Temp. Filename: %s", zw.c_str(), filename_zw.c_str());
 
             std::string folder = filename_zw.substr(0, filename_zw.find_last_of('/'));
             MakeDir(folder);
