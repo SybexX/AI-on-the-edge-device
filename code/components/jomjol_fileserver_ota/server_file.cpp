@@ -220,6 +220,9 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
         "disabled>&#129145; Directory up</button><span style=\"padding-left:15px\" id=\"currentpath\">"
         "</span></td></tr>");
     httpd_resp_sendstr_chunk(req, "</table>");
+
+    httpd_resp_sendstr_chunk(req, "<script type=\"text/javascript\" src=\"/file_server.js\"></script>");
+    httpd_resp_sendstr_chunk(req, "<script type=\"text/javascript\">initFileServer();</script>");
     /*
         if (!readonly) {
             FILE *pfile;
@@ -324,9 +327,6 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
 
     // Finish the file list table
     httpd_resp_sendstr_chunk(req, "</tbody></table>");
-
-    httpd_resp_sendstr_chunk(req, "<script type=\"text/javascript\" src=\"/file_server.js\"></script>");
-    httpd_resp_sendstr_chunk(req, "<script type=\"text/javascript\">initFileServer();</script>");
 
     // Send remaining chunk of HTML file to complete it
     httpd_resp_sendstr_chunk(req, "</body></html>");
