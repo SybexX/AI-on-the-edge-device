@@ -1,5 +1,8 @@
 // #pragma warning(disable : 4996)
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -31,11 +34,13 @@ extern "C"
 #include "ClassLogFile.h"
 
 #include "esp_vfs_fat.h"
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0))
+#include "esp_private/sdmmc_common.h"
+#else
 #include "../sdmmc_common.h"
+#endif
 
 static const char *TAG = "HELPER";
-
-using namespace std;
 
 unsigned int systemStatus = 0;
 
@@ -44,6 +49,54 @@ sdmmc_csd_t SDCardCsd;
 bool SDCardIsMMC;
 
 // #define DEBUG_DETAIL_ON
+
+#if CONFIG_SOC_TEMP_SENSOR_SUPPORTED
+temperature_sensor_handle_t temp_handle = NULL;
+temperature_sensor_config_t temp_sensor = {
+	.range_min = -10,
+	.range_max = 80,
+	.clk_src = TEMPERATURE_SENSOR_CLK_SRC_DEFAULT,
+};
+
+void initTempsensor(void)
+{
+	ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor, &temp_handle));
+
+	xTaskCreate([](void *pvParameters)
+				{
+		while (1)
+		{
+			// Get converted sensor data
+			float tsens_out;
+
+			// Enable temperature sensor
+			ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
+			ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_handle, &tsens_out));
+			tsens_value = tsens_out;
+			// Disable the temperature sensor if it is not needed and save the power
+			ESP_ERROR_CHECK(temperature_sensor_disable(temp_handle));
+
+			vTaskDelay(pdMS_TO_TICKS(5000));
+		} }, "tempsensor_task", 2048, NULL, 5, NULL);
+}
+
+float temperatureRead(void)
+{
+	return tsens_value;
+}
+
+#elif CONFIG_IDF_TARGET_ESP32
+
+// CPU Temp
+extern "C" uint8_t temprature_sens_read(void);
+
+float temperatureRead(void)
+{
+	// convert Fahrenheit to Celsius (F-32) * (5/9) = degree Celsius
+	tsens_value = (temprature_sens_read() - 32) / 1.8;
+	return tsens_value;
+}
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 string getESPHeapInfo()
@@ -611,13 +664,6 @@ string toLower(string in)
 	}
 
 	return in;
-}
-
-// CPU Temp
-extern "C" uint8_t temprature_sens_read();
-float temperatureRead()
-{
-	return (temprature_sens_read() - 32) / 1.8;
 }
 
 time_t addDays(time_t startTime, int days)
