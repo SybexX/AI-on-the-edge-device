@@ -396,7 +396,9 @@ extern "C" void app_main(void)
 
     // Check for updates
     // ********************************************
-    CheckOTAUpdate();
+#ifdef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
+    CheckOTAPartition();
+#endif
     CheckUpdate();
 
     // Start SoftAP for initial remote setup
