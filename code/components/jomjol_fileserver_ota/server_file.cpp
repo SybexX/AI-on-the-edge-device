@@ -6,6 +6,8 @@
 #include "ClassControllCamera.h"
 #include "MainFlowControl.h"
 
+#include "server_GPIO.h"
+
 #ifdef ENABLE_MQTT
 #include "interface_mqtt.h"
 #endif // ENABLE_MQTT
@@ -205,8 +207,6 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
         dirpath_corrected[strlen(dirpath_corrected) - 1] = '\0';
     }
 
-    DIR *pdir = opendir(dirpath_corrected);
-
     const size_t dirpath_len = strlen(dirpath);
     ESP_LOGD(TAG, "Dirpath: <%s>, Pathlength: %d", dirpath, dirpath_len);
 
@@ -214,6 +214,7 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
     strlcpy(entrypath, dirpath, sizeof(entrypath));
     ESP_LOGD(TAG, "entrypath: <%s>", entrypath);
 
+    DIR *pdir = opendir(dirpath_corrected);
     if (!pdir)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to stat dir: " + std::string(dirpath) + "!");

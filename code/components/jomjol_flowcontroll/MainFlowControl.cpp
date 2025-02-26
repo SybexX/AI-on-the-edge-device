@@ -64,7 +64,7 @@ void CheckIsPlannedReboot(void)
     else
     {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Planned reboot");
-        DeleteFile("/sdcard/reboot.txt"); // Prevent Boot Loop!!!
+        deleteFile("/sdcard/reboot.txt"); // Prevent Boot Loop!!!
         isPlannedReboot = true;
     }
 }
@@ -856,7 +856,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
         in = "/sdcard" + in;
         out = "/sdcard" + out;
 
-        CopyFile(in, out);
+        copyFile(in, out);
         zw = "Copy Done";
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_send(req, zw.c_str(), zw.length());

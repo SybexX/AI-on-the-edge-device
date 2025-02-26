@@ -17,9 +17,6 @@
 
 #include "ClassControllCamera.h"
 #include "MainFlowControl.h"
-
-// #include "server_GpioPin.h" _mh_
-// #include "server_GpioHandler.h" _mh_
 #include "server_GPIO.h"
 #include "statusled.h"
 
@@ -66,7 +63,7 @@ void CheckUpdate(void)
     _filename_update = std::string(zw);
     fclose(pfile);
 
-    DeleteFile("/sdcard/update.txt"); // Prevent Boot Loop!!!
+    deleteFile("/sdcard/update.txt"); // Prevent Boot Loop!!!
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Start update process (" + _filename_update + ")");
 
     // Create task for the OTA update
@@ -91,8 +88,9 @@ void ota_update_file_task(void *pvParameter)
     {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Files unzipped.");
 
-        std::string target_directory = "/sdcard";
-        std::string retfirmware = unzip_ota(_filename_update, target_directory + "/");
+        std::string target_directory = "/sdcard/";
+        std::string firmware_directory = "firmware/";
+        std::string retfirmware = unzip_ota(_filename_update, target_directory, firmware_directory);
 
         if ((retfirmware.length() > 0) && (retfirmware != "ERROR"))
         {
@@ -440,9 +438,9 @@ esp_err_t handler_ota_update(httpd_req_t *req)
         if ((filetype == "TFLITE") || (filetype == "TFL"))
         {
             std::string out_filepath = "/sdcard/config/" + getFileFullFileName(filepath);
-            DeleteFile(out_filepath);
-            CopyFile(filepath, out_filepath);
-            DeleteFile(filepath);
+            deleteFile(out_filepath);
+            copyFile(filepath, out_filepath);
+            deleteFile(filepath);
 
             const char *resp_str = "Neural Network File copied.";
             httpd_resp_sendstr_chunk(req, resp_str);
@@ -570,7 +568,6 @@ void task_reboot(void *DeleteMainFlow)
         DeleteMainFlowTask(); // Kill autoflow task if executed in extra task, if not don't kill parent task
     }
 
-    // Camera.LightOnOff(false, Camera.LedIntensity); _mh_
     Camera.LightOnOff(false);
     StatusLEDOff();
 
@@ -612,7 +609,6 @@ void doRebootOTA(void)
 {
     LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reboot in 5sec");
 
-    // Camera.LightOnOff(false, Camera.LedIntensity); _mh_
     Camera.LightOnOff(false);
     StatusLEDOff();
     esp_camera_deinit();

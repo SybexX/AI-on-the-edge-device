@@ -98,10 +98,9 @@ float temperatureRead(void)
 }
 #endif
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-string getESPHeapInfo()
+std::string getESPHeapInfo(void)
 {
-	string espInfoResultStr = "";
+	std::string espInfoResultStr = "";
 	char aMsgBuf[80];
 
 	size_t aFreeHeapSize = heap_caps_get_free_size(MALLOC_CAP_8BIT);
@@ -116,36 +115,36 @@ string getESPHeapInfo()
 	size_t aMinFreeInternalHeapSize = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 
 	sprintf(aMsgBuf, "Heap Total: %ld", (long)aFreeHeapSize);
-	espInfoResultStr += string(aMsgBuf);
+	espInfoResultStr += std::string(aMsgBuf);
 
 	sprintf(aMsgBuf, " | SPI Free: %ld", (long)aFreeSPIHeapSize);
-	espInfoResultStr += string(aMsgBuf);
+	espInfoResultStr += std::string(aMsgBuf);
 	sprintf(aMsgBuf, " | SPI Large Block:  %ld", (long)aHeapLargestFreeBlockSize);
-	espInfoResultStr += string(aMsgBuf);
+	espInfoResultStr += std::string(aMsgBuf);
 	sprintf(aMsgBuf, " | SPI Min Free: %ld", (long)aMinFreeHeapSize);
-	espInfoResultStr += string(aMsgBuf);
+	espInfoResultStr += std::string(aMsgBuf);
 
 	sprintf(aMsgBuf, " | Int Free: %ld", (long)(aFreeInternalHeapSize));
-	espInfoResultStr += string(aMsgBuf);
+	espInfoResultStr += std::string(aMsgBuf);
 	sprintf(aMsgBuf, " | Int Large Block:  %ld", (long)aHeapIntLargestFreeBlockSize);
-	espInfoResultStr += string(aMsgBuf);
+	espInfoResultStr += std::string(aMsgBuf);
 	sprintf(aMsgBuf, " | Int Min Free: %ld", (long)(aMinFreeInternalHeapSize));
-	espInfoResultStr += string(aMsgBuf);
+	espInfoResultStr += std::string(aMsgBuf);
 
 	return espInfoResultStr;
 }
 
-size_t getESPHeapSize()
+size_t getESPHeapSize(void)
 {
 	return heap_caps_get_free_size(MALLOC_CAP_8BIT);
 }
 
-size_t getInternalESPHeapSize()
+size_t getInternalESPHeapSize(void)
 {
 	return heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 }
 
-string getSDCardPartitionSize()
+std::string getSDCardPartitionSize(void)
 {
 	FATFS *fs;
 	uint32_t fre_clust, tot_sect;
@@ -159,7 +158,7 @@ string getSDCardPartitionSize()
 	return std::to_string(tot_sect);
 }
 
-string getSDCardFreePartitionSpace()
+std::string getSDCardFreePartitionSpace(void)
 {
 	FATFS *fs;
 	uint32_t fre_clust, fre_sect;
@@ -173,7 +172,7 @@ string getSDCardFreePartitionSpace()
 	return std::to_string(fre_sect);
 }
 
-string getSDCardPartitionAllocationSize()
+std::string getSDCardPartitionAllocationSize(void)
 {
 	FATFS *fs;
 	uint32_t fre_clust, allocation_size;
@@ -194,15 +193,15 @@ void SaveSDCardInfo(sdmmc_card_t *card)
 	SDCardIsMMC = card->is_mmc;
 }
 
-string getSDCardManufacturer()
+std::string getSDCardManufacturer(void)
 {
-	string SDCardManufacturer = SDCardParseManufacturerIDs(SDCardCid.mfg_id);
+	std::string SDCardManufacturer = SDCardParseManufacturerIDs(SDCardCid.mfg_id);
 	// ESP_LOGD(TAG, "SD Card Manufacturer: %s", SDCardManufacturer.c_str());
 
 	return (SDCardManufacturer + " (ID: " + std::to_string(SDCardCid.mfg_id) + ")");
 }
 
-string getSDCardName()
+std::string getSDCardName(void)
 {
 	char *SDCardName = SDCardCid.name;
 	// ESP_LOGD(TAG, "SD Card Name: %s", SDCardName);
@@ -210,7 +209,7 @@ string getSDCardName()
 	return std::string(SDCardName);
 }
 
-string getSDCardCapacity()
+std::string getSDCardCapacity(void)
 {
 	int SDCardCapacity = SDCardCsd.capacity / (1024 / SDCardCsd.sector_size) / 1024; // total sectors * sector size  --> Byte to MB (1024*1024)
 	// ESP_LOGD(TAG, "SD Card Capacity: %s", std::to_string(SDCardCapacity).c_str());
@@ -218,15 +217,13 @@ string getSDCardCapacity()
 	return std::to_string(SDCardCapacity);
 }
 
-string getSDCardSectorSize()
+std::string getSDCardSectorSize(void)
 {
 	int SDCardSectorSize = SDCardCsd.sector_size;
 	// ESP_LOGD(TAG, "SD Card Sector Size: %s bytes", std::to_string(SDCardSectorSize).c_str());
 
 	return std::to_string(SDCardSectorSize);
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////
 
 void memCopyGen(uint8_t *_source, uint8_t *_target, int _size)
 {
@@ -242,7 +239,7 @@ std::string FormatFileName(std::string input)
 	input.erase(0, 1);
 	std::string os = "/";
 	std::string ns = "\\";
-	FindReplace(input, os, ns);
+	findReplace(input, os, ns);
 #endif
 	return input;
 }
@@ -260,7 +257,7 @@ std::size_t file_size(const std::string &file_name)
 	return static_cast<std::size_t>(file.tellg());
 }
 
-void FindReplace(std::string &line, std::string &oldString, std::string &newString)
+void findReplace(std::string &line, std::string &oldString, std::string &newString)
 {
 	const size_t oldSize = oldString.length();
 
@@ -348,14 +345,14 @@ bool MakeDir(std::string path)
 	return bSuccess;
 }
 
-bool ctype_space(const char c, string adddelimiter)
+bool ctype_space(const char c, std::string adddelimiter)
 {
 	if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == 11)
 	{
 		return true;
 	}
 
-	if (adddelimiter.find(c) != string::npos)
+	if (adddelimiter.find(c) != std::string::npos)
 	{
 		return true;
 	}
@@ -363,7 +360,7 @@ bool ctype_space(const char c, string adddelimiter)
 	return false;
 }
 
-string trim(string istring, string adddelimiter)
+std::string trim(std::string istring, std::string adddelimiter)
 {
 	bool trimmed = false;
 
@@ -389,11 +386,11 @@ string trim(string istring, string adddelimiter)
 	}
 }
 
-size_t findDelimiterPos(string input, string delimiter)
+size_t findDelimiterPos(std::string input, std::string delimiter)
 {
 	size_t pos = std::string::npos;
 	// size_t zw;
-	string akt_del;
+	std::string akt_del;
 
 	for (int anz = 0; anz < delimiter.length(); ++anz)
 	{
@@ -416,31 +413,45 @@ size_t findDelimiterPos(string input, string delimiter)
 	return pos;
 }
 
-bool RenameFile(string from, string to)
+bool renameFile(std::string from, std::string to)
 {
-	//	ESP_LOGI(logTag, "Deleting file: %s", fn.c_str());
-	/* Delete file */
 	FILE *fpSourceFile = fopen(from.c_str(), "rb");
 
-	// Sourcefile existiert nicht sonst gibt es einen Fehler beim Kopierversuch!
+	// Sourcefile does not exist
 	if (!fpSourceFile)
 	{
-		ESP_LOGE(TAG, "DeleteFile: File %s existiert nicht!", from.c_str());
+		ESP_LOGE(TAG, "renameFile: File %s does not exist!", from.c_str());
 		return false;
 	}
 
 	fclose(fpSourceFile);
-
 	rename(from.c_str(), to.c_str());
 
 	return true;
 }
 
-bool FileExists(string filename)
+bool renameFolder(std::string from, std::string to)
+{
+	DIR *fpSourceFolder = opendir(from.c_str());
+
+	// SourceFolder does not exist
+	if (!fpSourceFolder)
+	{
+		ESP_LOGE(TAG, "renameFolder: Folder %s does not exist!", from.c_str());
+		return false;
+	}
+
+	closedir(fpSourceFolder);
+	rename(from.c_str(), to.c_str());
+
+	return true;
+}
+
+bool FileExists(std::string filename)
 {
 	FILE *fpSourceFile = fopen(filename.c_str(), "rb");
 
-	// Sourcefile existiert nicht sonst gibt es einen Fehler beim Kopierversuch!
+	// Sourcefile does not exist
 	if (!fpSourceFile)
 	{
 		return false;
@@ -451,27 +462,72 @@ bool FileExists(string filename)
 	return true;
 }
 
-bool DeleteFile(string fn)
+bool FolderExists(std::string foldername)
 {
-	//	ESP_LOGI(logTag, "Deleting file: %s", fn.c_str());
-	/* Delete file */
-	FILE *fpSourceFile = fopen(fn.c_str(), "rb");
+	DIR *fpSourceFolder = opendir(foldername.c_str());
 
-	// Sourcefile existiert nicht sonst gibt es einen Fehler beim Kopierversuch!
-	if (!fpSourceFile)
+	// SourceFolder does not exist
+	if (!fpSourceFolder)
 	{
-		ESP_LOGD(TAG, "DeleteFile: File %s existiert nicht!", fn.c_str());
 		return false;
 	}
 
-	fclose(fpSourceFile);
-
-	unlink(fn.c_str());
+	closedir(fpSourceFolder);
 
 	return true;
 }
 
-bool CopyFile(string input, string output)
+bool deleteFile(std::string filepath)
+{
+	/* Delete file */
+	FILE *fpSourceFile = fopen(filepath.c_str(), "rb");
+
+	// Sourcefile does not exist otherwise there is a mistake when deleting!
+	if (!fpSourceFile)
+	{
+		ESP_LOGD(TAG, "deleteFile: File %s does not exist!", filepath.c_str());
+		return false;
+	}
+
+	fclose(fpSourceFile);
+	unlink(filepath.c_str());
+
+	return true;
+}
+
+bool deleteFileNormalAndGzip(std::string filepath)
+{
+	std::string filepath_zw = filepath;
+
+	if (toUpper(getFileType(filepath)) == "GZ")
+	{
+		filepath_zw = filepath.substr(0, filepath.find_last_of('.'));
+	}
+	else
+	{
+		filepath_zw = filepath + ".gz";
+	}
+
+	/* Delete file */
+	FILE *fpSourceFile;
+	if ((fpSourceFile = fopen(filepath.c_str(), "rb")) != NULL)
+	{
+		fclose(fpSourceFile);
+		unlink(filepath.c_str());
+	}
+
+	/* Delete file */
+	FILE *fzSourceFile;
+	if ((fzSourceFile = fopen(filepath_zw.c_str(), "rb")) != NULL)
+	{
+		fclose(fzSourceFile);
+		unlink(filepath_zw.c_str());
+	}
+
+	return true;
+}
+
+bool copyFile(std::string input, std::string output)
 {
 	input = FormatFileName(input);
 	output = FormatFileName(output);
@@ -485,16 +541,14 @@ bool CopyFile(string input, string output)
 	char cTemp;
 	FILE *fpSourceFile = fopen(input.c_str(), "rb");
 
-	// Sourcefile existiert nicht sonst gibt es einen Fehler beim Kopierversuch!
+	// Sourcefile does not exist otherwise there is a mistake in copying!
 	if (!fpSourceFile)
 	{
-		ESP_LOGD(TAG, "File %s existiert nicht!", input.c_str());
+		ESP_LOGD(TAG, "File %s does not exist!", input.c_str());
 		return false;
 	}
 
 	FILE *fpTargetFile = fopen(output.c_str(), "wb");
-
-	// Code Section
 
 	// Read From The Source File - "Copy"
 	while (fread(&cTemp, 1, 1, fpSourceFile) == 1)
@@ -511,61 +565,45 @@ bool CopyFile(string input, string output)
 	return true;
 }
 
-string getFileFullFileName(string filename)
+std::string getFileFullFileName(std::string filepath)
 {
-	size_t lastpos = filename.find_last_of('/');
+	size_t lastpos = filepath.rfind('/');
 
-	if (lastpos == string::npos)
+	if (lastpos == std::string::npos)
 	{
 		return "";
 	}
 
-	//	ESP_LOGD(TAG, "Last position: %d", lastpos);
-
-	string zw = filename.substr(lastpos + 1, filename.size() - lastpos);
-
-	return zw;
+	return (filepath.substr(lastpos + 1, filepath.size() - lastpos));
 }
 
-string getDirectory(string filename)
+std::string getFileType(std::string filepath)
 {
-	size_t lastpos = filename.find('/');
+	size_t lastpos = filepath.rfind('.');
 
-	if (lastpos == string::npos)
-	{
-		lastpos = filename.find('\\');
-	}
-
-	if (lastpos == string::npos)
+	if (lastpos == std::string::npos)
 	{
 		return "";
 	}
 
-	//	ESP_LOGD(TAG, "Directory: %d", lastpos);
-
-	string zw = filename.substr(0, lastpos - 1);
-	return zw;
+	return (toUpper(filepath.substr(lastpos + 1, filepath.size() - lastpos)));
 }
 
-string getFileType(string filename)
+std::string getDirectory(std::string filepath)
 {
-	size_t lastpos = filename.rfind(".", filename.length());
-	size_t neu_pos;
+	size_t lastpos = filepath.rfind('/');
 
-	while ((neu_pos = filename.find(".", lastpos + 1)) > -1)
+	if (lastpos == std::string::npos)
 	{
-		lastpos = neu_pos;
+		lastpos = filepath.rfind('\\');
+
+		if (lastpos == std::string::npos)
+		{
+			return "";
+		}
 	}
 
-	if (lastpos == string::npos)
-	{
-		return "";
-	}
-
-	string zw = filename.substr(lastpos + 1, filename.size() - lastpos);
-	zw = toUpper(zw);
-
-	return zw;
+	return (filepath.substr(0, lastpos));
 }
 
 /* recursive mkdir */
@@ -646,7 +684,7 @@ int mkdir_r(const char *dir, const mode_t mode)
 	return 0;
 }
 
-string toUpper(string in)
+std::string toUpper(std::string in)
 {
 	for (int i = 0; i < in.length(); ++i)
 	{
@@ -656,7 +694,7 @@ string toUpper(string in)
 	return in;
 }
 
-string toLower(string in)
+std::string toLower(std::string in)
 {
 	for (int i = 0; i < in.length(); ++i)
 	{
@@ -681,7 +719,7 @@ int removeFolder(const char *folderPath, const char *logTag)
 
 	if (!dir)
 	{
-		ESP_LOGE(logTag, "Failed to stat dir: %s", folderPath);
+		ESP_LOGE(logTag, "removeFolder: Folder %s does not exist!", folderPath);
 		return -1;
 	}
 
@@ -690,7 +728,7 @@ int removeFolder(const char *folderPath, const char *logTag)
 
 	while ((entry = readdir(dir)) != NULL)
 	{
-		std::string path = string(folderPath) + "/" + entry->d_name;
+		std::string path = std::string(folderPath) + "/" + entry->d_name;
 
 		if (entry->d_type == DT_REG)
 		{
@@ -722,9 +760,9 @@ int removeFolder(const char *folderPath, const char *logTag)
 	return deleted;
 }
 
-std::vector<string> HelperZerlegeZeile(std::string input, std::string _delimiter = "")
+std::vector<std::string> HelperZerlegeZeile(std::string input, std::string _delimiter = "")
 {
-	std::vector<string> Output;
+	std::vector<std::string> Output;
 	std::string delimiter = " =,";
 
 	if (_delimiter.length() > 0)
@@ -735,9 +773,9 @@ std::vector<string> HelperZerlegeZeile(std::string input, std::string _delimiter
 	return ZerlegeZeile(input, delimiter);
 }
 
-std::vector<string> ZerlegeZeile(std::string input, std::string delimiter)
+std::vector<std::string> ZerlegeZeile(std::string input, std::string delimiter)
 {
-	std::vector<string> Output;
+	std::vector<std::string> Output;
 	/* The input can have multiple formats:
 	 *  - key = value
 	 *  - key = value1 value2 value3 ...
@@ -752,12 +790,12 @@ std::vector<string> ZerlegeZeile(std::string input, std::string delimiter)
 	 * As a workaround and to not break any legacy usage, we enforce to only use the
 	 * equal sign, if the key is "password"
 	 */
-	if ((input.find("password") != string::npos) || (input.find("Token") != string::npos))
+	if ((input.find("password") != std::string::npos) || (input.find("Token") != std::string::npos))
 	{
 		// Line contains a password, use the equal sign as the only delimiter and only split on first occurrence
 		size_t pos = input.find("=");
 		Output.push_back(trim(input.substr(0, pos), ""));
-		Output.push_back(trim(input.substr(pos + 1, string::npos), ""));
+		Output.push_back(trim(input.substr(pos + 1, std::string::npos), ""));
 	}
 	else
 	{
@@ -799,9 +837,9 @@ std::string ReplaceString(std::string subject, const std::string &search, const 
 /* SD Card Manufacturer Database */
 struct SDCard_Manufacturer_database
 {
-	string type;
+	std::string type;
 	int id;
-	string manufacturer;
+	std::string manufacturer;
 };
 
 /* Source: https://git.kernel.org/pub/scm/utils/mmc/mmc-utils.git/tree/lsmmc.c */
@@ -988,12 +1026,12 @@ struct SDCard_Manufacturer_database mmc_database[] = {
 };
 
 /* Parse SD Card Manufacturer Database */
-string SDCardParseManufacturerIDs(int id)
+std::string SDCardParseManufacturerIDs(int id)
 {
 	if (SDCardIsMMC)
 	{
 		unsigned int id_cnt = sizeof(mmc_database) / sizeof(struct SDCard_Manufacturer_database);
-		string ret_val = "";
+		std::string ret_val = "";
 
 		for (int i = 0; i < id_cnt; i++)
 		{
@@ -1013,7 +1051,7 @@ string SDCardParseManufacturerIDs(int id)
 	else
 	{
 		unsigned int id_cnt = sizeof(sd_database) / sizeof(struct SDCard_Manufacturer_database);
-		string ret_val = "";
+		std::string ret_val = "";
 
 		for (int i = 0; i < id_cnt; i++)
 		{
@@ -1031,7 +1069,7 @@ string SDCardParseManufacturerIDs(int id)
 	}
 }
 
-string RundeOutput(double _in, int _anzNachkomma)
+std::string RundeOutput(double _in, int _anzNachkomma)
 {
 	std::stringstream stream;
 	int _zw = _in;
@@ -1049,13 +1087,13 @@ string RundeOutput(double _in, int _anzNachkomma)
 	return stream.str();
 }
 
-string getMac(void)
+std::string getMac(void)
 {
 	uint8_t macInt[6];
 	char macFormated[6 * 2 + 5 + 1]; // AA:BB:CC:DD:EE:FF
 
 	esp_read_mac(macInt, ESP_MAC_WIFI_STA);
-	sprintf(macFormated, "%02X:%02X:%02X:%02X:%02X:%02X", macInt[0], macInt[1], macInt[2], macInt[3], macInt[4], macInt[5]);
+	std::sprintf(macFormated, "%02X:%02X:%02X:%02X:%02X:%02X", macInt[0], macInt[1], macInt[2], macInt[3], macInt[4], macInt[5]);
 
 	return macFormated;
 }
@@ -1065,7 +1103,7 @@ void setSystemStatusFlag(SystemStatusFlag_t flag)
 	systemStatus = systemStatus | flag; // set bit
 
 	char buf[20];
-	snprintf(buf, sizeof(buf), "0x%08X", getSystemStatus());
+	std::snprintf(buf, sizeof(buf), "0x%08X", getSystemStatus());
 	LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "New System Status: " + std::string(buf));
 }
 
@@ -1074,7 +1112,7 @@ void clearSystemStatusFlag(SystemStatusFlag_t flag)
 	systemStatus = systemStatus | ~flag; // clear bit
 
 	char buf[20];
-	snprintf(buf, sizeof(buf), "0x%08X", getSystemStatus());
+	std::snprintf(buf, sizeof(buf), "0x%08X", getSystemStatus());
 	LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "New System Status: " + std::string(buf));
 }
 
@@ -1102,7 +1140,7 @@ time_t getUpTime(void)
 	return (uint32_t)(esp_timer_get_time() / 1000 / 1000); // in seconds
 }
 
-string getResetReason(void)
+std::string getResetReason(void)
 {
 	std::string reasonText;
 
@@ -1157,18 +1195,18 @@ std::string getFormatedUptime(bool compact)
 
 	int uptime = getUpTime(); // in seconds
 
-	int days = int(floor(uptime / (3600 * 24)));
-	int hours = int(floor((uptime - days * 3600 * 24) / (3600)));
-	int minutes = int(floor((uptime - days * 3600 * 24 - hours * 3600) / (60)));
+	int days = int(std::floor(uptime / (3600 * 24)));
+	int hours = int(std::floor((uptime - days * 3600 * 24) / (3600)));
+	int minutes = int(std::floor((uptime - days * 3600 * 24 - hours * 3600) / (60)));
 	int seconds = uptime - days * 3600 * 24 - hours * 3600 - minutes * 60;
 
 	if (compact)
 	{
-		snprintf(buf, sizeof(buf), "%dd%02dh%02dm%02ds", days, hours, minutes, seconds);
+		std::snprintf(buf, sizeof(buf), "%dd%02dh%02dm%02ds", days, hours, minutes, seconds);
 	}
 	else
 	{
-		snprintf(buf, sizeof(buf), "%3dd %02dh %02dm %02ds", days, hours, minutes, seconds);
+		std::snprintf(buf, sizeof(buf), "%3dd %02dh %02dm %02ds", days, hours, minutes, seconds);
 	}
 
 	return std::string(buf);
@@ -1244,7 +1282,7 @@ bool isInString(std::string &s, std::string const &toFind)
 {
 	std::size_t pos = s.find(toFind);
 
-	if (pos == std::string::npos) 
+	if (pos == std::string::npos)
 	{
 		// Not found
 		return false;
@@ -1254,11 +1292,11 @@ bool isInString(std::string &s, std::string const &toFind)
 }
 
 // from https://stackoverflow.com/a/14678800
-void replaceAll(std::string& s, const std::string& toReplace, const std::string& replaceWith)
+void replaceAll(std::string &s, const std::string &toReplace, const std::string &replaceWith)
 {
 	size_t pos = 0;
-	
-	while ((pos = s.find(toReplace, pos)) != std::string::npos) 
+
+	while ((pos = s.find(toReplace, pos)) != std::string::npos)
 	{
 		s.replace(pos, toReplace.length(), replaceWith);
 		pos += replaceWith.length();
@@ -1271,10 +1309,10 @@ bool isStringNumeric(std::string &input)
 	{
 		return false;
 	}
-    
+
 	// Replace comma with a dot
 	replaceString(input, ",", ".", false);
-	
+
 	int start = 0;
 	int punkt_existiert_schon = 0;
 

@@ -33,6 +33,6 @@ void delete_all_in_directory(std::string _directory);
 void delete_all_file_in_directory(std::string _directory);
 
 std::string unzip_file(std::string _in_zip_file, std::string _target_directory);
-std::string unzip_ota(std::string _in_zip_file, std::string _target_directory);
+std::string unzip_ota(std::string _in_zip_file, std::string _target_directory, std::string _firmware_directory = "firmware/");
 
 #endif // SERVERHELP_H

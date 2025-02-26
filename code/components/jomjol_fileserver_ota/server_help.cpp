@@ -272,13 +272,14 @@ void delete_all_file_in_directory(std::string _directory)
     closedir(pdir);
 }
 
-std::string unzip_ota(std::string _in_zip_file, std::string _target_directory)
+std::string unzip_ota(std::string _in_zip_file, std::string _target_directory, std::string _firmware_directory)
 {
     size_t uncomp_size;
     mzip_zip_archive zip_archive;
     void *pzip;
     char archive_filename[256];
     std::string ret = "";
+    bool filename_found = false;
 
     ESP_LOGD(TAG, "minizip.c version: %s", MZIP_VERSION);
     ESP_LOGD(TAG, "Zipfile: %s", _in_zip_file.c_str());
@@ -335,7 +336,8 @@ std::string unzip_ota(std::string _in_zip_file, std::string _target_directory)
 
             if (toUpper(archive_filename_zw) == "FIRMWARE.BIN")
             {
-                filepath = _target_directory + "firmware/" + archive_filename_zw;
+                filepath = _target_directory + _firmware_directory + archive_filename_zw;
+                filename_found = true;
                 ret = filepath;
             }
             else if (toUpper(archive_filename_zw) == "BOOTLOADER.BIN" || toUpper(archive_filename_zw) == "PARTITIONS.BIN" || toUpper(archive_filename_zw) == "README.MD")
@@ -349,14 +351,14 @@ std::string unzip_ota(std::string _in_zip_file, std::string _target_directory)
             }
 
             // Create the temp path of the file
-            std::string filepath_zw = filepath + "_0xge";
+            std::string filepath_zw = filepath + "_tmp";
             ESP_LOGD(TAG, "File to extract: %s, Temp. Filename: %s", filepath.c_str(), filepath_zw.c_str());
 
             // Create the required folder if it is not yet available
             MakeDir(getDirectory(filepath_zw));
 
             // delete the temp file if there is still available
-            DeleteFile(filepath_zw);
+            deleteFile(filepath_zw);
 
             // Create the temp file
             FILE *pfile = fopen(filepath_zw.c_str(), "wb");
@@ -368,26 +370,52 @@ std::string unzip_ota(std::string _in_zip_file, std::string _target_directory)
             {
                 // If the creation of the temp file has failed, delete the temp file
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in writting extracted file (function fwrite) extracted file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
-                DeleteFile(filepath_zw);
+                deleteFile(filepath_zw);
+                if (filename_found)
+                {
+                    filename_found = false;
+                    ret = "ERROR";
+                }
+                // Close the archive, freeing any resources it was using
+                mzip_zip_reader_end(&zip_archive);
+                return "ERROR";
             }
             else
             {
-                // If the temp file was written correctly, delete the old file
-                DeleteFile(filepath);
-                // DeleteFileNormalAndGzip(filepath); // Could give problems if both are needed
-
-                // Rename the temp file correctly
-                if (RenameFile(filepath_zw, filepath))
+                // Rename the old file around
+                if (renameFile(filepath, (filepath + "_old")))
                 {
-                    // If everything is ok and there are still files, continue
-                    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Successfully extracted file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
+                    // Rename the temp file correctly
+                    if (renameFile(filepath_zw, filepath))
+                    {
+                        // If everything is ok and there are still files, continue
+                        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Successfully extracted file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
+
+                        // If everything is ok delete the old file
+                        deleteFile((filepath + "_old"));
+                    }
+                    else
+                    {
+                        // If the renaming fails, break off
+                        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in extracting file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
+
+                        deleteFile(filepath);
+                        deleteFile(filepath_zw);
+                        renameFile((filepath + "_old"), filepath);
+
+                        // Close the archive, freeing any resources it was using
+                        mzip_zip_reader_end(&zip_archive);
+                        return "ERROR";
+                    }
                 }
                 else
                 {
                     // If the renaming fails, break off
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in extracting file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
-                    ret = "ERROR";
-                    break;
+
+                    // Close the archive, freeing any resources it was using
+                    mzip_zip_reader_end(&zip_archive);
+                    return "ERROR";
                 }
             }
         }
@@ -458,14 +486,14 @@ std::string unzip_file(std::string _in_zip_file, std::string _target_directory)
             ESP_LOGD(TAG, "File to extract: %s", filepath.c_str());
 
             // Create the temp path of the file
-            std::string filepath_zw = filepath + "_0xge";
+            std::string filepath_zw = filepath + "_tmp";
             ESP_LOGD(TAG, "File to extract: %s, Temp. Filename: %s", filepath.c_str(), filepath_zw.c_str());
 
             // Create the required folder if it is not yet available
             MakeDir(getDirectory(filepath_zw));
 
             // delete the temp file if there is still available
-            DeleteFile(filepath_zw);
+            deleteFile(filepath_zw);
 
             // Create the temp file
             FILE *pfile = fopen(filepath_zw.c_str(), "wb");
@@ -477,26 +505,49 @@ std::string unzip_file(std::string _in_zip_file, std::string _target_directory)
             {
                 // If the creation of the temp file has failed, delete the temp file
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in writting extracted file (function fwrite) extracted file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
-                DeleteFile(filepath_zw);
+                
+                deleteFile(filepath_zw);
+
+                // Close the archive, freeing any resources it was using
+                mzip_zip_reader_end(&zip_archive);
+                return "ERROR";
             }
             else
             {
-                // If the temp file was written correctly, delete the old file
-                DeleteFile(filepath);
-                // DeleteFileNormalAndGzip(filepath); // Could give problems if both are needed
-
-                // Rename the temp file correctly
-                if (RenameFile(filepath_zw, filepath))
+                // Rename the old file around
+                if (renameFile(filepath, (filepath + "_old")))
                 {
-                    // If everything is ok and there are still files, continue
-                    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Successfully extracted file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
+                    // Rename the temp file correctly
+                    if (renameFile(filepath_zw, filepath))
+                    {
+                        // If everything is ok and there are still files, continue
+                        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Successfully extracted file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
+
+                        // If everything is ok delete the old file
+                        deleteFile((filepath + "_old"));
+                    }
+                    else
+                    {
+                        // If the renaming fails, break off
+                        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in extracting file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
+
+                        deleteFile(filepath);
+                        deleteFile(filepath_zw);
+                        renameFile((filepath + "_old"), filepath);
+
+                        // Close the archive, freeing any resources it was using
+                        mzip_zip_reader_end(&zip_archive);
+                        return "ERROR";
+                    }
                 }
                 else
                 {
-                    // If the renaming fails, breaks off
+                    // If the renaming fails, break off
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in extracting file \"" + std::string(archive_filename) + "\", size " + std::to_string(uncomp_size));
-                    ret = "ERROR";
-                    break;
+
+                    // Close the archive, freeing any resources it was using
+                    mzip_zip_reader_end(&zip_archive);
+                    return "ERROR";
                 }
             }
         }
