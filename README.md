@@ -254,7 +254,7 @@ There are some ideas and feature requests which are not currently being pursuedâ
                 <a href="https://github.com/SybexX">
                     <img src="https://avatars.githubusercontent.com/u/587201?v=4" width="100;" alt="SybexX"/>
                     <br />
-                    <sub><b>michael</b></sub>
+                    <sub><b>SybexX</b></sub>
                 </a>
             </td>
             <td align="center">
