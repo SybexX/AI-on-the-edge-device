@@ -147,6 +147,7 @@ bool doflow(void)
 esp_err_t setCCstatusToCFstatus(void)
 {
     CFstatus.CamSensor_id = CCstatus.CamSensor_id;
+    CFstatus.CamXclkFreqMhz = CCstatus.CamXclkFreqMhz;
 
     CFstatus.ImageFrameSize = CCstatus.ImageFrameSize;
 
@@ -199,6 +200,7 @@ esp_err_t setCCstatusToCFstatus(void)
 esp_err_t setCFstatusToCCstatus(void)
 {
     // CCstatus.CamSensor_id = CFstatus.CamSensor_id;
+    CCstatus.CamXclkFreqMhz = CFstatus.CamXclkFreqMhz;
 
     CCstatus.ImageFrameSize = CFstatus.ImageFrameSize;
 
@@ -254,6 +256,7 @@ esp_err_t setCFstatusToCam(void)
 
     if (s != NULL)
     {
+        s->set_framesize(s, LEDC_TIMER_0, CFstatus.CamXclkFreqMhz);
         s->set_framesize(s, CFstatus.ImageFrameSize);
 
         // s->set_contrast(s, CFstatus.ImageContrast);     // -2 to 2
@@ -982,6 +985,16 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     CFstatus.WaitBeforePicture = std::stoi(_valuechar);
                 }
             }
+			
+            if (httpd_query_key_value(_query, "xclk", _valuechar, 30) == ESP_OK)
+            {
+                std::string _xclk = std::string(_valuechar);
+                if (isStringNumeric(_xclk))
+                {
+                    int _xclk_ = std::stoi(_valuechar);
+                    CFstatus.CamXclkFreqMhz = clipInt(_xclk_, 20, 1);
+                }
+            }
 
             if (httpd_query_key_value(_query, "aecgc", _valuechar, 30) == ESP_OK)
             {
@@ -1389,7 +1402,6 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 setCFstatusToCam();
 
                 Camera.SetQualityZoomSize(CFstatus.ImageQuality, CFstatus.ImageFrameSize, CFstatus.ImageZoomEnabled, CFstatus.ImageZoomOffsetX, CFstatus.ImageZoomOffsetY, CFstatus.ImageZoomSize, CFstatus.ImageVflip);
-                // Camera.SetZoomSize(CFstatus.ImageZoomEnabled, CFstatus.ImageZoomOffsetX, CFstatus.ImageZoomOffsetY, CFstatus.ImageZoomSize, CFstatus.ImageVflip);
 
                 // Kameraeinstellungen wurden verädert
                 CFstatus.changedCameraSettings = true;

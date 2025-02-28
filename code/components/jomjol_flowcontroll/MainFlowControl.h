@@ -14,6 +14,7 @@
 typedef struct
 {
     uint16_t CamSensor_id;
+    int CamXclkFreqMhz;
 
     framesize_t ImageFrameSize = FRAMESIZE_VGA; // 0 - 10
     gainceiling_t ImageGainceiling;             // Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)

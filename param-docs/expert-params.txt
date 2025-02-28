@@ -1,4 +1,5 @@
 WaitBeforeTakingPicture
+CamXclkFreqMhz
 CamFrameSize
 CamGainceiling
 CamQuality

@@ -65,9 +65,7 @@ void ClassFlowTakeImage::SetInitialParameter(void)
 bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
 {
     Camera.getSensorDatenToCCstatus(); // Kamera >>> CCstatus
-
     std::vector<string> splitted;
-
     aktparamgraph = trim(aktparamgraph);
 
     if (aktparamgraph.size() == 0)
@@ -120,6 +118,15 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
                 {
                     CCstatus.WaitBeforePicture = 2;
                 }
+            }
+        }
+
+        else if ((toUpper(splitted[0]) == "CAMXCLKFREQMHZ") && (splitted.size() > 1))
+        {
+            if (isStringNumeric(splitted[1]))
+            {
+                int _CamXclkFreqMhz = std::stoi(splitted[1]);
+                CCstatus.CamXclkFreqMhz = clipInt(_CamXclkFreqMhz, 20, 1);
             }
         }
 

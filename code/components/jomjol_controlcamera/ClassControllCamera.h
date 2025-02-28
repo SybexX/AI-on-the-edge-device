@@ -18,6 +18,7 @@
 typedef struct
 {
     uint16_t CamSensor_id;
+    int CamXclkFreqMhz;
 
     framesize_t ImageFrameSize = FRAMESIZE_VGA; // 0 - 10
     gainceiling_t ImageGainceiling;             // Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)
@@ -96,9 +97,6 @@ public:
     void SetCamSpecialEffect(sensor_t *s, int specialEffect);
     void SetCamContrastBrightness(sensor_t *s, int _contrast, int _brightness);
 
-    esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0);
-    esp_err_t CaptureToStream(httpd_req_t *req, bool FlashlightOn);
-
     void SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
     void SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
 
@@ -108,6 +106,9 @@ public:
     void useDemoMode(void);
 
     framesize_t TextToFramesize(const char *text);
+
+    esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0);
+    esp_err_t CaptureToStream(httpd_req_t *req, bool FlashlightOn);
 
     esp_err_t CaptureToFile(std::string nm, int delay = 0);
     esp_err_t CaptureToBasisImage(CImageBasis *_Image, int delay = 0);
