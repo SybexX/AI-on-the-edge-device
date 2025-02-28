@@ -9,6 +9,8 @@
 #include <iomanip>
 #include <sstream>
 
+#include "driver/ledc.h"
+
 #include "../../include/defines.h"
 #include "Helper.h"
 #include "statusled.h"
