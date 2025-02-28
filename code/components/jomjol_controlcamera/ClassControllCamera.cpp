@@ -248,7 +248,7 @@ esp_err_t CCamera::setSensorDatenFromCCstatus(void)
 
     if (s != NULL)
     {
-        s->set_framesize(s, LEDC_TIMER_0, CCstatus.CamXclkFreqMhz);
+        s->set_xclk(s, LEDC_TIMER_0, CCstatus.CamXclkFreqMhz);
         s->set_framesize(s, CCstatus.ImageFrameSize);
 		
         // s->set_contrast(s, CCstatus.ImageContrast);     // -2 to 2

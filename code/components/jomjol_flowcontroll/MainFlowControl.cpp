@@ -258,7 +258,7 @@ esp_err_t setCFstatusToCam(void)
 
     if (s != NULL)
     {
-        s->set_framesize(s, LEDC_TIMER_0, CFstatus.CamXclkFreqMhz);
+        s->set_xclk(s, LEDC_TIMER_0, CFstatus.CamXclkFreqMhz);
         s->set_framesize(s, CFstatus.ImageFrameSize);
 
         // s->set_contrast(s, CFstatus.ImageContrast);     // -2 to 2
