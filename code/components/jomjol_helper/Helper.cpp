@@ -49,7 +49,57 @@ bool SDCardIsMMC;
 
 // #define DEBUG_DETAIL_ON
 
-/////////////////////////////////////////////////////////////////////////////////////////////
+#if CONFIG_SOC_TEMP_SENSOR_SUPPORTED
+// The ESP32-S2/C3/S3/C2 has a built-in temperature sensor.
+// The temperature sensor module contains an 8-bit Sigma-Delta ADC and a temperature offset DAC.
+// https://github.com/espressif/esp-idf/blob/master/examples/peripherals/temperature_sensor/
+temperature_sensor_handle_t temp_handle = NULL;
+temperature_sensor_config_t temp_sensor = {
+	.range_min = -10,
+	.range_max = 80,
+	.clk_src = TEMPERATURE_SENSOR_CLK_SRC_DEFAULT,
+};
+
+void initTempsensor(void)
+{
+	ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor, &temp_handle));
+
+	xTaskCreate([](void *pvParameters)
+				{
+		while (1)
+		{
+			// Get converted sensor data
+			float tsens_out;
+
+			// Enable temperature sensor
+			ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
+			ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_handle, &tsens_out));
+			tsens_value = tsens_out;
+			// Disable the temperature sensor if it is not needed and save the power
+			ESP_ERROR_CHECK(temperature_sensor_disable(temp_handle));
+
+			vTaskDelay(pdMS_TO_TICKS(5000));
+		} }, "tempsensor_task", 2048, NULL, 5, NULL);
+}
+
+float temperatureRead(void)
+{
+	return tsens_value;
+}
+
+#elif CONFIG_IDF_TARGET_ESP32
+
+// CPU Temp
+extern "C" uint8_t temprature_sens_read(void);
+
+float temperatureRead(void)
+{
+	// convert Fahrenheit to Celsius (F-32) * (5/9) = degree Celsius
+	tsens_value = (temprature_sens_read() - 32) / 1.8;
+	return tsens_value;
+}
+#endif
+
 string getESPHeapInfo()
 {
 	string espInfoResultStr = "";
@@ -647,20 +697,6 @@ string toLower(string in)
 	return in;
 }
 
-// CPU Temp
-extern "C" uint8_t temprature_sens_read();
-float temperatureRead()
-{
-	return (temprature_sens_read() - 32) / 1.8;
-}
-
-time_t addDays(time_t startTime, int days)
-{
-	struct tm *tm = localtime(&startTime);
-	tm->tm_mday += days;
-	return mktime(tm);
-}
-
 int removeFolder(const char *folderPath, const char *logTag)
 {
 	// ESP_LOGD(logTag, "Delete content in path %s", folderPath);
@@ -768,19 +804,6 @@ std::vector<string> ZerlegeZeile(std::string input, std::string delimiter)
 	}
 
 	return Output;
-}
-
-std::string ReplaceString(std::string subject, const std::string &search, const std::string &replace)
-{
-	size_t pos = 0;
-
-	while ((pos = subject.find(search, pos)) != std::string::npos)
-	{
-		subject.replace(pos, search.length(), replace);
-		pos += replace.length();
-	}
-
-	return subject;
 }
 
 /* Source: https://git.kernel.org/pub/scm/utils/mmc/mmc-utils.git/tree/lsmmc.c */
@@ -1202,6 +1225,17 @@ std::string UrlDecode(const std::string &value)
 	return result;
 }
 
+void replaceAll(std::string &s, const std::string& toReplace, const std::string& replaceWith)
+{
+	size_t pos = 0;
+	
+	while ((pos = s.find(toReplace, pos)) != std::string::npos) 
+	{
+		s.replace(pos, toReplace.length(), replaceWith);
+		pos += replaceWith.length();
+	}
+}
+
 bool replaceString(std::string &s, std::string const &toReplace, std::string const &replaceWith)
 {
 	return replaceString(s, toReplace, replaceWith, true);
@@ -1239,18 +1273,6 @@ bool isInString(std::string &s, std::string const &toFind)
 	}
 
 	return true;
-}
-
-// from https://stackoverflow.com/a/14678800
-void replaceAll(std::string& s, const std::string& toReplace, const std::string& replaceWith)
-{
-	size_t pos = 0;
-	
-	while ((pos = s.find(toReplace, pos)) != std::string::npos) 
-	{
-		s.replace(pos, toReplace.length(), replaceWith);
-		pos += replaceWith.length();
-	}
 }
 
 bool isStringNumeric(std::string &input)

@@ -392,6 +392,12 @@ extern "C" void app_main(void)
     // Set CPU Frequency
     // ********************************************
     setCpuFrequency();
+	
+#if defined(CONFIG_SOC_TEMP_SENSOR_SUPPORTED)
+    // temperature sensor
+    // ********************************************
+    initTempsensor();
+#endif
 
     // Start SoftAP for initial remote setup
     // Note: Start AP if no wlan.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
