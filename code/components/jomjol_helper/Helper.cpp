@@ -697,6 +697,13 @@ string toLower(string in)
 	return in;
 }
 
+time_t addDays(time_t startTime, int days)
+{
+    struct tm *tm = localtime(&startTime);
+    tm->tm_mday += days;
+    return mktime(tm);
+}
+
 int removeFolder(const char *folderPath, const char *logTag)
 {
 	// ESP_LOGD(logTag, "Delete content in path %s", folderPath);
