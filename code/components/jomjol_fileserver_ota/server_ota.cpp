@@ -1,4 +1,5 @@
 #include "server_ota.h"
+#include "server_help.h"
 
 #include <string>
 #include "string.h"
@@ -8,7 +9,6 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 #include "esp_private/esp_int_wdt.h"
 
 #include <esp_task_wdt.h>
-
 
 #include <string.h>
 #include "freertos/FreeRTOS.h"
@@ -23,27 +23,27 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 #include "esp_app_format.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
-// #include "protocol_examples_common.h"
 #include "errno.h"
 
 #include <sys/stat.h>
 
+#include "../../include/defines.h"
 #include "MainFlowControl.h"
 #include "server_file.h"
 #include "server_GPIO.h"
+
 #ifdef ENABLE_MQTT
     #include "interface_mqtt.h"
 #endif //ENABLE_MQTT
+
 #include "ClassControllCamera.h"
 #include "connect_wlan.h"
-
 
 #include "ClassLogFile.h"
 
 #include "Helper.h"
 #include "statusled.h"
 #include "basic_auth.h"
-#include "../../include/defines.h"
 
 /*an ota data write buffer ready to write to the flash*/
 static char ota_write_data[SERVER_OTA_SCRATCH_BUFSIZE + 1] = { 0 };
@@ -56,7 +56,6 @@ static bool ota_update_task(std::string fn);
 std::string _file_name_update;
 bool initial_setup = false;
 
-
 static void infinite_loop(void)
 {
     int i = 0;
@@ -66,7 +65,6 @@ static void infinite_loop(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
-
 
 void task_do_Update_ZIP(void *pvParameter)
 {
@@ -91,7 +89,7 @@ void task_do_Update_ZIP(void *pvParameter)
 
         /* Extract the ZIP file. The content of the html folder gets extracted to the temporar folder html-temp. */
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Extracting ZIP file " + _file_name_update + "...");
-        retfirmware = unzip_new(_file_name_update, outHtmlTmp+"/", outHtml+"/", outbin+"/", "/sdcard/", initial_setup);
+        retfirmware = unzip_ota(_file_name_update, outHtmlTmp+"/", outHtml+"/", outbin+"/", "/sdcard/", initial_setup);
     	LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Files unzipped.");
 
         /* ZIP file got extracted, replace the old html folder with the new one */
@@ -122,7 +120,6 @@ void task_do_Update_ZIP(void *pvParameter)
     	LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Only ZIP-Files support for update during startup!");
     }
 }
-
 
 void CheckUpdate()
 {
@@ -156,7 +153,6 @@ void CheckUpdate()
     }
 }
 
-
 static bool ota_update_task(std::string fn)
 {
     esp_err_t err;
@@ -170,18 +166,14 @@ static bool ota_update_task(std::string fn)
     const esp_partition_t *running = esp_ota_get_running_partition();
 
     if (configured != running) {        
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Configured OTA boot partition at offset " + to_string(configured->address) + 
-                ", but running from offset " + to_string(running->address));
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Configured OTA boot partition at offset " + to_string(configured->address) + ", but running from offset " + to_string(running->address));
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "(This can happen if either the OTA boot data or preferred boot image become somehow corrupted.)");
     }
-    ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)",
-             running->type, running->subtype, (unsigned int)running->address);
+    ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)", running->type, running->subtype, (unsigned int)running->address);
 
 
     update_partition = esp_ota_get_next_update_partition(NULL);
-    ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x",
-             update_partition->subtype, (unsigned int)update_partition->address);
-//    assert(update_partition != NULL);
+    ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, (unsigned int)update_partition->address);
 
     int binary_file_length = 0;
 
@@ -192,7 +184,8 @@ static bool ota_update_task(std::string fn)
 
     FILE* f = fopen(fn.c_str(), "rb");     // previously only "r
 
-    if (f == NULL) { // File does not exist
+    if (f == NULL) { 
+        // File does not exist
         return false;
     }
 
@@ -202,7 +195,8 @@ static bool ota_update_task(std::string fn)
         if (data_read < 0) {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Error: SSL data read error");
             return false;
-        } else if (data_read > 0) {
+        } 
+        else if (data_read > 0) {
             if (image_header_was_checked == false) {
                 esp_app_desc_t new_app_info;
                 if (data_read > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t)) {
@@ -232,12 +226,6 @@ static bool ota_update_task(std::string fn)
                         }
                     }
 
-/*
-                    if (memcmp(new_app_info.version, running_app_info.version, sizeof(new_app_info.version)) == 0) {
-                        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Current running version is the same as a new. We will not continue the update");
-                        infinite_loop();
-                    }
-*/
                     image_header_was_checked = true;
 
                     err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
@@ -246,7 +234,8 @@ static bool ota_update_task(std::string fn)
                         return false;
                     }
                     ESP_LOGI(TAG, "esp_ota_begin succeeded");
-                } else {
+                } 
+                else {
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "received package is not fit len");
                     return false;
                 }
@@ -257,11 +246,10 @@ static bool ota_update_task(std::string fn)
             }
             binary_file_length += data_read;
             ESP_LOGD(TAG, "Written image length %d", binary_file_length);
-        } else if (data_read == 0) {
-           //
+        } 
+        else if (data_read == 0) {
            // * As esp_http_client_read never returns negative error code, we rely on
            // * `errno` to check for underlying transport connectivity closure if any
-           //
             if (errno == ECONNRESET || errno == ENOTCONN) {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Connection closed, errno = " + to_string(errno));
                 break;
@@ -287,12 +275,9 @@ static bool ota_update_task(std::string fn)
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_ota_set_boot_partition failed (" + string(esp_err_to_name(err)) + ")!");
 
     }
-//    ESP_LOGI(TAG, "Prepare to restart system!");
-//    esp_restart();
 
     return true ;
 }
-
 
 static void print_sha256 (const uint8_t *image_hash, const char *label)
 {
@@ -304,12 +289,10 @@ static void print_sha256 (const uint8_t *image_hash, const char *label)
     ESP_LOGI(TAG, "%s: %s", label, hash_print);
 }
 
-
 static bool diagnostic(void)
 {
     return true;
 }
-
 
 void CheckOTAUpdate(void)
 {
@@ -350,7 +333,8 @@ void CheckOTAUpdate(void)
                     if (diagnostic_is_ok) {
                         ESP_LOGI(TAG, "Diagnostics completed successfully! Continuing execution...");
                         esp_ota_mark_app_valid_cancel_rollback();
-                    } else {
+                    } 
+                    else {
                         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Diagnostics failed! Start rollback to the previous version...");
                         esp_ota_mark_app_invalid_rollback_and_reboot();
                     }
@@ -374,14 +358,14 @@ void CheckOTAUpdate(void)
             if (diagnostic_is_ok) {
                 ESP_LOGI(TAG, "Diagnostics completed successfully! Continuing execution...");
                 esp_ota_mark_app_valid_cancel_rollback();
-            } else {
+            } 
+            else {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Diagnostics failed! Start rollback to the previous version...");
                 esp_ota_mark_app_invalid_rollback_and_reboot();
             }
         }
     }
 }
-
 
 esp_err_t handler_ota_update(httpd_req_t *req)
 {
@@ -462,7 +446,6 @@ esp_err_t handler_ota_update(httpd_req_t *req)
             return ESP_OK;
         }
 
-
         if ((filetype == "ZIP") || (filetype == "BIN"))
         {
            	FILE *pfile;
@@ -476,42 +459,13 @@ esp_err_t handler_ota_update(httpd_req_t *req)
             httpd_resp_sendstr_chunk(req, NULL);  
             ESP_LOGD(TAG, "Send reboot");
             return ESP_OK;                
-
         }
-
-/*
-        if (filetype == "BIN")
-        {
-            const char* resp_str; 
-
-            DeleteMainFlowTask();
-            gpio_handler_deinit();
-            if (ota_update_task(fn))
-            {
-                std::string zw = "reboot\n";
-                httpd_resp_sendstr_chunk(req, zw.c_str());
-                httpd_resp_sendstr_chunk(req, NULL);  
-                ESP_LOGD(TAG, "Send reboot");
-                return ESP_OK;                
-            }
-
-            resp_str = "Error during Firmware Update!!!\nPlease check output of console.";
-            httpd_resp_send(req, resp_str, strlen(resp_str));  
-
-            #ifdef DEBUG_DETAIL_ON 
-                LogFile.WriteHeapInfo("handler_ota_update - Done");    
-            #endif
-
-            return ESP_OK;
-        }
-*/
 
         std::string zw = "Update failed - no valid file specified (zip, bin, tfl, tlite)!";
         httpd_resp_sendstr_chunk(req, zw.c_str());
         httpd_resp_sendstr_chunk(req, NULL);  
         return ESP_OK;        
     }
-
 
     if (_task.compare("unziphtml") == 0)
     {
@@ -523,7 +477,7 @@ esp_err_t handler_ota_update(httpd_req_t *req)
 
         delete_all_in_directory(out);
 
-        unzip(in, out+"/");
+        unzip_file(in, out+"/");
         zw = "Web Interface Update Successfull!\nNo reboot necessary";
         httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
         httpd_resp_sendstr_chunk(req, NULL);  
@@ -545,6 +499,7 @@ esp_err_t handler_ota_update(httpd_req_t *req)
         {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File does not exist: " + fn);
         }
+
         /* Respond with an empty chunk to signal HTTP response completion */
         std::string zw = "file deleted\n";
         ESP_LOGD(TAG, "%s", zw.c_str());
@@ -560,30 +515,12 @@ esp_err_t handler_ota_update(httpd_req_t *req)
 
     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ota without parameter - should not be the case!");
 
-/*  
-    const char* resp_str;    
-
-    DeleteMainFlowTask();
-    gpio_handler_deinit();
-    if (ota_update_task(fn))
-    {
-        resp_str = "Firmware Update Successfull! You can restart now.";
-    }
-    else
-    {
-        resp_str = "Error during Firmware Update!!! Please check console output.";
-    }
-
-    httpd_resp_send(req, resp_str, strlen(resp_str));  
-*/
-
     #ifdef DEBUG_DETAIL_ON 
         LogFile.WriteHeapInfo("handler_ota_update - Done");    
     #endif
 
     return ESP_OK;
 }
-
 
 void hard_restart() 
 {
@@ -597,7 +534,6 @@ void hard_restart()
   esp_task_wdt_add(NULL);
   while(true);
 }
-
 
 void task_reboot(void *DeleteMainFlow)
 {
@@ -620,6 +556,7 @@ void task_reboot(void *DeleteMainFlow)
     #ifdef ENABLE_MQTT
         MQTTdestroy_client(true);
     #endif //ENABLE_MQTT
+
     gpio_handler_destroy();
     esp_camera_deinit();
     WIFIDestroy();
@@ -633,7 +570,6 @@ void task_reboot(void *DeleteMainFlow)
     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Reboot failed!");
     vTaskDelete(NULL); //Delete this task if it comes to this point
 }
-
 
 void doReboot()
 {
@@ -649,7 +585,6 @@ void doReboot()
     vTaskDelay(10000 / portTICK_PERIOD_MS); // Prevent serving web client fetch response until system is shuting down
 }
 
-
 void doRebootOTA()
 {
     LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reboot in 5sec");
@@ -664,7 +599,6 @@ void doRebootOTA()
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     hard_restart();     // Reset type: System reset (Triggered by watchdog), if esp_restart stalls (WDT needs to be activated)
 }
-
 
 esp_err_t handler_reboot(httpd_req_t *req)
 {
@@ -697,7 +631,6 @@ esp_err_t handler_reboot(httpd_req_t *req)
     return ESP_OK;
 }
 
-
 void register_server_ota_sdcard_uri(httpd_handle_t server)
 {
     ESP_LOGI(TAG, "Registering URI handlers");
@@ -714,5 +647,4 @@ void register_server_ota_sdcard_uri(httpd_handle_t server)
     camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_reboot);
     camuri.user_ctx  = (void*) "Reboot";    
     httpd_register_uri_handler(server, &camuri);
-
 }

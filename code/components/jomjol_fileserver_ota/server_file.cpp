@@ -23,6 +23,9 @@ extern "C" {
 }
 #endif
 
+#include <iostream>
+#include <sys/types.h>
+
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -37,16 +40,20 @@ extern "C" {
 
 #include "server_help.h"
 #include "md5.h"
+
 #ifdef ENABLE_MQTT
     #include "interface_mqtt.h"
 #endif //ENABLE_MQTT
+
 #include "server_GPIO.h"
 
 #include "Helper.h"
-#include "miniz.h"
 #include "basic_auth.h"
 
 static const char *TAG = "OTA FILE";
+
+static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file);
+static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file);
 
 struct file_server_data {
     /* Base path of file storage */
@@ -55,17 +62,6 @@ struct file_server_data {
     /* Scratch buffer for temporary storage during file transfer */
     char scratch[SERVER_FILER_SCRATCH_BUFSIZE];
 };
-
-#include <iostream>
-#include <sys/types.h>
-#include <dirent.h>
-
-using namespace std;
-
-string SUFFIX_ZW = "_tmp";
-
-static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file);
-static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file);
 
 esp_err_t get_numbers_file_handler(httpd_req_t *req)
 {
@@ -834,14 +830,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
         ESP_LOGD(TAG, "Directory to delete: %s", zw.c_str());
 
         delete_all_in_directory(zw);
-//        directory = std::string(filepath);
-//        directory = "/fileserver" + directory;
-        ESP_LOGD(TAG, "Location after delete directory content: %s", directory.c_str());
-        /* Redirect onto root to see the updated file list */
-//        httpd_resp_set_status(req, "303 See Other");
-//        httpd_resp_set_hdr(req, "Location", directory.c_str());
-//        httpd_resp_sendstr(req, "File deleted successfully");
-//        return ESP_OK;        
+        ESP_LOGD(TAG, "Location after delete directory content: %s", directory.c_str());       
     }
     else
     {
@@ -922,279 +911,28 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-void delete_all_in_directory(std::string _directory)
-{
-    struct dirent *entry;
-    DIR *dir = opendir(_directory.c_str());
-    std::string filename;
-
-    if (!dir) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to stat dir: " + _directory);
-        return;
-    }
-
-    /* Iterate over all files / folders and fetch their names and sizes */
-    while ((entry = readdir(dir)) != NULL) {
-        if (!(entry->d_type == DT_DIR)){
-            if (strcmp("wlan.ini", entry->d_name) != 0){                    // auf wlan.ini soll nicht zugegriffen werden !!!
-                filename = _directory + "/" + std::string(entry->d_name);
-                LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Deleting file: " + filename);
-                /* Delete file */
-                unlink(filename.c_str());    
-            }
-        };
-    }
-    closedir(dir);
-}
-
-std::string unzip_new(std::string _in_zip_file, std::string _html_tmp, std::string _html_final, std::string _target_bin, std::string _main, bool _initial_setup)
-{
-    int i, sort_iter;
-    mz_bool status;
-    size_t uncomp_size;
-    mz_zip_archive zip_archive;
-    void* p;
-    char archive_filename[64];
-    std::string zw, ret = "";
-    std::string directory = "";
-
-    ESP_LOGD(TAG, "miniz.c version: %s", MZ_VERSION);
-    ESP_LOGD(TAG, "Zipfile: %s", _in_zip_file.c_str());
-
-    // Now try to open the archive.
-    memset(&zip_archive, 0, sizeof(zip_archive));
-    status = mz_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), 0);
-    if (!status)
-    {
-        ESP_LOGD(TAG, "mz_zip_reader_init_file() failed!");
-        return ret;
-    }
-
-    // Get and print information about each file in the archive.
-    int numberoffiles = (int)mz_zip_reader_get_num_files(&zip_archive);
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Files to be extracted: " + to_string(numberoffiles));
-
-    sort_iter = 0;
-    {
-        memset(&zip_archive, 0, sizeof(zip_archive));
-        status = mz_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), sort_iter ? MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY : 0);
-        if (!status)
-        {
-            ESP_LOGD(TAG, "mz_zip_reader_init_file() failed!");
-            return ret;
-        }
-
-        for (i = 0; i < numberoffiles; i++)
-        {
-            mz_zip_archive_file_stat file_stat;
-            mz_zip_reader_file_stat(&zip_archive, i, &file_stat);
-            sprintf(archive_filename, file_stat.m_filename);
-            
-            if (!file_stat.m_is_directory) {
-            // Try to extract all the files to the heap.
-            p = mz_zip_reader_extract_file_to_heap(&zip_archive, archive_filename, &uncomp_size, 0);
-                if (!p)
-                {
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mz_zip_reader_extract_file_to_heap() failed on file " + string(archive_filename));
-                    mz_zip_reader_end(&zip_archive);
-                    return ret;
-                }
-            
-                // Save to File.
-                zw = std::string(archive_filename);
-                ESP_LOGD(TAG, "Rohfilename: %s", zw.c_str());
-
-                if (toUpper(zw) == "FIRMWARE.BIN")
-                {
-                    zw = _target_bin + zw;
-                    ret = zw;
-                }
-                else
-                {
-                    std::string _dir = getDirectory(zw);
-                    if ((_dir == "config-initial") && !_initial_setup)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        _dir = "config";
-                        std::string _s1 = "config-initial";
-                        FindReplace(zw, _s1, _dir);
-                    }
-
-                    if (_dir.length() > 0)
-                    {
-                        zw = _main + zw;
-                    }
-                    else
-                    {
-                        zw = _html_tmp + zw;
-                    }
-
-                }
-
-                // files in the html folder shall be redirected to the temporary html folder
-                if (zw.find(_html_final) == 0) {
-                    FindReplace(zw, _html_final, _html_tmp);
-                }
-            
-                string filename_zw = zw + SUFFIX_ZW;
-
-                ESP_LOGI(TAG, "File to extract: %s, Temp. Filename: %s", zw.c_str(), filename_zw.c_str());
-
-                std::string folder = filename_zw.substr(0, filename_zw.find_last_of('/'));
-                MakeDir(folder);
-
-                // extrahieren in zwischendatei
-                DeleteFile(filename_zw);
-
-                FILE* fpTargetFile = fopen(filename_zw.c_str(), "wb");
-                uint writtenbytes = fwrite(p, 1, (uint)uncomp_size, fpTargetFile);
-                fclose(fpTargetFile);
-                
-                bool isokay = true;
-
-                if (writtenbytes == (uint)uncomp_size)
-                {
-                    isokay = true;
-                }
-                else
-                {
-                    isokay = false;
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in writting extracted file (function fwrite) extracted file \"" +
-                            string(archive_filename) + "\", size " + to_string(uncomp_size));
-                }
-
-                DeleteFile(zw);
-                if (!isokay)
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in fwrite \"" + string(archive_filename) + "\", size " + to_string(uncomp_size));
-                isokay = isokay && RenameFile(filename_zw, zw);
-                if (!isokay)
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in Rename \"" + filename_zw + "\" to \"" + zw);
-
-                if (isokay)
-                    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Successfully extracted file \"" + string(archive_filename) + "\", size " + to_string(uncomp_size));
-                else
-                {
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ERROR in extracting file \"" + string(archive_filename) + "\", size " + to_string(uncomp_size));
-                    ret = "ERROR";
-                }
-                mz_free(p);
-            }
-        }
-
-        // Close the archive, freeing any resources it was using
-        mz_zip_reader_end(&zip_archive);
-    }
-
-    ESP_LOGD(TAG, "Success.");
-    return ret;
-}
-
-void unzip(std::string _in_zip_file, std::string _target_directory){
-    int i, sort_iter;
-    mz_bool status;
-    size_t uncomp_size;
-    mz_zip_archive zip_archive;
-    void* p;
-    char archive_filename[64];
-    std::string zw;
-//    static const char* s_Test_archive_filename = "testhtml.zip";
-
-    ESP_LOGD(TAG, "miniz.c version: %s", MZ_VERSION);
-    ESP_LOGD(TAG, "Zipfile: %s", _in_zip_file.c_str());
-    ESP_LOGD(TAG, "Target Dir: %s", _target_directory.c_str());
-
-    // Now try to open the archive.
-    memset(&zip_archive, 0, sizeof(zip_archive));
-    status = mz_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), 0);
-    if (!status)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mz_zip_reader_init_file() failed!");
-        return;
-    }
-
-    // Get and print information about each file in the archive.
-    int numberoffiles = (int)mz_zip_reader_get_num_files(&zip_archive);
-    for (sort_iter = 0; sort_iter < 2; sort_iter++)
-    {
-        memset(&zip_archive, 0, sizeof(zip_archive));
-        status = mz_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), sort_iter ? MZ_ZIP_FLAG_DO_NOT_SORT_CENTRAL_DIRECTORY : 0);
-        if (!status)
-        {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mz_zip_reader_init_file() failed!");
-            return;
-        }
-
-        for (i = 0; i < numberoffiles; i++)
-        {
-            mz_zip_archive_file_stat file_stat;
-            mz_zip_reader_file_stat(&zip_archive, i, &file_stat);
-            sprintf(archive_filename, file_stat.m_filename);
- 
-            // Try to extract all the files to the heap.
-            p = mz_zip_reader_extract_file_to_heap(&zip_archive, archive_filename, &uncomp_size, 0);
-            if (!p)
-            {
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "mz_zip_reader_extract_file_to_heap() failed!");
-                mz_zip_reader_end(&zip_archive);
-                return;
-            }
-
-            // Save to File.
-            zw = std::string(archive_filename);
-            zw = _target_directory + zw;
-            ESP_LOGD(TAG, "File to extract: %s", zw.c_str());
-            FILE* fpTargetFile = fopen(zw.c_str(), "wb");
-            fwrite(p, 1, (uint)uncomp_size, fpTargetFile);
-            fclose(fpTargetFile);
-
-            ESP_LOGD(TAG, "Successfully extracted file \"%s\", size %u", archive_filename, (uint)uncomp_size);
-            //            ESP_LOGD(TAG, "File data: \"%s\"", (const char*)p);
-
-            // We're done.
-            mz_free(p);
-        }
-
-        // Close the archive, freeing any resources it was using
-        mz_zip_reader_end(&zip_archive);
-    }
-
-    ESP_LOGD(TAG, "Success.");
-}
-
 void register_server_file_uri(httpd_handle_t server, const char *base_path)
 {
     static struct file_server_data *server_data = NULL;
 
     /* Validate file storage base path */
     if (!base_path) {
-//    if (!base_path || strcmp(base_path, "/spiffs") != 0) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File server base_path not set");
-//        return ESP_ERR_INVALID_ARG;
     }
 
     if (server_data) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File server already started");
-//        return ESP_ERR_INVALID_STATE;
     }
 
     /* Allocate memory for server data */
     server_data = (file_server_data *) calloc(1, sizeof(struct file_server_data));
     if (!server_data) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to allocate memory for server data");
-//        return ESP_ERR_NO_MEM;
     }
     strlcpy(server_data->base_path, base_path,
             sizeof(server_data->base_path));
 
     /* URI handler for getting uploaded files */
-//    char zw[sizeof(serverprefix)+1];
-//    strcpy(zw, serverprefix);
-//    zw[strlen(serverprefix)] = '*';
-//    zw[strlen(serverprefix)+1] = '\0';    
-//    ESP_LOGD(TAG, "zw: %s", zw);
     httpd_uri_t file_download = {
         .uri       = "/fileserver*",  // Match all URIs of type /path/to/file
         .method    = HTTP_GET,
