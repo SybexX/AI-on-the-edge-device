@@ -46,7 +46,10 @@ bool CopyFile(string input, string output);
 bool DeleteFile(string filename);
 bool RenameFile(string from, string to);
 bool RenameFolder(string from, string to);
+
 bool MakeDir(std::string _what);
+int mkdir_r(const char *dir, const mode_t mode);
+
 bool FileExists(string filename);
 bool FolderExists(string foldername);
 
@@ -61,13 +64,11 @@ string getFileType(string filename);
 string getFileFullFileName(string filename);
 string getDirectory(string filename);
 
-int mkdir_r(const char *dir, const mode_t mode);
 int removeFolder(const char* folderPath, const char* logTag);
 
 string toLower(string in);
 string toUpper(string in);
 
-std::string intToHexString(int _valueInt);
 time_t addDays(time_t startTime, int days);
 
 void memCopyGen(uint8_t* _source, uint8_t* _target, int _size);
