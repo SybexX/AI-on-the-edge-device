@@ -58,10 +58,14 @@ esp_err_t info_get_handler(httpd_req_t *req)
 
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
-    if (_task.compare("GitBranch") == 0)
+    if (_task.compare("BoardType") == 0)
     {
-        httpd_resp_sendstr(req, libfive_git_branch());
+        httpd_resp_sendstr(req, BoardType);
         return ESP_OK;        
+    }
+    else if (_task.compare("GitBranch") == 0) {
+        httpd_resp_sendstr(req, libfive_git_branch());
+        return ESP_OK;
     }
     else if (_task.compare("GitTag") == 0)
     {
@@ -90,29 +94,25 @@ esp_err_t info_get_handler(httpd_req_t *req)
     }
     else if (_task.compare("Hostname") == 0)
     {
-        std::string zw;
-        zw = std::string(wlan_config.hostname);
+        std::string zw = std::string(wlan_config.hostname);
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
     else if (_task.compare("IP") == 0)
     {
-        std::string *zw;
-        zw = getIPAddress();
+        std::string *zw = getIPAddress();
         httpd_resp_sendstr(req, zw->c_str());
         return ESP_OK;        
     }
     else if (_task.compare("SSID") == 0)
     {
-        std::string *zw;
-        zw = getSSID();
+        std::string *zw = getSSID();
         httpd_resp_sendstr(req, zw->c_str());
         return ESP_OK;        
     }
     else if (_task.compare("FlowStatus") == 0)
     {
-        std::string zw;
-        zw = std::string("FlowStatus");
+        std::string zw = std::string("FlowStatus");
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
@@ -125,50 +125,43 @@ esp_err_t info_get_handler(httpd_req_t *req)
     }
     else if (_task.compare("SDCardPartitionSize") == 0)
     {
-        std::string zw;
-        zw = getSDCardPartitionSize();
+        std::string zw = getSDCardPartitionSize();
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
     else if (_task.compare("SDCardFreePartitionSpace") == 0)
     {
-        std::string zw;
-        zw = getSDCardFreePartitionSpace();
+        std::string zw = getSDCardFreePartitionSpace();
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
     else if (_task.compare("SDCardPartitionAllocationSize") == 0)
     {
-        std::string zw;
-        zw = getSDCardPartitionAllocationSize();
+        std::string zw = getSDCardPartitionAllocationSize();
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
     else if (_task.compare("SDCardManufacturer") == 0)
     {
-        std::string zw;
-        zw = getSDCardManufacturer(); 
+        std::string zw = getSDCardManufacturer();
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
     else if (_task.compare("SDCardName") == 0)
     {
-        std::string zw;
-        zw = getSDCardName(); 
+        std::string zw = getSDCardName();
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
     else if (_task.compare("SDCardCapacity") == 0)
     {
-        std::string zw;
-        zw = getSDCardCapacity();
+        std::string zw = getSDCardCapacity();
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
     else if (_task.compare("SDCardSectorSize") == 0)
     {
-        std::string zw;
-        zw = getSDCardSectorSize();
+        std::string zw = getSDCardSectorSize();
         httpd_resp_sendstr(req, zw.c_str());
         return ESP_OK;        
     }
@@ -203,7 +196,6 @@ esp_err_t info_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-
 esp_err_t starttime_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
@@ -212,7 +204,6 @@ esp_err_t starttime_get_handler(httpd_req_t *req)
 
     return ESP_OK;
 }
-
 
 esp_err_t hello_main_handler(httpd_req_t *req)
 {
@@ -228,8 +219,7 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     char *base_path = (char*) req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri - 1, sizeof(filepath));    
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri - 1, sizeof(filepath));    
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     if ((strcmp(req->uri, "/") == 0))
@@ -280,7 +270,6 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     }
 
     ESP_LOGD(TAG, "Filename: %s", filename);
-    
     ESP_LOGD(TAG, "File requested: %s", filetosend.c_str());
 
     if (!filename) {
@@ -308,7 +297,6 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-
 esp_err_t img_tmp_handler(httpd_req_t *req)
 {
     char filepath[50];
@@ -317,8 +305,7 @@ esp_err_t img_tmp_handler(httpd_req_t *req)
     char *base_path = (char*) req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     filetosend = filetosend + "/img_tmp/" + std::string(filename);
@@ -333,7 +320,6 @@ esp_err_t img_tmp_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-
 esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
 {
     #ifdef DEBUG_DETAIL_ON      
@@ -347,8 +333,7 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
     char *base_path = (char*) req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     filetosend = std::string(filename);
@@ -369,7 +354,6 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
     // File was not served already --> serve with img_tmp_handler
     return img_tmp_handler(req);
 }
-
 
 esp_err_t sysinfo_handler(httpd_req_t *req)
 {
@@ -402,7 +386,6 @@ esp_err_t sysinfo_handler(httpd_req_t *req)
 
     return ESP_OK;
 }
-
 
 void register_server_main_uri(httpd_handle_t server, const char *base_path)
 {
@@ -448,7 +431,6 @@ void register_server_main_uri(httpd_handle_t server, const char *base_path)
 
 }
 
-
 httpd_handle_t start_webserver(void)
 {
     httpd_handle_t server = NULL;
@@ -489,15 +471,12 @@ httpd_handle_t start_webserver(void)
     return NULL;
 }
 
-
 void stop_webserver(httpd_handle_t server)
 {
     httpd_stop(server);
 }
 
-
-void disconnect_handler(void* arg, esp_event_base_t event_base, 
-                               int32_t event_id, void* event_data)
+void disconnect_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     httpd_handle_t* server = (httpd_handle_t*) arg;
     if (*server) {
@@ -507,9 +486,7 @@ void disconnect_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-
-void connect_handler(void* arg, esp_event_base_t event_base, 
-                            int32_t event_id, void* event_data)
+void connect_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     httpd_handle_t* server = (httpd_handle_t*) arg;
     if (*server == NULL) {

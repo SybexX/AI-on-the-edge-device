@@ -63,10 +63,6 @@
     // #define GRAYSCALE_AS_DEFAULT
 
 
-    //server_GPIO
-    #define __LEDGLOBAL
-
-
     //server_GPIO + server_file + SoftAP
     #define CONFIG_FILE "/sdcard/config/config.ini"
     #define CONFIG_FILE_BACKUP "/sdcard/config/config.bak"
@@ -200,6 +196,8 @@
 
 // ******* Board type   
 #if defined(BOARD_ESP32CAM_AITHINKER) // ESP32Cam (AiThinker) PIN Map
+    #define BoardType "ESP32CAM"
+
 	// SD card (operated with SDMMC peripheral)
 	//-------------------------------------------------
 	#define GPIO_SDCARD_CLK GPIO_NUM_14
@@ -240,9 +238,11 @@
 	
     //ClassControllCamera
     #define FLASH_GPIO       GPIO_NUM_4         // PIN for flashlight LED
-    #define USE_PWM_LEDFLASH                    // if __LEDGLOBAL is defined, a global variable is used for LED control, otherwise locally and each time a new
+    #define FLASH_MODE       GPIO_PIN_MODE_FLASH_PWM
 
 #elif defined(BOARD_WROVER_KIT_ESP32) // WROVER-KIT PIN Map
+    #define BoardType "WROVER-KIT"
+
 	// SD card (operated with SDMMC peripheral)
 	//-------------------------------------------------
 	#define GPIO_SDCARD_CLK GPIO_NUM_14
@@ -283,9 +283,11 @@
 	
     //ClassControllCamera
     #define FLASH_GPIO       GPIO_NUM_12        // PIN for flashlight LED
-    #define USE_PWM_LEDFLASH                    // if __LEDGLOBAL is defined, a global variable is used for LED control, otherwise locally and each time a new
+    #define FLASH_MODE       GPIO_PIN_MODE_FLASH_PWM
 
 #elif defined(BOARD_FREENOVE_ESP32S3)
+    #define BoardType "ESP32-S3-CAM"
+
     // SD card (operated with SDMMC peripheral)
     //-------------------------------------------------
     #define GPIO_SDCARD_CLK     GPIO_NUM_39 // MTCK, GPIO39, CLK_OUT3, SUBSPICS1
@@ -329,12 +331,14 @@
 	
     //ClassControllCamera
     #define FLASH_GPIO                  GPIO_NUM_48             // PIN for flashlight LED
-    #define FLASH_MODE                  GPIO_PIN_MODE_WS281X
+    #define FLASH_MODE                  GPIO_PIN_MODE_FLASH_WS281X
     #define FLASH_SMARTLED_TYPE         LED_WS2812
     #define FLASH_SMARTLED_COLOR        Rgb{150, 150, 150}
     #define FLASH_SMARTLED_QUANTITY     1
 
 #elif defined(BOARD_ESP32_S3_ETH)
+    #define BoardType "ESP32-S3-ETH"
+
     // SD card (operated with SDMMC peripheral)
     //-------------------------------------------------
     #define GPIO_SDCARD_CLK     GPIO_NUM_40
@@ -397,7 +401,7 @@
 	
     //ClassControllCamera
     #define FLASH_GPIO                  GPIO_NUM_47             // PIN for flashlight LED
-    #define FLASH_MODE                  GPIO_PIN_MODE_WS281X
+    #define FLASH_MODE                  GPIO_PIN_MODE_FLASH_WS281X
     #define FLASH_SMARTLED_TYPE         LED_WS2812
     #define FLASH_SMARTLED_COLOR        Rgb{150, 150, 150}
     #define FLASH_SMARTLED_QUANTITY     4
@@ -408,7 +412,6 @@
 
 
 // ******* LED definition
-#ifdef USE_PWM_LEDFLASH
     //// PWM für Flash-LED
     #define LEDC_TIMER              LEDC_TIMER_1 // LEDC_TIMER_0
     #define LEDC_MODE               LEDC_LOW_SPEED_MODE
@@ -417,8 +420,6 @@
     #define LEDC_DUTY_RES           LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
     //#define LEDC_DUTY               (195) // Set duty to 50%. ((2 ** 13) - 1) * 50% = 4095
     #define LEDC_FREQUENCY          (5000) // Frequency in Hertz. Set frequency at 5 kHz
-
-#endif //USE_PWM_LEDFLASH
 
 
 //softAP
