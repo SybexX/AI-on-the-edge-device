@@ -3,18 +3,20 @@
 #ifndef SERVEROTA_H
 #define SERVEROTA_H
 
+#include <string>
 #include <esp_log.h>
-
 #include <esp_http_server.h>
 
-#include <string>
+void CheckUpdate();
 
-
-void register_server_ota_sdcard_uri(httpd_handle_t server);
+#ifdef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
 void CheckOTAUpdate();
+#endif
+
 void doReboot();
 void doRebootOTA();
 void hard_restart();
-void CheckUpdate();
+
+void register_server_ota_sdcard_uri(httpd_handle_t server);
 
 #endif //SERVEROTA_H

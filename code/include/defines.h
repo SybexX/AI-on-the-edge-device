@@ -63,10 +63,6 @@
     // #define GRAYSCALE_AS_DEFAULT
 
 
-    //server_GPIO
-    #define __LEDGLOBAL
-
-
     //server_GPIO + server_file + SoftAP
     #define CONFIG_FILE "/sdcard/config/config.ini"
     #define CONFIG_FILE_BACKUP "/sdcard/config/config.bak"
@@ -199,7 +195,9 @@
 
 
 // ******* Board type   
-#if defined(BOARD_WROVER_KIT) // WROVER-KIT PIN Map
+#if defined(BOARD_ESP32CAM_AITHINKER) // ESP32Cam (AiThinker) PIN Map
+    #define BoardType "ESP32CAM"
+
 	// SD card (operated with SDMMC peripheral)
 	//-------------------------------------------------
 	#define GPIO_SDCARD_CLK GPIO_NUM_14
@@ -215,74 +213,8 @@
 		#define GPIO_SDCARD_D3 GPIO_NUM_13
 	#endif
 
-    #define CAM_PIN_PWDN     GPIO_NUM_NC  //power down is not used
-    #define CAM_PIN_RESET    GPIO_NUM_NC  //software reset will be performed
-    #define CAM_PIN_XCLK     GPIO_NUM_21
-    #define CAM_PIN_SIOD     GPIO_NUM_26
-    #define CAM_PIN_SIOC     GPIO_NUM_27
-
-    #define CAM_PIN_D7       GPIO_NUM_35
-    #define CAM_PIN_D6       GPIO_NUM_34
-    #define CAM_PIN_D5       GPIO_NUM_39
-    #define CAM_PIN_D4       GPIO_NUM_36
-    #define CAM_PIN_D3       GPIO_NUM_19
-    #define CAM_PIN_D2       GPIO_NUM_18
-    #define CAM_PIN_D1       GPIO_NUM_5
-    #define CAM_PIN_D0       GPIO_NUM_4
-    #define CAM_PIN_VSYNC    GPIO_NUM_25
-    #define CAM_PIN_HREF     GPIO_NUM_23
-    #define CAM_PIN_PCLK     GPIO_NUM_22
-
-    //Statusled + ClassControllCamera
-    #define BLINK_GPIO GPIO_NUM_33              // PIN for red board LED, On the board the LED is on the IO2, but it is used for the SD
-	
-    //ClassControllCamera
-    #define FLASH_GPIO GPIO_NUM_12              // PIN for flashlight LED
-    #define USE_PWM_LEDFLASH                    // if __LEDGLOBAL is defined, a global variable is used for LED control, otherwise locally and each time a new
-
-#elif defined(BOARD_M5STACK_PSRAM) // M5STACK PSRAM PIN Map
-    #define CAM_PIN_PWDN     GPIO_NUM_NC
-    #define CAM_PIN_RESET    GPIO_NUM_15
-    #define CAM_PIN_XCLK     GPIO_NUM_27
-    #define CAM_PIN_SIOD     GPIO_NUM_25
-    #define CAM_PIN_SIOC     GPIO_NUM_23
-
-    #define CAM_PIN_D7       GPIO_NUM_19
-    #define CAM_PIN_D6       GPIO_NUM_36
-    #define CAM_PIN_D5       GPIO_NUM_18
-    #define CAM_PIN_D4       GPIO_NUM_39
-    #define CAM_PIN_D3       GPIO_NUM_5
-    #define CAM_PIN_D2       GPIO_NUM_34
-    #define CAM_PIN_D1       GPIO_NUM_35
-    #define CAM_PIN_D0       GPIO_NUM_32
-    #define CAM_PIN_VSYNC    GPIO_NUM_22
-    #define CAM_PIN_HREF     GPIO_NUM_26
-    #define CAM_PIN_PCLK     GPIO_NUM_21
-
-    //Statusled + ClassControllCamera
-    #define BLINK_GPIO GPIO_NUM_33              // PIN for red board LED
-	
-    //ClassControllCamera
-    #define FLASH_GPIO GPIO_NUM_4               // PIN for flashlight LED
-    #define USE_PWM_LEDFLASH                    // if __LEDGLOBAL is defined, a global variable is used for LED control, otherwise locally and each time a new
-
-
-#elif defined(BOARD_ESP32CAM_AITHINKER) // ESP32Cam (AiThinker) PIN Map
-	// SD card (operated with SDMMC peripheral)
-	//-------------------------------------------------
-	#define GPIO_SDCARD_CLK GPIO_NUM_14
-	#define GPIO_SDCARD_CMD GPIO_NUM_15
-	#define GPIO_SDCARD_D0  GPIO_NUM_2
-	#ifndef __SD_USE_ONE_LINE_MODE__
-		#define GPIO_SDCARD_D1 GPIO_NUM_4
-		#define GPIO_SDCARD_D2 GPIO_NUM_12
-		#define GPIO_SDCARD_D3 GPIO_NUM_13
-	#else
-		#define GPIO_SDCARD_D1 GPIO_NUM_NC
-		#define GPIO_SDCARD_D2 GPIO_NUM_NC
-		#define GPIO_SDCARD_D3 GPIO_NUM_13
-	#endif
-
+    // Camera (suppotred OV2640 or OV5640)
+    //-------------------------------------------------
     #define CAM_PIN_PWDN     GPIO_NUM_32
     #define CAM_PIN_RESET    GPIO_NUM_NC  //software reset will be performed
     #define CAM_PIN_XCLK     GPIO_NUM_0
@@ -301,20 +233,209 @@
     #define CAM_PIN_HREF     GPIO_NUM_23
     #define CAM_PIN_PCLK     GPIO_NUM_22
 
+    // GpioHandler
+    #define GPIO_IO1         GPIO_NUM_4
+    #define GPIO_IO2         GPIO_NUM_12
+    #define GPIO_IO3         GPIO_NUM_13
+    #define GPIO_IO4         GPIO_NUM_NC
+
     //Statusled + ClassControllCamera
-    #define BLINK_GPIO GPIO_NUM_33              // PIN for red board LED
+    #define BLINK_GPIO       GPIO_NUM_33        // PIN for red board LED
 	
     //ClassControllCamera
-    #define FLASH_GPIO GPIO_NUM_4               // PIN for flashlight LED
-    #define USE_PWM_LEDFLASH                    // if __LEDGLOBAL is defined, a global variable is used for LED control, otherwise locally and each time a new
+    #define FLASH_GPIO       GPIO_NUM_4         // PIN for flashlight LED
+    #define FLASH_MODE       GPIO_PIN_MODE_FLASH_PWM
+
+#elif defined(BOARD_WROVER_KIT_ESP32) // WROVER-KIT PIN Map
+    #define BoardType "WROVER-KIT"
+
+	// SD card (operated with SDMMC peripheral)
+	//-------------------------------------------------
+	#define GPIO_SDCARD_CLK GPIO_NUM_14
+	#define GPIO_SDCARD_CMD GPIO_NUM_15
+	#define GPIO_SDCARD_D0  GPIO_NUM_2
+	#ifndef __SD_USE_ONE_LINE_MODE__
+		#define GPIO_SDCARD_D1 GPIO_NUM_4
+		#define GPIO_SDCARD_D2 GPIO_NUM_12
+		#define GPIO_SDCARD_D3 GPIO_NUM_13
+	#else
+		#define GPIO_SDCARD_D1 GPIO_NUM_NC
+		#define GPIO_SDCARD_D2 GPIO_NUM_NC
+		#define GPIO_SDCARD_D3 GPIO_NUM_13
+	#endif
+
+    // Camera (suppotred OV2640 or OV5640)
+    //-------------------------------------------------
+    #define CAM_PIN_PWDN     GPIO_NUM_NC  //power down is not used
+    #define CAM_PIN_RESET    GPIO_NUM_NC  //software reset will be performed
+    #define CAM_PIN_XCLK     GPIO_NUM_21
+    #define CAM_PIN_SIOD     GPIO_NUM_26
+    #define CAM_PIN_SIOC     GPIO_NUM_27
+
+    #define CAM_PIN_D7       GPIO_NUM_35
+    #define CAM_PIN_D6       GPIO_NUM_34
+    #define CAM_PIN_D5       GPIO_NUM_39
+    #define CAM_PIN_D4       GPIO_NUM_36
+    #define CAM_PIN_D3       GPIO_NUM_19
+    #define CAM_PIN_D2       GPIO_NUM_18
+    #define CAM_PIN_D1       GPIO_NUM_5
+    #define CAM_PIN_D0       GPIO_NUM_4
+    #define CAM_PIN_VSYNC    GPIO_NUM_25
+    #define CAM_PIN_HREF     GPIO_NUM_23
+    #define CAM_PIN_PCLK     GPIO_NUM_22
+
+    // GpioHandler
+    #define GPIO_IO1         GPIO_NUM_12
+    #define GPIO_IO2         GPIO_NUM_13
+    #define GPIO_IO3         GPIO_NUM_33
+    #define GPIO_IO4         GPIO_NUM_NC
+
+    //Statusled + ClassControllCamera
+    #define BLINK_GPIO       GPIO_NUM_NC        // PIN for red board LED, On the board the LED is on the IO2, but it is used for the SD
+	
+    //ClassControllCamera
+    #define FLASH_GPIO       GPIO_NUM_12        // PIN for flashlight LED
+    #define FLASH_MODE       GPIO_PIN_MODE_FLASH_PWM
+
+#elif defined(BOARD_FREENOVE_ESP32S3)
+    #define BoardType "ESP32-S3-CAM"
+
+    // SD card (operated with SDMMC peripheral)
+    //-------------------------------------------------
+    #define GPIO_SDCARD_CLK     GPIO_NUM_39 // MTCK, GPIO39, CLK_OUT3, SUBSPICS1
+    #define GPIO_SDCARD_CMD     GPIO_NUM_38	// GPIO38, FSPIWP, SUBSPIWP
+    #define GPIO_SDCARD_D0      GPIO_NUM_40	// MTDO, GPIO40, CLK_OUT2
+
+    #ifndef __SD_USE_ONE_LINE_MODE__
+        #define GPIO_SDCARD_D1  GPIO_NUM_41 // MTDI, GPIO41, CLK_OUT1
+        #define GPIO_SDCARD_D2  GPIO_NUM_14 // RTC_GPIO14, GPIO14, TOUCH14, ADC2_CH3, FSPIWP, FSPIDQS, SUBSPIWP
+        #define GPIO_SDCARD_D3  GPIO_NUM_47 // SPICLK_P_DIFF, GPIO47, SUBSPICLK_P_DIFF
+    #else
+        #define GPIO_SDCARD_D1  GPIO_NUM_NC
+        #define GPIO_SDCARD_D2  GPIO_NUM_NC
+        #define GPIO_SDCARD_D3  GPIO_NUM_47
+    #endif
+
+    // Camera (suppotred OV2640 or OV5640)
+    //-------------------------------------------------
+    #define CAM_PIN_PWDN    GPIO_NUM_NC
+    #define CAM_PIN_RESET   GPIO_NUM_NC // software reset will be performed
+
+    #define CAM_PIN_VSYNC   GPIO_NUM_6
+    #define CAM_PIN_HREF    GPIO_NUM_7
+    #define CAM_PIN_PCLK    GPIO_NUM_13
+    #define CAM_PIN_XCLK    GPIO_NUM_15
+
+    #define CAM_PIN_SIOD    GPIO_NUM_4
+    #define CAM_PIN_SIOC    GPIO_NUM_5
+
+    #define CAM_PIN_D0      GPIO_NUM_11 // Y2_GPIO_NUM
+    #define CAM_PIN_D1      GPIO_NUM_9  // Y3_GPIO_NUM
+    #define CAM_PIN_D2      GPIO_NUM_8  // Y4_GPIO_NUM
+    #define CAM_PIN_D3      GPIO_NUM_10 // Y5_GPIO_NUM
+    #define CAM_PIN_D4      GPIO_NUM_12 // Y6_GPIO_NUM
+    #define CAM_PIN_D5      GPIO_NUM_18 // Y7_GPIO_NUM
+    #define CAM_PIN_D6      GPIO_NUM_17 // Y8_GPIO_NUM
+    #define CAM_PIN_D7      GPIO_NUM_16 // Y9_GPIO_NUM
+
+    // GpioHandler
+    #define GPIO_IO1        GPIO_NUM_2
+    #define GPIO_IO2        GPIO_NUM_21
+    #define GPIO_IO3        GPIO_NUM_48
+    #define GPIO_IO4        GPIO_NUM_NC
+
+    //Statusled + ClassControllCamera
+    #define BLINK_GPIO                  GPIO_NUM_2              // PIN for red board LED
+	
+    //ClassControllCamera
+    #define FLASH_GPIO                  GPIO_NUM_48             // PIN for flashlight LED
+    #define FLASH_MODE                  GPIO_PIN_MODE_FLASH_WS281X
+    #define FLASH_SMARTLED_TYPE         LED_WS2812
+    #define FLASH_SMARTLED_COLOR        Rgb{150, 150, 150}
+    #define FLASH_SMARTLED_QUANTITY     1
+
+#elif defined(BOARD_ESP32_S3_ETH)
+    #define BoardType "ESP32-S3-ETH"
+
+    // SD card (operated with SDMMC peripheral)
+    //-------------------------------------------------
+    #define GPIO_SDCARD_CLK     GPIO_NUM_40
+    #define GPIO_SDCARD_CMD     GPIO_NUM_42
+    #define GPIO_SDCARD_D0      GPIO_NUM_41
+
+    #ifndef __SD_USE_ONE_LINE_MODE__
+        #error "Board not suppotred SD_FOUR_LINE_MODE"
+    #else
+        #define GPIO_SDCARD_D1  GPIO_NUM_NC
+        #define GPIO_SDCARD_D2  GPIO_NUM_NC
+        #define GPIO_SDCARD_D3  GPIO_NUM_3
+    #endif
+
+    // SPI_ETHERNET_W5500
+    //-------------------------------------------------
+    #define PER_ENABLE               GPIO_NUM_46            // activates power for camera, leds, and SDcard and Battery measurement voltage divider
+    #define ETH_SPI_EN               GPIO_NUM_45            // activates power for the Ethernet
+
+    #define ETH_SPI_NUM 			 1
+
+    #define ETH_SPI_HOST             SPI2_HOST
+    #define ETH_SPI_CLOCK_MHZ        20                     // SPI clock speed (MHz) (range 5 - 80, default 16)
+
+    #define ETH_SPI_POLLING0_MS      10                     // Set SPI Ethernet module polling period (default 10)
+    #define ETH_SPI_PHY_ADDR0        ESP_ETH_PHY_ADDR_AUTO  // PHY address, set -1 to enable PHY address detection at initialization stage
+
+    #define ETH_SPI_CS0_GPIO         GPIO_NUM_39
+    #define ETH_SPI_INT0_GPIO        GPIO_NUM_38
+    #define ETH_SPI_PHY_RST0_GPIO    GPIO_NUM_NC
+
+    #define ETH_SPI_MISO_GPIO        GPIO_NUM_14
+    #define ETH_SPI_MOSI_GPIO        GPIO_NUM_1
+    #define ETH_SPI_SCLK_GPIO        GPIO_NUM_21
+
+    // Camera (suppotred OV2640 or OV5640)
+    //-------------------------------------------------
+    #define CAM_PIN_PWDN    GPIO_NUM_NC
+    #define CAM_PIN_RESET   GPIO_NUM_NC // software reset will be performed
+
+    #define CAM_PIN_VSYNC   GPIO_NUM_6
+    #define CAM_PIN_HREF    GPIO_NUM_7
+    #define CAM_PIN_PCLK    GPIO_NUM_13
+    #define CAM_PIN_XCLK    GPIO_NUM_15
+
+    #define CAM_PIN_SIOD    GPIO_NUM_4
+    #define CAM_PIN_SIOC    GPIO_NUM_5
+
+    #define CAM_PIN_D0      GPIO_NUM_11 // Y2_GPIO_NUM
+    #define CAM_PIN_D1      GPIO_NUM_9  // Y3_GPIO_NUM
+    #define CAM_PIN_D2      GPIO_NUM_8  // Y4_GPIO_NUM
+    #define CAM_PIN_D3      GPIO_NUM_10 // Y5_GPIO_NUM
+    #define CAM_PIN_D4      GPIO_NUM_12 // Y6_GPIO_NUM
+    #define CAM_PIN_D5      GPIO_NUM_18 // Y7_GPIO_NUM
+    #define CAM_PIN_D6      GPIO_NUM_17 // Y8_GPIO_NUM
+    #define CAM_PIN_D7      GPIO_NUM_16 // Y9_GPIO_NUM
+
+    // GpioHandler
+    #define GPIO_IO1        GPIO_NUM_33
+    #define GPIO_IO2        GPIO_NUM_34
+    #define GPIO_IO3        GPIO_NUM_35
+    #define GPIO_IO4        GPIO_NUM_36
+
+    //Statusled + ClassControllCamera
+    #define BLINK_GPIO                  GPIO_NUM_NC              // PIN for red board LED
+	
+    //ClassControllCamera
+    #define FLASH_GPIO                  GPIO_NUM_47             // PIN for flashlight LED
+    #define FLASH_MODE                  GPIO_PIN_MODE_FLASH_WS281X
+    #define FLASH_SMARTLED_TYPE         LED_WS2812
+    #define FLASH_SMARTLED_COLOR        Rgb{150, 150, 150}
+    #define FLASH_SMARTLED_QUANTITY     4
 
 #else
     #error "Board not selected"
 #endif  //Board PIN Map
 
 
-// ******* LED definition
-#ifdef USE_PWM_LEDFLASH
+    // ******* LED definition
     //// PWM für Flash-LED
     #define LEDC_TIMER              LEDC_TIMER_1 // LEDC_TIMER_0
     #define LEDC_MODE               LEDC_LOW_SPEED_MODE
@@ -324,15 +445,10 @@
     //#define LEDC_DUTY               (195) // Set duty to 50%. ((2 ** 13) - 1) * 50% = 4095
     #define LEDC_FREQUENCY          (5000) // Frequency in Hertz. Set frequency at 5 kHz
 
-#endif //USE_PWM_LEDFLASH
 
-
-//softAP
-#ifdef ENABLE_SOFTAP
     #define EXAMPLE_ESP_WIFI_SSID      "AI-on-the-Edge"
     #define EXAMPLE_ESP_WIFI_PASS      ""
     #define EXAMPLE_ESP_WIFI_CHANNEL   11
     #define EXAMPLE_MAX_STA_CONN       1
-#endif // ENABLE_SOFTAP
 
 #endif // ifndef defines_h
