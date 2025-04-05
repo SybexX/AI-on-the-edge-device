@@ -38,8 +38,7 @@ typedef enum {
 class GpioPin
 {
   public:
-    GpioPin(gpio_num_t gpio, const char *name, gpio_pin_mode_t mode, gpio_int_type_t interruptType, uint8_t dutyResolution,
-            std::string mqttTopic, bool httpEnable);
+    GpioPin(gpio_num_t gpio, const char *name, gpio_pin_mode_t mode, gpio_int_type_t interruptType, uint8_t dutyResolution, std::string mqttTopic, bool httpEnable);
     ~GpioPin();
 
     void init();

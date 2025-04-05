@@ -28,8 +28,7 @@
 static const char *TAG = "GPIO";
 QueueHandle_t gpio_queue_handle = NULL;
 
-GpioPin::GpioPin(gpio_num_t gpio, const char *name, gpio_pin_mode_t mode, gpio_int_type_t interruptType, uint8_t dutyResolution,
-                 std::string mqttTopic, bool httpEnable)
+GpioPin::GpioPin(gpio_num_t gpio, const char *name, gpio_pin_mode_t mode, gpio_int_type_t interruptType, uint8_t dutyResolution, std::string mqttTopic, bool httpEnable)
 {
     _gpio = gpio;
     _name = name;
@@ -98,14 +97,11 @@ void GpioPin::init()
     // set interrupt
     io_conf.intr_type = _interruptType;
     // set as output mode
-    io_conf.mode = (_mode == GPIO_PIN_MODE_OUTPUT) || (_mode == GPIO_PIN_MODE_OUTPUT_PWM) || (_mode == GPIO_PIN_MODE_FLASH_PWM)
-                       ? gpio_mode_t::GPIO_MODE_OUTPUT
-                       : gpio_mode_t::GPIO_MODE_INPUT;
+    io_conf.mode = (_mode == GPIO_PIN_MODE_OUTPUT) || (_mode == GPIO_PIN_MODE_OUTPUT_PWM) || (_mode == GPIO_PIN_MODE_FLASH_PWM) ? gpio_mode_t::GPIO_MODE_OUTPUT : gpio_mode_t::GPIO_MODE_INPUT;
     // bit mask of the pins that you want to set,e.g.GPIO18/19
     io_conf.pin_bit_mask = (1ULL << _gpio);
     // set pull-down mode
-    io_conf.pull_down_en = _mode == GPIO_PIN_MODE_INPUT_PULLDOWN ? gpio_pulldown_t::GPIO_PULLDOWN_ENABLE
-                                                                 : gpio_pulldown_t::GPIO_PULLDOWN_DISABLE;
+    io_conf.pull_down_en = _mode == GPIO_PIN_MODE_INPUT_PULLDOWN ? gpio_pulldown_t::GPIO_PULLDOWN_ENABLE : gpio_pulldown_t::GPIO_PULLDOWN_DISABLE;
     // set pull-up mode
     io_conf.pull_up_en = _mode == GPIO_PIN_MODE_INPUT_PULLDOWN ? gpio_pullup_t::GPIO_PULLUP_ENABLE : gpio_pullup_t::GPIO_PULLUP_DISABLE;
     // configure GPIO with the given settings
@@ -120,10 +116,8 @@ void GpioPin::init()
     }
 
 #ifdef ENABLE_MQTT
-    if ((_mqttTopic.compare("") != 0) &&
-        ((_mode == GPIO_PIN_MODE_OUTPUT) || (_mode == GPIO_PIN_MODE_OUTPUT_PWM) || (_mode == GPIO_PIN_MODE_FLASH_PWM))) {
-        std::function<bool(std::string, char *, int)> f = std::bind(&GpioPin::handleMQTT, this, std::placeholders::_1,
-                                                                    std::placeholders::_2, std::placeholders::_3);
+    if ((_mqttTopic.compare("") != 0) && ((_mode == GPIO_PIN_MODE_OUTPUT) || (_mode == GPIO_PIN_MODE_OUTPUT_PWM) || (_mode == GPIO_PIN_MODE_FLASH_PWM))) {
+        std::function<bool(std::string, char *, int)> f = std::bind(&GpioPin::handleMQTT, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
         MQTTregisterSubscribeFunction(_mqttTopic, f);
     }
 #endif // ENABLE_MQTT
@@ -294,8 +288,7 @@ void GpioHandler::handleMQTTconnect()
 {
     if (gpioMap != NULL) {
         for (std::map<gpio_num_t, GpioPin *>::iterator it = gpioMap->begin(); it != gpioMap->end(); ++it) {
-            if ((it->second->getMode() == GPIO_PIN_MODE_INPUT) || (it->second->getMode() == GPIO_PIN_MODE_INPUT_PULLDOWN) ||
-                (it->second->getMode() == GPIO_PIN_MODE_INPUT_PULLUP)) {
+            if ((it->second->getMode() == GPIO_PIN_MODE_INPUT) || (it->second->getMode() == GPIO_PIN_MODE_INPUT_PULLDOWN) || (it->second->getMode() == GPIO_PIN_MODE_INPUT_PULLUP)) {
                 it->second->publishState();
             }
         }
@@ -330,51 +323,41 @@ bool GpioHandler::readConfig()
 
     ConfigFile configFile = ConfigFile(_configFile);
 
-    std::vector<std::string> splitted;
     std::string line = "";
-    bool disabledLine = false;
     bool eof = false;
-    gpio_num_t gpioExtLED = (gpio_num_t)0;
+    bool disabledLine = false;
 
-    //    ESP_LOGD(TAG, "readConfig - Start 1");
-
-    while ((!configFile.GetNextParagraph(line, disabledLine, eof) || (line.compare("[GPIO]") != 0)) && !eof) {
+    while ((!configFile.GetNextParagraph(line, disabledLine, eof) || (toUpper(line).compare("[GPIO]") != 0)) && !eof) {
+        // do nothing
     }
-    if (eof) {
-        return false;
-    }
-
-    //    ESP_LOGD(TAG, "readConfig - Start 2 line: %s, disabbledLine: %d", line.c_str(), (int) disabledLine);
-
 
     _isEnabled = !disabledLine;
 
-    if (!_isEnabled) {
+    if (eof || disabledLine) {
         return false;
     }
 
-    //    ESP_LOGD(TAG, "readConfig - Start 3");
-
 #ifdef ENABLE_MQTT
-    //    std::string mainTopicMQTT = "";
+    // std::string mainTopicMQTT = "";
     std::string mainTopicMQTT = mqttServer_getMainTopic();
     if (mainTopicMQTT.length() > 0) {
         mainTopicMQTT = mainTopicMQTT + "/GPIO";
         ESP_LOGD(TAG, "MAINTOPICMQTT found");
     }
 #endif // ENABLE_MQTT
+
     bool registerISR = false;
+
+    std::vector<std::string> splitted;
+
     while (configFile.getNextLine(&line, disabledLine, eof) && !configFile.isNewParagraph(line)) {
         splitted = ZerlegeZeile(line);
-        // const std::regex pieces_regex("IO([0-9]{1,2})");
-        // std::smatch pieces_match;
-        // if (std::regex_match(splitted[0], pieces_match, pieces_regex) && (pieces_match.size() == 2))
-        // {
-        //     std::string gpioStr = pieces_match[1];
+
         ESP_LOGD(TAG, "conf param %s", toUpper(splitted[0]).c_str());
+
         if (toUpper(splitted[0]) == "MAINTOPICMQTT") {
-            //            ESP_LOGD(TAG, "MAINTOPICMQTT found");
-            //            mainTopicMQTT = splitted[1];
+            // ESP_LOGD(TAG, "MAINTOPICMQTT found");
+            // mainTopicMQTT = splitted[1];
         }
         else if ((splitted[0].rfind("IO", 0) == 0) && (splitted.size() >= 6)) {
             ESP_LOGI(TAG, "Enable GP%s in %s mode", splitted[0].c_str(), splitted[1].c_str());
@@ -404,17 +387,16 @@ bool GpioHandler::readConfig()
 
             if (pinMode == GPIO_PIN_MODE_FLASH_WS281X) {
                 ESP_LOGD(TAG, "Set WS2812 to GPIO %d", gpioNr);
-                gpioExtLED = gpioNr;
             }
 
             if (intType != GPIO_INTR_DISABLE) {
                 registerISR = true;
             }
         }
-        if (toUpper(splitted[0]) == "LEDNUMBERS") {
+        else if (toUpper(splitted[0]) == "LEDNUMBERS") {
             LEDNumbers = stoi(splitted[1]);
         }
-        if (toUpper(splitted[0]) == "LEDCOLOR") {
+        else if (toUpper(splitted[0]) == "LEDCOLOR") {
             uint8_t _r, _g, _b;
             _r = stoi(splitted[1]);
             _g = stoi(splitted[2]);
@@ -422,7 +404,7 @@ bool GpioHandler::readConfig()
 
             LEDColor = Rgb{_r, _g, _b};
         }
-        if (toUpper(splitted[0]) == "LEDTYPE") {
+        else if (toUpper(splitted[0]) == "LEDTYPE") {
             if (splitted[1] == "WS2812") {
                 LEDType = LED_WS2812;
             }
@@ -441,22 +423,6 @@ bool GpioHandler::readConfig()
     if (registerISR) {
         // install gpio isr service
         gpio_install_isr_service(ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM);
-    }
-
-    if (gpioExtLED > 0) {
-        //     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Startsequence 06");      // Nremove
-        //        vTaskDelay( xDelay );
-        //        xDelay = 5000 / portTICK_PERIOD_MS;
-        //        ESP_LOGD(TAG, "main: sleep for: %ldms", (long) xDelay);
-
-        //        SmartLed leds( LED_WS2812, 2, GPIO_NUM_12, 0, DoubleBuffer );
-
-
-        //        leds[ 0 ] = Rgb{ 255, 0, 0 };
-        //        leds[ 1 ] = Rgb{ 255, 255, 255 };
-        //        leds.show();
-        //        SmartLed leds = new SmartLed(LEDType, LEDNumbers, gpioExtLED, 0, DoubleBuffer);
-        //        _SmartLED = new SmartLed( LED_WS2812, 2, GPIO_NUM_12, 0, DoubleBuffer );
     }
 
     return true;
@@ -532,8 +498,7 @@ esp_err_t GpioHandler::handleHttpRequest(httpd_req_t *req)
     }
 
     status = toUpper(status);
-    if ((status != "HIGH") && (status != "LOW") && (status != "TRUE") && (status != "FALSE") && (status != "0") && (status != "1") &&
-        (status != "")) {
+    if ((status != "HIGH") && (status != "LOW") && (status != "TRUE") && (status != "FALSE") && (status != "0") && (status != "1") && (status != "")) {
         std::string zw = "Status not valid: " + status;
         httpd_resp_sendstr_chunk(req, zw.c_str());
         httpd_resp_sendstr_chunk(req, NULL);
@@ -683,7 +648,6 @@ gpio_int_type_t GpioHandler::resolveIntType(std::string input)
     if (input == "high-level-trigger") {
         return GPIO_INTR_HIGH_LEVEL;
     }
-
 
     return GPIO_INTR_DISABLE;
 }
