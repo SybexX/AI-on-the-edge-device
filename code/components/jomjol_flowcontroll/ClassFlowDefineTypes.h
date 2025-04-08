@@ -46,6 +46,7 @@ struct NumberPost {
     bool AllowNegativeRates;    // allowNegativeRate; defines if the consistency checks allow negative rates between consecutive meter readings.
     bool IgnoreLeadingNaN;
     bool checkDigitIncreaseConsistency; // extendedConsistencyCheck; performs an additional consistency check to avoid wrong readings
+    bool checkValueIncreaseConsistency;
     time_t timeStampLastValue;     // Timestamp for the last read value; is used for the log
     time_t timeStampLastPreValue;  // Timestamp for the last PreValue set; is used for useMaxRateValue
     time_t timeStampTimeUTC;    // FIXME: not used; can be removed.
