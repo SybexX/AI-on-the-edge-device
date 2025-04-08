@@ -553,6 +553,28 @@ void ClassFlowPostProcessing::handlecheckDigitIncreaseConsistency(std::string _d
     }
 }
 
+void ClassFlowPostProcessing::handlecheckValueIncreaseConsistency(std::string _decsep, std::string _value)
+{
+    std::string _digit;
+    int _pospunkt = _decsep.find_first_of(".");
+
+    if (_pospunkt > -1) {
+        _digit = _decsep.substr(0, _pospunkt);
+    }
+    else {
+        _digit = "default";
+    }
+
+    for (int j = 0; j < NUMBERS.size(); ++j) {
+        bool _rt = alphanumericToBoolean(_value);
+
+        // Set to default first (if nothing else is set)
+        if ((_digit == "default") || (NUMBERS[j]->name == _digit)) {
+            NUMBERS[j]->checkValueIncreaseConsistency = _rt;
+        }
+    }
+}
+
 bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, string& aktparamgraph) {
     std::vector<string> splitted;
     int _n;
@@ -580,47 +602,51 @@ bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, string& aktparamgraph) 
             handleDecimalExtendedResolution(splitted[0], splitted[1]);
         }
 
-        if ((toUpper(_param) == "DECIMALSHIFT") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "DECIMALSHIFT") && (splitted.size() > 1)) {
             handleDecimalSeparator(splitted[0], splitted[1]);
         }
 	    
-        if ((toUpper(_param) == "ANALOGTODIGITTRANSITIONSTART") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "ANALOGTODIGITTRANSITIONSTART") && (splitted.size() > 1)) {
             handleAnalogToDigitTransitionStart(splitted[0], splitted[1]);
         }
 	    
-        if ((toUpper(_param) == "MAXRATEVALUE") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "MAXRATEVALUE") && (splitted.size() > 1)) {
             handleMaxRateValue(splitted[0], splitted[1]);
         }
 	    
-        if ((toUpper(_param) == "MAXRATETYPE") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "MAXRATETYPE") && (splitted.size() > 1)) {
             handleMaxRateType(splitted[0], splitted[1]);
         }
 	    
-        if ((toUpper(_param) == "PREVALUEUSE") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "PREVALUEUSE") && (splitted.size() > 1)) {
             PreValueUse = alphanumericToBoolean(splitted[1]);
         }
 		
-        if ((toUpper(_param) == "CHANGERATETHRESHOLD") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "CHANGERATETHRESHOLD") && (splitted.size() > 1)) {
             handleChangeRateThreshold(splitted[0], splitted[1]);
         }
 	    
-        if ((toUpper(_param) == "CHECKDIGITINCREASECONSISTENCY") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "CHECKDIGITINCREASECONSISTENCY") && (splitted.size() > 1)) {
             handlecheckDigitIncreaseConsistency(splitted[0], splitted[1]);
         }
+
+        else if (_param == "CHECKVALUEINCREASECONSISTENCY") {
+            handlecheckValueIncreaseConsistency(splitted[0], splitted[1]);
+        }
 			
-        if ((toUpper(_param) == "ALLOWNEGATIVERATES") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "ALLOWNEGATIVERATES") && (splitted.size() > 1)) {
             handleAllowNegativeRate(splitted[0], splitted[1]);
         }
 			
-        if ((toUpper(_param) == "ERRORMESSAGE") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "ERRORMESSAGE") && (splitted.size() > 1)) {
             ErrorMessage = alphanumericToBoolean(splitted[1]);
         }
 			
-        if ((toUpper(_param) == "IGNORELEADINGNAN") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "IGNORELEADINGNAN") && (splitted.size() > 1)) {
             handleIgnoreLeadingNaN(splitted[0], splitted[1]);
         }
 
-        if ((toUpper(_param) == "PREVALUEAGESTARTUP") && (splitted.size() > 1)) {
+        else if ((toUpper(_param) == "PREVALUEAGESTARTUP") && (splitted.size() > 1)) {
             if (isStringNumeric(splitted[1])) {
                 PreValueAgeStartup = std::stoi(splitted[1]);
             }
@@ -690,6 +716,7 @@ void ClassFlowPostProcessing::InitNUMBERS() {
         _number->MaxRateType = AbsoluteChange;
         _number->useMaxRateValue = false;
         _number->checkDigitIncreaseConsistency = false;
+        _number->checkValueIncreaseConsistency = false;
         _number->DecimalShift = 0;
         _number->DecimalShiftInitial = 0;
         _number->isExtendedResolution = false;
@@ -897,7 +924,53 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
             ESP_LOGD(TAG, "After checkDigitIncreaseConsistency: Value %f", NUMBERS[j]->Value);
         #endif
 
-        if (PreValueUse && NUMBERS[j]->PreValueOkay) {
+        if (PreValueUse && NUMBERS[j]->PreValueOkay && NUMBERS[j]->Value != NUMBERS[j]->PreValue) {
+            if (NUMBERS[j]->checkValueIncreaseConsistency) {
+                std::string _PreValue = std::to_string(NUMBERS[j]->PreValue);
+                std::string _PreValueMax = "";
+                std::string _PreValueMin = "";
+
+                if (NUMBERS[j]->MaxRateType == RateChange) {
+                    _PreValueMax = std::to_string(NUMBERS[j]->PreValue + (abs(NUMBERS[j]->MaxRateValue) / LastPreValueTimeDifference));
+                    _PreValueMin = std::to_string(NUMBERS[j]->PreValue - (abs(NUMBERS[j]->MaxRateValue) / LastPreValueTimeDifference));
+                }
+                else {
+                    _PreValueMax = std::to_string(NUMBERS[j]->PreValue + abs(NUMBERS[j]->MaxRateValue));
+                    _PreValueMin = std::to_string(NUMBERS[j]->PreValue - abs(NUMBERS[j]->MaxRateValue));
+                }
+
+                int _PreValueMaxSize = 0;
+                for (int i = 0; i < _PreValue.length(); ++i) {
+                    if (_PreValue[i] == _PreValueMax[i]) {
+                        _PreValueMaxSize++;
+                    }
+                    else {
+                        break;
+                    }
+                }
+
+                int _PreValueMinSize = 0;
+                for (int i = 0; i < _PreValue.length(); ++i) {
+                    if (_PreValue[i] == _PreValueMin[i]) {
+                        _PreValueMinSize++;
+                    }
+                    else {
+                        break;
+                    }
+                }
+
+                int _PreValueSize = 0;
+                if (_PreValueMaxSize < _PreValueMinSize) {
+                    _PreValueSize = _PreValueMaxSize;
+                }
+                else {
+                    _PreValueSize = _PreValueMinSize;
+                }
+
+                std::string _ValueNew = (_PreValue.substr(0, _PreValueSize)) + std::to_string(NUMBERS[j]->Value).substr(_PreValueSize, _PreValue.length());
+                NUMBERS[j]->Value = std::stod(_ValueNew);
+            }
+
             if ((NUMBERS[j]->Nachkomma > 0) && (NUMBERS[j]->ChangeRateThreshold > 0)) {
                 double _difference1 = (NUMBERS[j]->PreValue - (NUMBERS[j]->ChangeRateThreshold / pow(10, NUMBERS[j]->Nachkomma)));
                 double _difference2 = (NUMBERS[j]->PreValue + (NUMBERS[j]->ChangeRateThreshold / pow(10, NUMBERS[j]->Nachkomma)));
@@ -910,25 +983,23 @@ bool ClassFlowPostProcessing::doFlow(string zwtime) {
 
             if ((!NUMBERS[j]->AllowNegativeRates) && (NUMBERS[j]->Value < NUMBERS[j]->PreValue)) {
                 LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "handleAllowNegativeRate for device: " + NUMBERS[j]->name);
-					
-                if ((NUMBERS[j]->Value < NUMBERS[j]->PreValue)) {
-                    // more debug if extended resolution is on, see #2447
-                    if (NUMBERS[j]->isExtendedResolution) {
-                        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Neg: value=" + std::to_string(NUMBERS[j]->Value) 
+
+                // more debug if extended resolution is on, see #2447
+                if (NUMBERS[j]->isExtendedResolution) {
+                    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Neg: value=" + std::to_string(NUMBERS[j]->Value) 
                                                     + ", preValue=" + std::to_string(NUMBERS[j]->PreValue) 
                                                     + ", preToll=" + std::to_string(NUMBERS[j]->PreValue-(2/pow(10, NUMBERS[j]->Nachkomma))));
-                    } 
+                } 
 
-                    NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Neg. Rate - Read: " + zwvalue + " - Raw: " + NUMBERS[j]->ReturnRawValue + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " "; 
-                    NUMBERS[j]->Value = NUMBERS[j]->PreValue;
-                    NUMBERS[j]->ReturnValue = "";
-                    NUMBERS[j]->timeStampLastValue = imagetime;
+                NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Neg. Rate - Read: " + zwvalue + " - Raw: " + NUMBERS[j]->ReturnRawValue + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " "; 
+                NUMBERS[j]->Value = NUMBERS[j]->PreValue;
+                NUMBERS[j]->ReturnValue = "";
+                NUMBERS[j]->timeStampLastValue = imagetime;
 
-                    string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
-                    WriteDataLog(j);
-                    continue;
-                }
+                string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
+                WriteDataLog(j);
+                continue;
             }
 
             #ifdef SERIAL_DEBUG
