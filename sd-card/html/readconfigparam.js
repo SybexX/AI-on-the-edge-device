@@ -182,6 +182,7 @@ function ParseConfig() {
     // ParamAddValue(param, catname, "IgnoreAllNaN", 1, true, "false");
     ParamAddValue(param, catname, "ErrorMessage");
     ParamAddValue(param, catname, "CheckDigitIncreaseConsistency", 1, true, "false");
+    ParamAddValue(param, catname, "CheckValueIncreaseConsistency", 1, true, "false");
 
     var catname = "MQTT";
     category[catname] = new Object();
