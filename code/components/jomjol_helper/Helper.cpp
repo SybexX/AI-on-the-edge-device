@@ -1237,6 +1237,17 @@ int clipInt(int input, int high, int low)
     return input;
 }
 
+float clipFloat(float input, float high, float low)
+{
+    if (input < low) {
+        input = low;
+    }
+    else if (input > high) {
+        input = high;
+    }
+    return input;
+}
+
 bool numericStrToBool(std::string input)
 {
     return (std::stoi(input) != 0);

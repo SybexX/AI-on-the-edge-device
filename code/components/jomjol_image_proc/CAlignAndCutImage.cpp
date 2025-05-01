@@ -63,6 +63,12 @@ int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
     //////////////////////////////////////////////
     int ret = Alignment_OK;
 
+    // Check whether both alignment markings exceed the defined rotation area(angle)
+    if ((fabs(angle_dif) > (_temp1->search_max_angle)) || (fabs(angle_dif) > (_temp2->search_max_angle))) {
+        ret = Alignment_Failed;
+        ESP_LOGE(TAG, "Alignment failed: image rotation outside the set range - angle: %f", angle_dif);
+    }
+
     // Check whether the first alignment marking exceeds the defined search area(x/y)
     if ((abs(x1_relative_shift) >= _temp1->search_x) || (abs(y1_relative_shift) >= _temp1->search_y)) {
         ret |= Alignment_Failed;
@@ -83,7 +89,7 @@ int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
         rt.TranslateImage(x1_relative_shift, y1_relative_shift);
     }
 
-    if (fabs(angle_dif) != 0) {
+    if (angle_dif != 0) {
         ESP_LOGD(TAG, "Align: Image rotate");
         rt.RotateImage(angle_dif, _temp1->target_x, _temp1->target_y);
     }

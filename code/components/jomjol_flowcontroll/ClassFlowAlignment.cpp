@@ -56,8 +56,9 @@ ClassFlowAlignment::ClassFlowAlignment(std::vector<ClassFlow *> *lfc)
 bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
 {
     std::vector<string> splitted;
-    int suchex = 40;
-    int suchey = 40;
+    int suchex = 20;
+    int suchey = 20;
+    int maxangle = 45;
     int alg_algo = 0; // default=0; 1 =HIGHACCURACY; 2= FAST; 3= OFF //add disable aligment algo |01.2023
 
     aktparamgraph = trim(aktparamgraph);
@@ -81,17 +82,22 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
         }
         else if (((toUpper(splitted[0]) == "initialrotate") || (toUpper(splitted[0]) == "INITIALROTATE")) && (splitted.size() > 1)) {
             if (isStringNumeric(splitted[1])) {
-                this->initialrotate = std::stod(splitted[1]);
+                this->initialrotate = clipFloat(std::stod(splitted[1]), 180.00, -180.00);
             }
         }
         else if ((toUpper(splitted[0]) == "SEARCHFIELDX") && (splitted.size() > 1)) {
             if (isStringNumeric(splitted[1])) {
-                suchex = std::stod(splitted[1]);
+                suchex = clipInt(std::stoi(splitted[1]), 320, 0);
             }
         }
         else if ((toUpper(splitted[0]) == "SEARCHFIELDY") && (splitted.size() > 1)) {
             if (isStringNumeric(splitted[1])) {
-                suchey = std::stod(splitted[1]);
+                suchey = clipInt(std::stoi(splitted[1]), 240, 0);
+            }
+        }
+        else if ((toUpper(splitted[0]) == "SEARCHMAXANGLE") && (splitted.size() > 1)) {
+            if (isStringNumeric(splitted[1])) {
+                maxangle = clipInt(std::stoi(splitted[1]), 180, 0);
             }
         }
         else if ((toUpper(splitted[0]) == "ANTIALIASING") && (splitted.size() > 1)) {
@@ -136,6 +142,7 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
     for (int i = 0; i < anz_ref; ++i) {
         References[i].search_x = suchex;
         References[i].search_y = suchey;
+        References[i].search_max_angle = (float)maxangle;
         References[i].fastalg_SAD_criteria = SAD_criteria;
         References[i].alignment_algo = alg_algo;
 #ifdef DEBUG_DETAIL_ON

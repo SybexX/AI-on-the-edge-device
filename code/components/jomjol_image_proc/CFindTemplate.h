@@ -13,6 +13,7 @@ struct RefInfo {
     int height = 0;         // Height of the alignment image
     int search_x;           // X-size (width) in which the reference is searched
     int search_y;           // Y-size (height) in which the reference is searched
+    float search_max_angle; // Max rotation angle in which the reference is searched
     int found_x;
     int found_y;
     int fastalg_x = -1;

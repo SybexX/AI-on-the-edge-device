@@ -109,6 +109,8 @@ bool isStringAlphanumeric(std::string &input);
 bool alphanumericToBoolean(std::string &input);
 
 int clipInt(int input, int high, int low);
+float clipFloat(float input, float high, float low);
+
 bool numericStrToBool(std::string input);
 bool stringToBoolean(std::string input);
 
