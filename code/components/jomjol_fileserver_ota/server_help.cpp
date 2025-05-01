@@ -24,7 +24,7 @@ static const char *TAG = "SERVER HELP";
 
 char scratch[SERVER_HELPER_SCRATCH_BUFSIZE];
 
-bool endsWith(std::string const &str, std::string const &suffix) 
+bool endsWith(std::string const &str, std::string const &suffix)
 {
     if (str.length() < suffix.length()) {
         return false;
@@ -50,9 +50,9 @@ esp_err_t send_file(httpd_req_t *req, std::string filename)
     }
 
     FILE *fd = fopen(filename.c_str(), "r");
-    if (!fd)  {
+    if (!fd) {
         ESP_LOGE(TAG, "Failed to read file: %s", filename.c_str());
-		
+
         /* Respond with 404 Error */
         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, get404());
         return ESP_FAIL;
@@ -61,19 +61,10 @@ esp_err_t send_file(httpd_req_t *req, std::string filename)
     ESP_LOGD(TAG, "Sending file: %s ...", filename.c_str());
 
     /* For all files with the following file extention tell the webbrowser to cache them for 12h */
-    if (endsWith(filename, ".html") ||
-        endsWith(filename, ".htm") ||
-        endsWith(filename, ".xml") ||
-        endsWith(filename, ".css") ||
-        endsWith(filename, ".js") ||
-        endsWith(filename, ".map") ||
-        endsWith(filename, ".jpg") ||
-        endsWith(filename, ".jpeg") ||
-        endsWith(filename, ".ico") ||
-        endsWith(filename, ".png") ||
-        endsWith(filename, ".gif") ||
+    if (endsWith(filename, ".html") || endsWith(filename, ".htm") || endsWith(filename, ".xml") || endsWith(filename, ".css") || endsWith(filename, ".js") || endsWith(filename, ".map") || endsWith(filename, ".jpg") || endsWith(filename, ".jpeg") ||
+        endsWith(filename, ".ico") || endsWith(filename, ".png") || endsWith(filename, ".gif") ||
         // endsWith(filename, ".zip") ||
-        endsWith(filename, ".gz"))	{
+        endsWith(filename, ".gz")) {
         if (filename == "/sdcard/html/setup.html") {
             httpd_resp_set_hdr(req, "Clear-Site-Data", "\"*\"");
             set_content_type_from_file(req, filename.c_str());
@@ -95,22 +86,22 @@ esp_err_t send_file(httpd_req_t *req, std::string filename)
     /* Retrieve the pointer to scratch buffer for temporary storage */
     char *chunk = scratch;
     size_t chunksize;
-	
-    do  {
+
+    do {
         /* Read file in chunks into the scratch buffer */
         chunksize = fread(chunk, 1, SERVER_HELPER_SCRATCH_BUFSIZE, fd);
 
         /* Send the buffer contents as HTTP response chunk */
-        if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK)  {
+        if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK) {
             fclose(fd);
             ESP_LOGE(TAG, "File sending failed!");
-			
+
             /* Abort sending file */
             httpd_resp_sendstr_chunk(req, NULL);
-			
+
             /* Respond with 500 Internal Server Error */
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
-			
+
             return ESP_FAIL;
         }
 
@@ -120,13 +111,13 @@ esp_err_t send_file(httpd_req_t *req, std::string filename)
     /* Close file after sending complete */
     fclose(fd);
     ESP_LOGD(TAG, "File sending complete");
-	
-    return ESP_OK;    
+
+    return ESP_OK;
 }
 
 /* Copies the full path into destination buffer and returns
  * pointer to path (skipping the preceding base path) */
-const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize)
+const char *get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize)
 {
     const size_t base_pathlen = strlen(base_path);
     size_t pathlen = strlen(uri);

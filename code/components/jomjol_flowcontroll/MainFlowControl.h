@@ -11,8 +11,7 @@
 #include "ClassFlowControll.h"
 #include "openmetrics.h"
 
-typedef struct
-{
+typedef struct {
     uint16_t CamSensor_id;
 
     framesize_t ImageFrameSize = FRAMESIZE_VGA; // 0 - 10

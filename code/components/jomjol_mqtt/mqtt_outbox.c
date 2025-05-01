@@ -28,9 +28,6 @@ typedef struct outbox_item {
     STAILQ_ENTRY(outbox_item) next;
 } outbox_item_t;
 
-STAILQ_HEAD(outbox_list_t, outbox_item);
-
-
 outbox_handle_t outbox_init(void)
 {
 #ifdef USE_PSRAM

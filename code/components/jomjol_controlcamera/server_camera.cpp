@@ -45,14 +45,12 @@ esp_err_t handler_lightOn(httpd_req_t *req)
     ESP_LOGD(TAG, "handler_lightOn uri: %s", req->uri);
 #endif
 
-    if (Camera.getCameraInitSuccessful())
-    {
+    if (Camera.getCameraInitSuccessful()) {
         Camera.LightOnOff(true);
         const char *resp_str = (const char *)req->user_ctx;
         httpd_resp_send(req, resp_str, strlen(resp_str));
     }
-    else
-    {
+    else {
         httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Camera not initialized: REST API /lighton not available!");
         return ESP_ERR_NOT_FOUND;
     }
@@ -71,14 +69,12 @@ esp_err_t handler_lightOff(httpd_req_t *req)
     ESP_LOGD(TAG, "handler_lightOff uri: %s", req->uri);
 #endif
 
-    if (Camera.getCameraInitSuccessful())
-    {
+    if (Camera.getCameraInitSuccessful()) {
         Camera.LightOnOff(false);
         const char *resp_str = (const char *)req->user_ctx;
         httpd_resp_send(req, resp_str, strlen(resp_str));
     }
-    else
-    {
+    else {
         httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Camera not initialized: REST API /lightoff not available!");
         return ESP_ERR_NOT_FOUND;
     }
@@ -96,11 +92,9 @@ esp_err_t handler_capture(httpd_req_t *req)
     LogFile.WriteHeapInfo("handler_capture - Start");
 #endif
 
-    if (Camera.getCameraInitSuccessful())
-    {
+    if (Camera.getCameraInitSuccessful()) {
         // If the camera settings were changed by creating a new reference image, they must be reset
-        if (CFstatus.changedCameraSettings)
-        {
+        if (CFstatus.changedCameraSettings) {
             Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
@@ -109,7 +103,7 @@ esp_err_t handler_capture(httpd_req_t *req)
 
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
-#endif        
+#endif
 
         esp_err_t result;
         result = Camera.CaptureToHTTP(req);
@@ -120,8 +114,7 @@ esp_err_t handler_capture(httpd_req_t *req)
 
         return result;
     }
-    else
-    {
+    else {
         httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Camera not initialized: REST API /capture not available!");
         return ESP_ERR_NOT_FOUND;
     }
@@ -133,33 +126,28 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
     LogFile.WriteHeapInfo("handler_capture_with_light - Start");
 #endif
 
-    if (Camera.getCameraInitSuccessful())
-    {
+    if (Camera.getCameraInitSuccessful()) {
         char _query[100];
         char _delay[10];
         int delay = 2500;
 
-        if (httpd_req_get_url_query_str(req, _query, 100) == ESP_OK)
-        {
+        if (httpd_req_get_url_query_str(req, _query, 100) == ESP_OK) {
             ESP_LOGD(TAG, "Query: %s", _query);
 
-            if (httpd_query_key_value(_query, "delay", _delay, 10) == ESP_OK)
-            {
+            if (httpd_query_key_value(_query, "delay", _delay, 10) == ESP_OK) {
 #ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "Delay: %s", _delay);
 #endif
                 delay = atoi(_delay);
 
-                if (delay < 0)
-                {
+                if (delay < 0) {
                     delay = 0;
                 }
             }
         }
 
         // If the camera settings were changed by creating a new reference image, they must be reset
-        if (CFstatus.changedCameraSettings)
-        {
+        if (CFstatus.changedCameraSettings) {
             Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
@@ -168,7 +156,7 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
 
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
-#endif        
+#endif
 
         Camera.LightOnOff(true);
         const TickType_t xDelay = delay / portTICK_PERIOD_MS;
@@ -185,8 +173,7 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
 
         return result;
     }
-    else
-    {
+    else {
         httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Camera not initialized: REST API /capture_with_flashlight not available!");
         return ESP_ERR_NOT_FOUND;
     }
@@ -198,51 +185,43 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
     LogFile.WriteHeapInfo("handler_capture_save_to_file - Start");
 #endif
 
-    if (Camera.getCameraInitSuccessful())
-    {
+    if (Camera.getCameraInitSuccessful()) {
         char _query[100];
         char _delay[10];
         int delay = 0;
         char filename[100];
         std::string fn = "/sdcard/";
 
-        if (httpd_req_get_url_query_str(req, _query, 100) == ESP_OK)
-        {
+        if (httpd_req_get_url_query_str(req, _query, 100) == ESP_OK) {
             ESP_LOGD(TAG, "Query: %s", _query);
 
-            if (httpd_query_key_value(_query, "filename", filename, 100) == ESP_OK)
-            {
+            if (httpd_query_key_value(_query, "filename", filename, 100) == ESP_OK) {
                 fn.append(filename);
 #ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "Filename: %s", fn.c_str());
 #endif
             }
-            else
-            {
+            else {
                 fn.append("noname.jpg");
             }
 
-            if (httpd_query_key_value(_query, "delay", _delay, 10) == ESP_OK)
-            {
+            if (httpd_query_key_value(_query, "delay", _delay, 10) == ESP_OK) {
 #ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "Delay: %s", _delay);
 #endif
                 delay = atoi(_delay);
 
-                if (delay < 0)
-                {
+                if (delay < 0) {
                     delay = 0;
                 }
             }
         }
-        else
-        {
+        else {
             fn.append("noname.jpg");
         }
 
         // If the camera settings were changed by creating a new reference image, they must be reset
-        if (CFstatus.changedCameraSettings)
-        {
+        if (CFstatus.changedCameraSettings) {
             Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
             Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
             Camera.LedIntensity = CCstatus.ImageLedIntensity;
@@ -251,7 +230,7 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
 
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
-#endif        
+#endif
 
         esp_err_t result;
         result = Camera.CaptureToFile(fn, delay);
@@ -265,8 +244,7 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
 
         return result;
     }
-    else
-    {
+    else {
         httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Camera not initialized: REST API /save not available!");
         return ESP_ERR_NOT_FOUND;
     }

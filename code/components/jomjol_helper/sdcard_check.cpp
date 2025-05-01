@@ -7,7 +7,7 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 
-#include "esp_rom_crc.h" 
+#include "esp_rom_crc.h"
 #include "ClassLogFile.h"
 
 static const char *TAG = "SDCARD";
@@ -15,32 +15,32 @@ static const char *TAG = "SDCARD";
 int SDCardCheckRW(void)
 {
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Basic R/W check started...");
-    FILE* pFile = NULL;
+    FILE *pFile = NULL;
     int iCRCMessage = 0;
-   
-    pFile = fopen("/sdcard/sdcheck.txt","w");
+
+    pFile = fopen("/sdcard/sdcheck.txt", "w");
     if (pFile == NULL) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Basic R/W check: (E1) No able to open file to write");
         return -1;
-    } 
+    }
     else {
         std::string sMessage = "This message is used for a SD-Card basic check!";
-        iCRCMessage = esp_rom_crc16_le(0, (uint8_t*)sMessage.c_str(), sMessage.length());
-        if (fwrite(sMessage.c_str(), sMessage.length(), 1, pFile) == 0 ) {
+        iCRCMessage = esp_rom_crc16_le(0, (uint8_t *)sMessage.c_str(), sMessage.length());
+        if (fwrite(sMessage.c_str(), sMessage.length(), 1, pFile) == 0) {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Basic R/W check: (E2) Not able to write file");
             fclose(pFile);
             unlink("/sdcard/sdcheck.txt");
             return -2;
         }
-        fclose(pFile); 
+        fclose(pFile);
     }
 
-    pFile = fopen("/sdcard/sdcheck.txt","r");
+    pFile = fopen("/sdcard/sdcheck.txt", "r");
     if (pFile == NULL) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Basic R/W check: (E3) Not able to open file to read back");
         unlink("/sdcard/sdcheck.txt");
         return -3;
-    } 
+    }
     else {
         char cReadBuf[50];
         if (fgets(cReadBuf, sizeof(cReadBuf), pFile) == 0) {
@@ -50,13 +50,13 @@ int SDCardCheckRW(void)
             return -4;
         }
         else {
-            if (esp_rom_crc16_le(0, (uint8_t*)cReadBuf, strlen(cReadBuf)) != iCRCMessage) {                 
+            if (esp_rom_crc16_le(0, (uint8_t *)cReadBuf, strlen(cReadBuf)) != iCRCMessage) {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Basic R/W check: (E5) Read back, but wrong CRC");
                 fclose(pFile);
                 unlink("/sdcard/sdcheck.txt");
                 return -5;
             }
-        }      
+        }
         fclose(pFile);
     }
 
@@ -156,6 +156,6 @@ bool SDCardCheckFolderFilePresence()
     if (bRetval) {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Folder/file presence check successful");
     }
-    
+
     return bRetval;
 }

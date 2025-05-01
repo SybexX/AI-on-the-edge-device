@@ -47,7 +47,7 @@ ClassFlowAlignment::ClassFlowAlignment(std::vector<ClassFlow *> *lfc)
     }
 
     // the function take pictures does not exist --> must be created first ONLY FOR TEST PURPOSES
-    if (!ImageBasis)  {
+    if (!ImageBasis) {
         ESP_LOGD(TAG, "CImageBasis had to be created");
         ImageBasis = new CImageBasis("ImageBasis", namerawimage);
     }
@@ -62,21 +62,18 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
 
     aktparamgraph = trim(aktparamgraph);
 
-    if (aktparamgraph.size() == 0)
-    {
+    if (aktparamgraph.size() == 0) {
         if (!this->GetNextParagraph(pfile, aktparamgraph)) {
             return false;
         }
     }
 
-    if (aktparamgraph.compare("[Alignment]") != 0)
-    {
+    if (aktparamgraph.compare("[Alignment]") != 0) {
         // Paragraph does not fit Alignment
         return false;
     }
 
-    while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph))
-    {
+    while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph)) {
         splitted = ZerlegeZeile(aktparamgraph);
 
         if ((toUpper(splitted[0]) == "FLIPIMAGESIZE") && (splitted.size() > 1)) {
@@ -101,15 +98,13 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
             use_antialiasing = alphanumericToBoolean(splitted[1]);
         }
         else if ((splitted.size() == 3) && (anz_ref < 2)) {
-            if ((isStringNumeric(splitted[1])) && (isStringNumeric(splitted[2])))
-            {
+            if ((isStringNumeric(splitted[1])) && (isStringNumeric(splitted[2]))) {
                 References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
                 References[anz_ref].target_x = std::stod(splitted[1]);
                 References[anz_ref].target_y = std::stod(splitted[2]);
                 anz_ref++;
             }
-            else
-            {
+            else {
                 References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
                 References[anz_ref].target_x = 10;
                 References[anz_ref].target_y = 10;
@@ -171,7 +166,7 @@ bool ClassFlowAlignment::doFlow(string time)
 {
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
     // AlgROI needs to be allocated before ImageTMP to avoid heap fragmentation
-    if (!AlgROI)  {
+    if (!AlgROI) {
         AlgROI = (ImageData *)heap_caps_realloc(AlgROI, sizeof(ImageData), MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
 
         if (!AlgROI) {
@@ -218,10 +213,10 @@ bool ClassFlowAlignment::doFlow(string time)
 
     if ((initialrotate != 0) || initialflip) {
         if (use_antialiasing) {
-            rt.RotateAntiAliasing(initialrotate);
+            rt.RotateAntiAliasingImage(initialrotate);
         }
         else {
-            rt.Rotate(initialrotate);
+            rt.RotateImage(initialrotate);
         }
 
         if (SaveAllFiles) {
@@ -231,7 +226,7 @@ bool ClassFlowAlignment::doFlow(string time)
 
     // no align algo if set to 3 = off //add disable aligment algo |01.2023
     if (References[0].alignment_algo != 3) {
-        if (!AlignAndCutImage->Align(&References[0], &References[1])) {
+        if (!AlignAndCutImage->AlignImage(&References[0], &References[1])) {
             SaveReferenceAlignmentValues();
         }
     } // no align
@@ -350,17 +345,6 @@ bool ClassFlowAlignment::LoadReferenceAlignmentValues(void)
     References[1].fastalg_avg = stof(splitted[5]);
 
     fclose(pFile);
-
-    /*#ifdef DEBUG_DETAIL_ON
-        std::string _zw = "\tLoadReferences[0]\tx,y:\t" + std::to_string(References[0].fastalg_x) + "\t" + std::to_string(References[0].fastalg_x);
-        _zw = _zw + "\tSAD, min, max, avg:\t" + std::to_string(References[0].fastalg_SAD) + "\t" + std::to_string(References[0].fastalg_min);
-        _zw = _zw + "\t" + std::to_string(References[0].fastalg_max) + "\t" + std::to_string(References[0].fastalg_avg);
-        LogFile.WriteToDedicatedFile("/sdcard/alignment.txt", _zw);
-        _zw = "\tLoadReferences[1]\tx,y:\t" + std::to_string(References[1].fastalg_x) + "\t" + std::to_string(References[1].fastalg_x);
-        _zw = _zw + "\tSAD, min, max, avg:\t" + std::to_string(References[1].fastalg_SAD) + "\t" + std::to_string(References[1].fastalg_min);
-        _zw = _zw + "\t" + std::to_string(References[1].fastalg_max) + "\t" + std::to_string(References[1].fastalg_avg);
-        LogFile.WriteToDedicatedFile("/sdcard/alignment.txt", _zw);
-    #endif*/
 
     return true;
 }

@@ -11,7 +11,7 @@
 
 class ClassFlowTakeImage : public ClassFlowImage
 {
-protected:
+  protected:
     time_t TimeImageTaken;
     string namerawimage;
 
@@ -20,7 +20,7 @@ protected:
 
     void SetInitialParameter(void);
 
-public:
+  public:
     CImageBasis *rawImage;
 
     ClassFlowTakeImage(std::vector<ClassFlow *> *lfc);

@@ -27,7 +27,7 @@
 #include "ov2640_specialEffect.h"
 
 static const uint8_t special_effects_regs[8][5] = {
-    {0x7C, 0x7D, 0x7C, 0x7D, 0x7D},
+    {0x7C, 0x7D, 0x7C, 0x7D, 0x7D}, //
     {0x00, 0X00, 0x05, 0X80, 0X80}, /* no effect */
     {0x00, 0X40, 0x05, 0X80, 0X80}, /* negative */
     {0x00, 0X18, 0x05, 0X80, 0X80}, /* black and white */
@@ -42,8 +42,7 @@ int ov2640_set_special_effect(sensor_t *sensor, int effect)
     int ret = 0;
     effect++;
 
-    if (effect <= 0 || effect > 7)
-    {
+    if (effect <= 0 || effect > 7) {
         effect = 1;
     }
 
@@ -57,8 +56,7 @@ int ov2640_set_special_effect(sensor_t *sensor, int effect)
     sensor->set_reg(sensor, special_effects_regs[0][0], 0xFF, 0x00);
     sensor->set_reg(sensor, special_effects_regs[0][1], 0x5E, registerValue);
 
-    for (int i = 2; i < 5; i++)
-    {
+    for (int i = 2; i < 5; i++) {
         sensor->set_reg(sensor, special_effects_regs[0][i], 0xFF, special_effects_regs[effect][i]);
     }
 

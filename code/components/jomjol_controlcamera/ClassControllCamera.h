@@ -15,8 +15,7 @@
 #include "CImageBasis.h"
 #include "../../include/defines.h"
 
-typedef struct
-{
+typedef struct {
     uint16_t CamSensor_id;
 
     framesize_t ImageFrameSize = FRAMESIZE_VGA; // 0 - 10
@@ -71,7 +70,7 @@ extern camera_controll_config_temp_t CCstatus;
 
 class CCamera
 {
-protected:
+  protected:
     void ledc_init(void);
     bool loadNextDemoImage(camera_fb_t *fb);
     long GetFileSize(std::string filename);
@@ -79,7 +78,7 @@ protected:
     void SetImageWidthHeightFromResolution(framesize_t resol);
     void SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, int &imageWidth, int &imageHeight, int &zoomOffsetX, int &zoomOffsetY);
 
-public:
+  public:
     int LedIntensity = 4096;
 
     CCamera(void);

@@ -12,12 +12,11 @@ static const char *TAG = "INFLUXDB";
 
 /**
  * @brief Buffer to store the HTTP response.
- * 
+ *
  * This character array is used to store the output of an HTTP response.
  * The size of the buffer is defined by the constant MAX_HTTP_OUTPUT_BUFFER.
  */
 char response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
-
 
 /**
  * @brief HTTP event handler callback function.
@@ -39,8 +38,7 @@ char response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
  */
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
-    switch(evt->event_id)
-    {
+    switch (evt->event_id) {
         case HTTP_EVENT_ERROR:
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP Client Error encountered");
             break;
@@ -52,7 +50,7 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP Client sent all request headers");
             break;
         case HTTP_EVENT_ON_HEADER:
-            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Header: key=" + std::string(evt->header_key) + ", value="  + std::string(evt->header_value));
+            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Header: key=" + std::string(evt->header_key) + ", value=" + std::string(evt->header_value));
             break;
         case HTTP_EVENT_ON_DATA:
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP Client data recevied: len=" + std::to_string(evt->data_len));
@@ -60,7 +58,7 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
         case HTTP_EVENT_ON_FINISH:
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP Client finished");
             break;
-         case HTTP_EVENT_DISCONNECTED:
+        case HTTP_EVENT_DISCONNECTED:
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP Client Disconnected");
             break;
         case HTTP_EVENT_REDIRECT:
@@ -70,19 +68,18 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-
-
 /**
  * @brief Initializes the InfluxDB connection with version 1 settings.
- * 
+ *
  * This function sets up the connection parameters for InfluxDB version 1.
- * 
+ *
  * @param _influxDBURI The URI of the InfluxDB server.
  * @param _database The name of the database to connect to.
  * @param _user The username for authentication.
  * @param _password The password for authentication.
  */
-void InfluxDB::InfluxDBInitV1(std::string _influxDBURI, std::string _database, std::string _user, std::string _password) {
+void InfluxDB::InfluxDBInitV1(std::string _influxDBURI, std::string _database, std::string _user, std::string _password)
+{
     version = INFLUXDB_V1;
     influxDBURI = _influxDBURI;
     database = _database;
@@ -92,16 +89,17 @@ void InfluxDB::InfluxDBInitV1(std::string _influxDBURI, std::string _database, s
 
 /**
  * @brief Initializes the InfluxDB client with version 2 settings.
- * 
+ *
  * This function sets up the InfluxDB client to use InfluxDB version 2 by
  * configuring the URI, bucket, organization, and token.
- * 
+ *
  * @param _influxDBURI The URI of the InfluxDB server.
  * @param _bucket The bucket name to store data in.
  * @param _org The organization name associated with the bucket.
  * @param _token The authentication token for accessing the InfluxDB server.
  */
-void InfluxDB::InfluxDBInitV2(std::string _influxDBURI, std::string _bucket, std::string _org, std::string _token) {
+void InfluxDB::InfluxDBInitV2(std::string _influxDBURI, std::string _bucket, std::string _org, std::string _token)
+{
     version = INFLUXDB_V2;
     influxDBURI = _influxDBURI;
     bucket = _bucket;
@@ -121,14 +119,14 @@ void InfluxDB::InfluxDBInitV2(std::string _influxDBURI, std::string _bucket, std
  * @param None
  * @return None
  */
-void InfluxDB::connectHTTP() {
+void InfluxDB::connectHTTP()
+{
     esp_http_client_config_t config = {};
 
     config.url = influxDBURI.c_str();
     config.event_handler = http_event_handler;
     config.buffer_size = MAX_HTTP_OUTPUT_BUFFER;
     config.user_data = response_buffer;
-
 
     switch (version) {
         case INFLUXDB_V1:
@@ -142,13 +140,14 @@ void InfluxDB::connectHTTP() {
 
     InfluxDBdestroy();
     httpClient = esp_http_client_init(&config);
+
     if (!httpClient) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to initialize HTTP client");
-    } else {
+    }
+    else {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "HTTP client initialized successfully");
     }
 }
-
 
 /**
  * @brief Destroys the InfluxDB instance by cleaning up the HTTP client.
@@ -156,7 +155,8 @@ void InfluxDB::connectHTTP() {
  * This function checks if the HTTP client is initialized. If it is, it cleans up the HTTP client
  * and logs the cleanup action. The HTTP client pointer is then set to NULL.
  */
-void InfluxDB::InfluxDBdestroy() {
+void InfluxDB::InfluxDBdestroy()
+{
     if (httpClient) {
         esp_http_client_cleanup(httpClient);
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "HTTP client cleaned up");
@@ -179,24 +179,22 @@ void InfluxDB::InfluxDBdestroy() {
  * It constructs the appropriate API URI based on the InfluxDB version and sends the data
  * using an HTTP POST request.
  */
-void InfluxDB::InfluxDBPublish(std::string _measurement, std::string _key, std::string _content, long int _timeUTC) {
-    std::string apiURI;        
+void InfluxDB::InfluxDBPublish(std::string _measurement, std::string _key, std::string _content, long int _timeUTC)
+{
+    std::string apiURI;
     std::string payload;
     char nowTimestamp[21];
 
     connectHTTP();
 
-
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "InfluxDBPublish - Key: " + _key + ", Content: " + _content + ", timeUTC: " + std::to_string(_timeUTC));
 
-    if (_timeUTC > 0)
-    {
+    if (_timeUTC > 0) {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Timestamp (UTC): " + std::to_string(_timeUTC));
-        sprintf(nowTimestamp,"%ld000000000", _timeUTC);           // UTC
+        sprintf(nowTimestamp, "%ld000000000", _timeUTC); // UTC
         payload = _measurement + " " + _key + "=" + _content + " " + nowTimestamp;
     }
-    else
-    {
+    else {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "no timestamp given");
         payload = _measurement + " " + _key + "=" + _content;
     }
@@ -207,7 +205,7 @@ void InfluxDB::InfluxDBPublish(std::string _measurement, std::string _key, std::
     esp_err_t err;
 
     switch (version) {
-        case INFLUXDB_V1: 
+        case INFLUXDB_V1:
             apiURI = influxDBURI + "/write?db=" + database;
             apiURI.shrink_to_fit();
 
@@ -217,14 +215,16 @@ void InfluxDB::InfluxDBPublish(std::string _measurement, std::string _key, std::
             esp_http_client_set_post_field(httpClient, payload.c_str(), payload.length());
 
             err = esp_http_client_perform(httpClient);
+
             if (err == ESP_OK) {
                 LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Data published successfully: " + payload);
-            } else {
+            }
+            else {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to publish data: " + std::string(esp_err_to_name(err)));
             }
             break;
 
-        case INFLUXDB_V2:        
+        case INFLUXDB_V2:
             apiURI = influxDBURI + "/api/v2/write?org=" + org + "&bucket=" + bucket;
             apiURI.shrink_to_fit();
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "apiURI: " + apiURI);
@@ -238,11 +238,12 @@ void InfluxDB::InfluxDBPublish(std::string _measurement, std::string _key, std::
             err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_http_client_perform(httpClient));
             if (err == ESP_OK) {
                 LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Data published successfully: " + payload);
-            } else {
+            }
+            else {
                 LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Failed to publish data: " + std::string(esp_err_to_name(err)));
             }
-        break;
+            break;
     }
 }
 
-#endif //ENABLE_INFLUXDB
+#endif // ENABLE_INFLUXDB
