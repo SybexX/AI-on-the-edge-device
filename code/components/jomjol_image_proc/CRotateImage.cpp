@@ -2,7 +2,7 @@
 #include "CRotateImage.h"
 #include "psram.h"
 
-static const char *TAG = "C ROTATE IMG";
+static const char *TAG = "C_ROTATE_IMG";
 
 CRotateImage::CRotateImage(std::string _name, CImageBasis *_org, CImageBasis *_temp, bool _flip) : CImageBasis(_name)
 {
@@ -25,7 +25,7 @@ void CRotateImage::RotateImage(float _angle, int _centerx, int _centery)
 
     float x_center = _centerx;
     float y_center = _centery;
-    _angle = _angle / 180 * M_PI;
+    float radians = _angle / 180 * M_PI;
 
     if (doflip) {
         org_width = width;
@@ -45,8 +45,8 @@ void CRotateImage::RotateImage(float _angle, int _centerx, int _centery)
         org_height = height;
     }
 
-    m[0][0] = cos(_angle);
-    m[0][1] = sin(_angle);
+    m[0][0] = cos(radians);
+    m[0][1] = sin(radians);
     m[0][2] = (1 - m[0][0]) * x_center - m[0][1] * y_center;
 
     m[1][0] = -m[0][1];
@@ -118,7 +118,7 @@ void CRotateImage::RotateAntiAliasingImage(float _angle, int _centerx, int _cent
 
     float x_center = _centerx;
     float y_center = _centery;
-    _angle = _angle / 180 * M_PI;
+    float radians = _angle / 180 * M_PI;
 
     if (doflip) {
         org_width = width;
@@ -138,8 +138,8 @@ void CRotateImage::RotateAntiAliasingImage(float _angle, int _centerx, int _cent
         org_height = height;
     }
 
-    m[0][0] = cos(_angle);
-    m[0][1] = sin(_angle);
+    m[0][0] = cos(radians);
+    m[0][1] = sin(radians);
     m[0][2] = (1 - m[0][0]) * x_center - m[0][1] * y_center;
 
     m[1][0] = -m[0][1];

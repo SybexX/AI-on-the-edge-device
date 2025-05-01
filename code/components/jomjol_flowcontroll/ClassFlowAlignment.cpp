@@ -164,6 +164,14 @@ string ClassFlowAlignment::getHTMLSingleStep(string host)
 
 bool ClassFlowAlignment::doFlow(string time)
 {
+    // no align algo if set to 3 = off
+    if (References[0].alignment_algo == 3) {
+        flowctrl.AlignmentOk = true;
+    }
+    else {
+        flowctrl.AlignmentOk = false;
+    }
+
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
     // AlgROI needs to be allocated before ImageTMP to avoid heap fragmentation
     if (!AlgROI) {
@@ -224,12 +232,20 @@ bool ClassFlowAlignment::doFlow(string time)
         }
     }
 
-    // no align algo if set to 3 = off //add disable aligment algo |01.2023
+    // no align algo if set to 3 = off
     if (References[0].alignment_algo != 3) {
-        if (!AlignAndCutImage->AlignImage(&References[0], &References[1])) {
+        int CAlignImageRetval = AlignAndCutImage->AlignImage(&References[0], &References[1]);
+        if (CAlignImageRetval >= 0) {
             SaveReferenceAlignmentValues();
+            flowctrl.AlignmentOk = true;
         }
-    } // no align
+        else if (CAlignImageRetval == -1) {
+            // Alignment failed
+            flowctrl.AlignmentOk = false;
+            LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Can't allocate Align -> Exec this round aborted!");
+            LogFile.WriteHeapInfo("ClassFlowAlignment-doFlow");
+        }
+    }
 
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
     if (AlgROI) {

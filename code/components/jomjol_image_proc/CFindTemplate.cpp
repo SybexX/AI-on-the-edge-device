@@ -6,7 +6,7 @@
 
 #include <esp_log.h>
 
-static const char *TAG = "C FIND TEMPL";
+static const char *TAG = "C_FIND_TEMPL";
 
 // #define DEBUG_DETAIL_ON
 

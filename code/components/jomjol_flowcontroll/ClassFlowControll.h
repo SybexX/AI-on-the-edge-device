@@ -30,18 +30,20 @@ class ClassFlowControll : public ClassFlow
     ClassFlowAlignment *flowalignment;
     ClassFlowCNNGeneral *flowanalog;
     ClassFlowCNNGeneral *flowdigit;
-    //	ClassFlowDigit* flowdigit;
+    // ClassFlowDigit* flowdigit;
     ClassFlowTakeImage *flowtakeimage;
     ClassFlow *CreateClassFlow(std::string _type);
 
-    bool AutoStart;
-    float AutoInterval;
     void SetInitialParameter(void);
     std::string aktstatusWithTime;
     std::string aktstatus;
     int aktRunNr;
 
   public:
+    bool AutoStart;
+    float AutoInterval;
+  
+    bool AlignmentOk;
     bool SetupModeActive;
 
     void InitFlow(std::string config);

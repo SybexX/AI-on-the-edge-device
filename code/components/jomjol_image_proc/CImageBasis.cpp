@@ -16,7 +16,7 @@
 
 using namespace std;
 
-static const char *TAG = "C IMG BASIS";
+static const char *TAG = "C_IMG_BASIS";
 
 bool jpgFileTooLarge = false; // JPG creation verfication
 
@@ -180,8 +180,7 @@ bool CImageBasis::CopyFromMemory(uint8_t *_source, int _size)
 
 uint8_t CImageBasis::GetPixelColor(int x, int y, int ch)
 {
-    stbi_uc *p_source;
-    p_source = rgb_image + (channels * (y * width + x));
+    stbi_uc *p_source = rgb_image + (channels * (y * width + x));
 
     return p_source[ch];
 }
@@ -199,11 +198,7 @@ void CImageBasis::memCopy(uint8_t *_source, uint8_t *_target, int _size)
 
 bool CImageBasis::isInImage(int x, int y)
 {
-    if ((x < 0) || (x > width - 1)) {
-        return false;
-    }
-
-    if ((y < 0) || (y > height - 1)) {
+    if (((x < 0) || (x > width - 1)) || ((y < 0) || (y > height - 1))) {
         return false;
     }
 
@@ -212,10 +207,9 @@ bool CImageBasis::isInImage(int x, int y)
 
 void CImageBasis::setPixelColor(int x, int y, int r, int g, int b)
 {
-    stbi_uc *p_source;
-
     RGBImageLock();
-    p_source = rgb_image + (channels * (y * width + x));
+
+    stbi_uc *p_source = rgb_image + (channels * (y * width + x));
     p_source[0] = r;
 
     if (channels > 2) {
@@ -228,13 +222,12 @@ void CImageBasis::setPixelColor(int x, int y, int r, int g, int b)
 
 void CImageBasis::drawRect(int x, int y, int dx, int dy, int r, int g, int b, int thickness)
 {
-    int zwx1, zwx2, zwy1, zwy2;
     int _x, _y, _thick;
 
-    zwx1 = x - thickness + 1;
-    zwx2 = x + dx + thickness - 1;
-    zwy1 = y;
-    zwy2 = y;
+    int zwx1 = x - thickness + 1;
+    int zwx2 = x + dx + thickness - 1;
+    int zwy1 = y;
+    int zwy2 = y;
 
     RGBImageLock();
 
@@ -298,14 +291,13 @@ void CImageBasis::drawRect(int x, int y, int dx, int dy, int r, int g, int b, in
 
 void CImageBasis::drawLine(int x1, int y1, int x2, int y2, int r, int g, int b, int thickness)
 {
-    int _x, _y, _thick;
     int _zwy1, _zwy2;
     thickness = (thickness - 1) / 2;
 
     RGBImageLock();
 
-    for (_thick = 0; _thick <= thickness; ++_thick) {
-        for (_x = x1 - _thick; _x <= x2 + _thick; ++_x) {
+    for (int _thick = 0; _thick <= thickness; ++_thick) {
+        for (int _x = x1 - _thick; _x <= x2 + _thick; ++_x) {
             if (x2 == x1) {
                 _zwy1 = y1;
                 _zwy2 = y2;
@@ -315,7 +307,7 @@ void CImageBasis::drawLine(int x1, int y1, int x2, int y2, int r, int g, int b, 
                 _zwy2 = (y2 - y1) * (float)(_x + 1 - x1) / (float)(x2 - x1) + y1;
             }
 
-            for (_y = _zwy1 - _thick; _y <= _zwy2 + _thick; _y++) {
+            for (int _y = _zwy1 - _thick; _y <= _zwy2 + _thick; _y++) {
                 if (isInImage(_x, _y)) {
                     setPixelColor(_x, _y, r, g, b);
                 }
@@ -328,22 +320,20 @@ void CImageBasis::drawLine(int x1, int y1, int x2, int y2, int r, int g, int b, 
 
 void CImageBasis::drawEllipse(int x1, int y1, int radx, int rady, int r, int g, int b, int thickness)
 {
-    float deltarad, aktrad;
-    int _thick, _x, _y;
     int rad = radx;
 
     if (rady > radx) {
         rad = rady;
     }
 
-    deltarad = 1 / (4 * M_PI * (rad + thickness - 1));
+    float deltarad = 1 / (4 * M_PI * (rad + thickness - 1));
 
     RGBImageLock();
 
-    for (aktrad = 0; aktrad <= (2 * M_PI); aktrad += deltarad) {
-        for (_thick = 0; _thick < thickness; ++_thick) {
-            _x = sin(aktrad) * (radx + _thick) + x1;
-            _y = cos(aktrad) * (rady + _thick) + y1;
+    for (float aktrad = 0; aktrad <= (2 * M_PI); aktrad += deltarad) {
+        for (int _thick = 0; _thick < thickness; ++_thick) {
+            int _x = sin(aktrad) * (radx + _thick) + x1;
+            int _y = cos(aktrad) * (rady + _thick) + y1;
 
             if (isInImage(_x, _y)) {
                 setPixelColor(_x, _y, r, g, b);
@@ -356,17 +346,14 @@ void CImageBasis::drawEllipse(int x1, int y1, int radx, int rady, int r, int g, 
 
 void CImageBasis::drawCircle(int x1, int y1, int rad, int r, int g, int b, int thickness)
 {
-    float deltarad, aktrad;
-    int _thick, _x, _y;
-
-    deltarad = 1 / (4 * M_PI * (rad + thickness - 1));
+    float deltarad = 1 / (4 * M_PI * (rad + thickness - 1));
 
     RGBImageLock();
 
-    for (aktrad = 0; aktrad <= (2 * M_PI); aktrad += deltarad) {
-        for (_thick = 0; _thick < thickness; ++_thick) {
-            _x = sin(aktrad) * (rad + _thick) + x1;
-            _y = cos(aktrad) * (rad + _thick) + y1;
+    for (float aktrad = 0; aktrad <= (2 * M_PI); aktrad += deltarad) {
+        for (int _thick = 0; _thick < thickness; ++_thick) {
+            int _x = sin(aktrad) * (rad + _thick) + x1;
+            int _y = cos(aktrad) * (rad + _thick) + y1;
 
             if (isInImage(_x, _y)) {
                 setPixelColor(_x, _y, r, g, b);
@@ -490,23 +477,8 @@ void CImageBasis::crop_image(unsigned short cropLeft, unsigned short cropRight, 
         // Calculate current X, Y pixel position
         int x = (i / channels) % width;
 
-        // Crop from the top
-        if (i < maxTopIndex) {
-            continue;
-        }
-
-        // Crop from the bottom
-        if (i > minBottomIndex) {
-            continue;
-        }
-
-        // Crop from the left
-        if (x <= cropLeft) {
-            continue;
-        }
-
-        // Crop from the right
-        if (x > maxX) {
+        // Crop from the top or Crop from the bottom or Crop from the left or Crop from the right
+        if ((i < maxTopIndex) || (i > minBottomIndex) || (x <= cropLeft) || (x > maxX)) {
             continue;
         }
 
@@ -694,7 +666,6 @@ void CImageBasis::Contrast(float _contrast) // input range [-100..100]
 CImageBasis::~CImageBasis()
 {
     RGBImageLock();
-
 
     if (!externalImage) {
         if (name == "tmpImage") {

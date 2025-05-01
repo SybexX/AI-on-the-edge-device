@@ -1,16 +1,16 @@
-#include "ClassFlowPostProcessing.h"
-#include "Helper.h"
-#include "ClassFlowTakeImage.h"
-#include "ClassLogFile.h"
-
 #include <iomanip>
 #include <sstream>
-
 #include <time.h>
 
-#include "time_sntp.h"
+#include "ClassFlowPostProcessing.h"
+#include "ClassFlowTakeImage.h"
+#include "MainFlowControl.h"
+#include "ClassLogFile.h"
 
+#include "time_sntp.h"
 #include "esp_log.h"
+
+#include "Helper.h"
 #include "../../include/defines.h"
 
 static const char *TAG = "POSTPROC";
@@ -777,17 +777,7 @@ string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift)
 
 bool ClassFlowPostProcessing::doFlow(string zwtime)
 {
-    string result = "";
-    string digit = "";
-    string analog = "";
-    string zwvalue;
-    string zw;
-    time_t imagetime = 0;
-    string rohwert;
-
-    // Update decimal point, as the decimal places can also change when changing from CNNType Auto --> xyz:
-
-    imagetime = flowTakeImage->getTimeImageTaken();
+    time_t imagetime = flowTakeImage->getTimeImageTaken();
 
     if (imagetime == 0) {
         time(&imagetime);
@@ -813,6 +803,17 @@ bool ClassFlowPostProcessing::doFlow(string zwtime)
         // double LastValueTimeDifference = difftime(imagetime, NUMBERS[j]->timeStampLastValue);         // in seconds
         double LastPreValueTimeDifference = difftime(imagetime, NUMBERS[j]->timeStampLastPreValue); // in seconds
 
+        if (!flowctrl.AlignmentOk) {
+            NUMBERS[j]->ErrorMessageText = "Alignment failed";
+            NUMBERS[j]->timeStampLastValue = imagetime;
+
+            std::string _zw = NUMBERS[j]->name + ": Raw: " + NUMBERS[j]->ReturnRawValue + ", Value: " + NUMBERS[j]->ReturnValue + ", Status: " + NUMBERS[j]->ErrorMessageText;
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, _zw);
+            WriteDataLog(j);
+            continue;
+        }
+
+        // Update decimal point, as the decimal places can also change when changing from CNNType Auto --> xyz:
         UpdateNachkommaDecimalShift();
 
         int previous_value = -1;
@@ -933,11 +934,10 @@ bool ClassFlowPostProcessing::doFlow(string zwtime)
                 if ((NUMBERS[j]->Value < NUMBERS[j]->PreValue)) {
                     // more debug if extended resolution is on, see #2447
                     if (NUMBERS[j]->isExtendedResolution) {
-                        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG,
-                                            "Neg: value=" + std::to_string(NUMBERS[j]->Value) + ", preValue=" + std::to_string(NUMBERS[j]->PreValue) + ", preToll=" + std::to_string(NUMBERS[j]->PreValue - (2 / pow(10, NUMBERS[j]->Nachkomma))));
+                        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Neg: value=" + std::to_string(NUMBERS[j]->Value) + ", preValue=" + std::to_string(NUMBERS[j]->PreValue) + ", preToll=" + std::to_string(NUMBERS[j]->PreValue - (2 / pow(10, NUMBERS[j]->Nachkomma))));
                     }
 
-                    NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Neg. Rate - Read: " + zwvalue + " - Raw: " + NUMBERS[j]->ReturnRawValue + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " ";
+                    NUMBERS[j]->ErrorMessageText = NUMBERS[j]->ErrorMessageText + "Neg. Rate - Read: " + RundeOutput(NUMBERS[j]->Value, NUMBERS[j]->Nachkomma) + " - Raw: " + NUMBERS[j]->ReturnRawValue + " - Pre: " + RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma) + " ";
                     NUMBERS[j]->Value = NUMBERS[j]->PreValue;
                     NUMBERS[j]->ReturnValue = "";
                     NUMBERS[j]->timeStampLastValue = imagetime;

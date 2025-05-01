@@ -8,7 +8,7 @@
 #include "psram.h"
 #include "../../include/defines.h"
 
-static const char *TAG = "c_align_and_cut_image";
+static const char *TAG = "C_ALIGN_AND_CUT_IMG";
 
 CAlignAndCutImage::CAlignAndCutImage(std::string _name, CImageBasis *_org, CImageBasis *_temp) : CImageBasis(_name)
 {
@@ -23,54 +23,80 @@ CAlignAndCutImage::CAlignAndCutImage(std::string _name, CImageBasis *_org, CImag
     ImageTMP = _temp;
 }
 
-void CAlignAndCutImage::GetRefSize(int *ref_dx, int *ref_dy)
-{
-    ref_dx[0] = t0_dx;
-    ref_dy[0] = t0_dy;
-    ref_dx[1] = t1_dx;
-    ref_dy[1] = t1_dy;
-}
-
-bool CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
+int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
 {
     CFindTemplate *ft = new CFindTemplate("align", rgb_image, channels, width, height, bpp);
 
-    int r0_x = _temp1->target_x;
-    int r0_y = _temp1->target_y;
-    ESP_LOGD(TAG, "Before ft->FindTemplate(_temp1); %s", _temp1->image_file.c_str());
+    ///////////////////////////////////////////////////////
+    ESP_LOGD(TAG, "AlignImage: Before ft->FindTemplate(_temp1); %s", _temp1->image_file.c_str());
     bool isSimilar1 = ft->FindTemplate(_temp1);
+
     _temp1->width = ft->tpl_width;
     _temp1->height = ft->tpl_height;
 
-    int r1_x = _temp2->target_x;
-    int r1_y = _temp2->target_y;
-    ESP_LOGD(TAG, "Before ft->FindTemplate(_temp2); %s", _temp2->image_file.c_str());
+    int x1_relative_shift = _temp1->target_x - _temp1->found_x;
+    int y1_relative_shift = _temp1->target_y - _temp1->found_y;
+
+    int x1_absolute_shift = _temp1->target_x + (_temp1->target_x - _temp1->found_x);
+    int y1_absolute_shift = _temp1->target_y + (_temp1->target_y - _temp1->found_y);
+
+    ///////////////////////////////////////////////////////
+    ESP_LOGD(TAG, "AlignImage: Before ft->FindTemplate(_temp2); %s", _temp2->image_file.c_str());
     bool isSimilar2 = ft->FindTemplate(_temp2);
     _temp2->width = ft->tpl_width;
     _temp2->height = ft->tpl_height;
 
+    int x2_relative_shift = _temp2->target_x - _temp2->found_x;
+    int y2_relative_shift = _temp2->target_y - _temp2->found_y;
+
+    int x2_absolute_shift = _temp2->target_x + (_temp2->target_x - _temp2->found_x);
+    int y2_absolute_shift = _temp2->target_y + (_temp2->target_y - _temp2->found_y);
+
     delete ft;
 
-    int dx = _temp1->target_x - _temp1->found_x;
-    int dy = _temp1->target_y - _temp1->found_y;
+    ///////////////////////////////////////////////////////
+    float radians_org = atan2(_temp2->found_y - _temp1->found_y, _temp2->found_x - _temp1->found_x);
+    float radians_cur = atan2(y2_absolute_shift - y1_absolute_shift, x2_absolute_shift - x1_absolute_shift);
 
-    r0_x += dx;
-    r0_y += dy;
+    float angle_dif = (radians_cur - radians_org) * 180 / M_PI;
 
-    r1_x += dx;
-    r1_y += dy;
+    //////////////////////////////////////////////
+    int ret = Alignment_OK;
 
-    float w_org = atan2(_temp2->found_y - _temp1->found_y, _temp2->found_x - _temp1->found_x);
-    float w_ist = atan2(r1_y - r0_y, r1_x - r0_x);
+    // Check whether the first alignment marking exceeds the defined search area(x/y)
+    if ((abs(x1_relative_shift) >= _temp1->search_x) || (abs(y1_relative_shift) >= _temp1->search_y)) {
+        ret |= Alignment_Failed;
+        ESP_LOGE(TAG, "Alignment failed: image shift outside the set range - x1-shift: %d - y1-shift: %d", x1_relative_shift, y1_relative_shift);
+    }
 
-    float d_winkel = (w_ist - w_org) * 180 / M_PI;
+    // Check whether the second alignment marking exceeds the defined search area(x/y)
+    if ((abs(x2_relative_shift) >= _temp2->search_x) || (abs(y2_relative_shift) >= _temp2->search_y)) {
+        ret |= Alignment_Failed;
+        ESP_LOGE(TAG, "Alignment failed: image shift outside the set range - x2-shift: %d - y2-shift: %d", x2_relative_shift, y2_relative_shift);
+    }
 
+    //////////////////////////////////////////////
     CRotateImage rt("Align", this, ImageTMP);
-    rt.TranslateImage(dx, dy);
-    rt.RotateImage(d_winkel, _temp1->target_x, _temp1->target_y);
-    ESP_LOGD(TAG, "Alignment: dx %d - dy %d - rot %f", dx, dy, d_winkel);
 
-    return (isSimilar1 && isSimilar2);
+    if ((x1_relative_shift != 0) || (y1_relative_shift != 0)) {
+        ESP_LOGD(TAG, "Align: Image shifting in the X-axis and y-axis");
+        rt.TranslateImage(x1_relative_shift, y1_relative_shift);
+    }
+
+    if (fabs(angle_dif) != 0) {
+        ESP_LOGD(TAG, "Align: Image rotate");
+        rt.RotateImage(angle_dif, _temp1->target_x, _temp1->target_y);
+    }
+
+    //////////////////////////////////////////////
+    ESP_LOGD(TAG, "AlignImage: dx %d - dy %d - rot %f", x1_relative_shift, y1_relative_shift, angle_dif);
+
+    if (ret == Alignment_Failed) {
+        return ret;
+    }
+    else {
+        return (isSimilar1 && isSimilar2);
+    }
 }
 
 void CAlignAndCutImage::CutAndSave(std::string _template1, int x1, int y1, int dx, int dy)
