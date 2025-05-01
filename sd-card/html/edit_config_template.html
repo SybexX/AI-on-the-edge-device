@@ -725,6 +725,17 @@
             </td>
             <td>$TOOLTIP_Alignment_SearchFieldY</td>
         </tr>
+		
+        <tr class="expert" unused_id="Alignment_SearchMaxAngle_ex8">
+            <td class="indent1">
+                <class id="Alignment_SearchMaxAngle_text" style="color:black;">Search Max Angle</class>
+            </td>
+            <td>
+                <input required type="number" name="name" id="Alignment_SearchMaxAngle_value1" size="13" min="0" max="180"
+                    oninput="(!validity.rangeUnderflow||(value=0)) && (!validity.rangeUnderflow||(value=180)) && (!validity.stepMismatch||(value=parseInt(this.value)));">Degree
+            </td>
+            <td>$TOOLTIP_Alignment_SearchMaxAngle</td>
+        </tr>
 
         <tr class="expert" unused_id="Alignment_AlignmentAlgo_ex8">
             <td class="indent1">
@@ -2342,7 +2353,8 @@ function UpdateInput() {
     WriteParameter(param, category, "TakeImage", "Demo", false);
 	
     WriteParameter(param, category, "Alignment", "SearchFieldX", false);		
-    WriteParameter(param, category, "Alignment", "SearchFieldY", false);		
+    WriteParameter(param, category, "Alignment", "SearchFieldY", false);
+    WriteParameter(param, category, "Alignment", "SearchMaxAngle", false);
     WriteParameter(param, category, "Alignment", "AlignmentAlgo", true);			
     WriteParameter(param, category, "Alignment", "InitialRotate", false);
 
@@ -2510,6 +2522,7 @@ function ReadParameterAll() {
 
     ReadParameter(param, "Alignment", "SearchFieldX", false);	
     ReadParameter(param, "Alignment", "SearchFieldY", false);
+    ReadParameter(param, "Alignment", "SearchMaxAngle", false);
     ReadParameter(param, "Alignment", "AlignmentAlgo", true);
     ReadParameter(param, "Alignment", "InitialRotate", false);
 

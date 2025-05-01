@@ -139,10 +139,11 @@ function ParseConfig() {
     category[catname]["enabled"] = false;
     category[catname]["found"] = false;
     param[catname] = new Object();
-    ParamAddValue(param, catname, "InitialRotate");
-    ParamAddValue(param, catname, "SearchFieldX");
-    ParamAddValue(param, catname, "SearchFieldY");
-    ParamAddValue(param, catname, "AlignmentAlgo");
+    ParamAddValue(param, catname, "SearchFieldX", 1, false, "20");
+    ParamAddValue(param, catname, "SearchFieldY", 1, false, "20");
+    ParamAddValue(param, catname, "SearchMaxAngle", 1, false, "45");
+    ParamAddValue(param, catname, "AlignmentAlgo", 1, false, "default");
+    ParamAddValue(param, catname, "InitialRotate", 1, false, "0");
 
     var catname = "Digits";
     category[catname] = new Object();
