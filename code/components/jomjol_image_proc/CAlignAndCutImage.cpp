@@ -58,15 +58,15 @@ int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
     float radians_org = atan2(_temp2->found_y - _temp1->found_y, _temp2->found_x - _temp1->found_x);
     float radians_cur = atan2(y2_absolute_shift - y1_absolute_shift, x2_absolute_shift - x1_absolute_shift);
 
-    float angle_dif = (radians_cur - radians_org) * 180 / M_PI;
+    float rotate_angle = (radians_cur - radians_org) * 180 / M_PI;
 
     //////////////////////////////////////////////
     int ret = Alignment_OK;
 
     // Check whether both alignment markings exceed the defined rotation area(angle)
-    if ((fabs(angle_dif) > (_temp1->search_max_angle)) || (fabs(angle_dif) > (_temp2->search_max_angle))) {
+    if ((fabs(rotate_angle) > (_temp1->search_max_angle)) || (fabs(rotate_angle) > (_temp2->search_max_angle))) {
         ret = Alignment_Failed;
-        ESP_LOGE(TAG, "Alignment failed: image rotation outside the set range - angle: %f", angle_dif);
+        ESP_LOGE(TAG, "Alignment failed: image rotation outside the set range - angle: %f", rotate_angle);
     }
 
     // Check whether the first alignment marking exceeds the defined search area(x/y)
@@ -84,18 +84,28 @@ int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
     //////////////////////////////////////////////
     CRotateImage rt("Align", this, ImageTMP);
 
-    if ((x1_relative_shift != 0) || (y1_relative_shift != 0)) {
-        ESP_LOGD(TAG, "Align: Image shifting in the X-axis and y-axis");
-        rt.TranslateImage(x1_relative_shift, y1_relative_shift);
-    }
+    // if ((x1_relative_shift != 0) || (y1_relative_shift != 0)) {
+    //     ESP_LOGD(TAG, "Align: Image shifting in the X-axis and y-axis");
+    //     rt.TranslateImage(x1_relative_shift, y1_relative_shift);
+    // }
 
-    if (angle_dif != 0) {
-        ESP_LOGD(TAG, "Align: Image rotate");
-        rt.RotateImage(angle_dif, _temp1->target_x, _temp1->target_y);
+    // if (rotate_angle != 0) {
+    //     ESP_LOGD(TAG, "Align: Image rotate");
+    //     rt.RotateImage(rotate_angle, _temp1->target_x, _temp1->target_y);
+    // }
+
+    if (rotate_angle != 0) {
+        ESP_LOGD(TAG, "Align: Image shifting and rotate");
+        rt.TranslateImage(x1_relative_shift, y1_relative_shift); 
+        rt.RotateImage(rotate_angle, x1_absolute_shift, y1_absolute_shift); 
+    }
+    else if (x1_relative_shift != 0 || y1_relative_shift != 0) {
+        ESP_LOGD(TAG, "Align: Image shifting in the X-axis and y-axis");
+        rt.TranslateImage(x1_relative_shift, y1_relative_shift); 
     }
 
     //////////////////////////////////////////////
-    ESP_LOGD(TAG, "AlignImage: dx %d - dy %d - rot %f", x1_relative_shift, y1_relative_shift, angle_dif);
+    ESP_LOGD(TAG, "AlignImage: dx %d - dy %d - rot %f", x1_relative_shift, y1_relative_shift, rotate_angle);
 
     if (ret == Alignment_Failed) {
         return ret;
