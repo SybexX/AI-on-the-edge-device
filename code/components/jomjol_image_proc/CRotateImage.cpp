@@ -18,6 +18,12 @@ CRotateImage::CRotateImage(std::string _name, CImageBasis *_org, CImageBasis *_t
     doflip = _flip;
 }
 
+void CRotateImage::RotateImage(float _angle)
+{
+    // ESP_LOGD(TAG, "width %d, height %d", width, height);
+    RotateImage(_angle, width / 2, height / 2);
+}
+
 void CRotateImage::RotateImage(float _angle, int _centerx, int _centery)
 {
     int org_width, org_height;
@@ -93,7 +99,7 @@ void CRotateImage::RotateImage(float _angle, int _centerx, int _centery)
             }
             else {
                 for (int _channels = 0; _channels < channels; ++_channels) {
-                    p_target[_channels] = 255;
+                    p_target[_channels] = 216; // 255
                 }
             }
         }
@@ -109,6 +115,12 @@ void CRotateImage::RotateImage(float _angle, int _centerx, int _centery)
     }
 
     RGBImageRelease();
+}
+
+void CRotateImage::RotateAntiAliasingImage(float _angle)
+{
+    // ESP_LOGD(TAG, "width %d, height %d", width, height);
+    RotateAntiAliasingImage(_angle, width / 2, height / 2);
 }
 
 void CRotateImage::RotateAntiAliasingImage(float _angle, int _centerx, int _centery)
@@ -201,7 +213,7 @@ void CRotateImage::RotateAntiAliasingImage(float _angle, int _centerx, int _cent
             }
             else {
                 for (int _channels = 0; _channels < channels; ++_channels) {
-                    p_target[_channels] = 255;
+                    p_target[_channels] = 216; // 255
                 }
             }
         }
@@ -217,18 +229,6 @@ void CRotateImage::RotateAntiAliasingImage(float _angle, int _centerx, int _cent
     }
 
     RGBImageRelease();
-}
-
-void CRotateImage::RotateImage(float _angle)
-{
-    // ESP_LOGD(TAG, "width %d, height %d", width, height);
-    RotateImage(_angle, width / 2, height / 2);
-}
-
-void CRotateImage::RotateAntiAliasingImage(float _angle)
-{
-    // ESP_LOGD(TAG, "width %d, height %d", width, height);
-    RotateAntiAliasingImage(_angle, width / 2, height / 2);
 }
 
 void CRotateImage::TranslateImage(int _dx, int _dy)
@@ -265,7 +265,7 @@ void CRotateImage::TranslateImage(int _dx, int _dy)
             }
             else {
                 for (int _channels = 0; _channels < channels; ++_channels) {
-                    p_target[_channels] = 255;
+                    p_target[_channels] = 216; // 255
                 }
             }
         }
