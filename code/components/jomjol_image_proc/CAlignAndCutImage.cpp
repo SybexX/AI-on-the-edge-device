@@ -36,28 +36,26 @@ int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
 
     int x1_relative_shift = _temp1->target_x - _temp1->found_x;
     int y1_relative_shift = _temp1->target_y - _temp1->found_y;
-
     int x1_absolute_shift = _temp1->target_x + (_temp1->target_x - _temp1->found_x);
     int y1_absolute_shift = _temp1->target_y + (_temp1->target_y - _temp1->found_y);
 
     ///////////////////////////////////////////////////////
     ESP_LOGD(TAG, "AlignImage: Before ft->FindTemplate(_temp2); %s", _temp2->image_file.c_str());
     bool isSimilar2 = ft->FindTemplate(_temp2);
+
     _temp2->width = ft->tpl_width;
     _temp2->height = ft->tpl_height;
 
     int x2_relative_shift = _temp2->target_x - _temp2->found_x;
     int y2_relative_shift = _temp2->target_y - _temp2->found_y;
-
     int x2_absolute_shift = _temp2->target_x + (_temp2->target_x - _temp2->found_x);
     int y2_absolute_shift = _temp2->target_y + (_temp2->target_y - _temp2->found_y);
 
     delete ft;
 
     ///////////////////////////////////////////////////////
-    float radians_org = atan2(_temp2->found_y - _temp1->found_y, _temp2->found_x - _temp1->found_x);
-    float radians_cur = atan2(y2_absolute_shift - y1_absolute_shift, x2_absolute_shift - x1_absolute_shift);
-
+    float radians_org = atan2((_temp2->found_y - _temp1->found_y), (_temp2->found_x - _temp1->found_x));
+    float radians_cur = atan2((y2_absolute_shift - y1_absolute_shift), (x2_absolute_shift - x1_absolute_shift));
     float rotate_angle = (radians_cur - radians_org) * 180 / M_PI;
 
     //////////////////////////////////////////////
@@ -76,10 +74,10 @@ int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
     }
 
     // Check whether the second alignment marking exceeds the defined search area(x/y)
-    if ((abs(x2_relative_shift) >= _temp2->search_x) || (abs(y2_relative_shift) >= _temp2->search_y)) {
-        ret |= Alignment_Failed;
-        ESP_LOGE(TAG, "Alignment failed: image shift outside the set range - x2-shift: %d - y2-shift: %d", x2_relative_shift, y2_relative_shift);
-    }
+    // if ((abs(x2_relative_shift) >= _temp2->search_x) || (abs(y2_relative_shift) >= _temp2->search_y)) {
+    //     ret |= Alignment_Failed;
+    //     ESP_LOGE(TAG, "Alignment failed: image shift outside the set range - x2-shift: %d - y2-shift: %d", x2_relative_shift, y2_relative_shift);
+    // }
 
     //////////////////////////////////////////////
     CRotateImage rt("Align", this, ImageTMP);
@@ -96,8 +94,9 @@ int CAlignAndCutImage::AlignImage(RefInfo *_temp1, RefInfo *_temp2)
 
     if (rotate_angle != 0) {
         ESP_LOGD(TAG, "Align: Image shifting and rotate");
-        rt.TranslateImage(x1_relative_shift, y1_relative_shift); 
-        rt.RotateImage(rotate_angle, x1_absolute_shift, y1_absolute_shift); 
+        rt.TranslateImage(x1_relative_shift, y1_relative_shift);
+        rt.RotateImage(rotate_angle, _temp1->target_x, _temp1->target_y);
+        // rt.RotateImage(rotate_angle, x1_absolute_shift, y1_absolute_shift); 
     }
     else if (x1_relative_shift != 0 || y1_relative_shift != 0) {
         ESP_LOGD(TAG, "Align: Image shifting in the X-axis and y-axis");
