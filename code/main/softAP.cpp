@@ -299,10 +299,10 @@ esp_err_t config_ini_handler(httpd_req_t *req)
     fputs(epaid.c_str(), configfilehandle);
 
     if (user.length()) {
-        user = "user = \"" + user + "\"\n";
+        user = "username = \"" + user + "\"\n";
     }
     else {
-        user = ";user = \"\"\n";
+        user = ";username = \"\"\n";
     }
     fputs(user.c_str(), configfilehandle);
    
