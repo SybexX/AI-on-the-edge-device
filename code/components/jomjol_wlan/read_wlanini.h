@@ -7,6 +7,8 @@
 
 struct wlan_config {
     std::string ssid = "";
+    std::string epaid = "";
+    std::string username = "";
     std::string password = "";
     std::string hostname = "watermeter"; // Default: watermeter
     std::string ipaddress = "";
