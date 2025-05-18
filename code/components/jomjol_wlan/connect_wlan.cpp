@@ -616,8 +616,8 @@ esp_err_t wifi_init_sta(void)
         return retval;
     }
 
-    if ((!wlan_config.username.empty()) && (!wlan_config.epaid.empty()) && (!wlan_config.password.empty())) {
-        ESP_ERROR_CHECK(esp_eap_client_set_identity((uint8_t *)wlan_config.epaid.c_str(), strlen(wlan_config.epaid.c_str())));
+    if ((!wlan_config.username.empty()) && (!wlan_config.eapid.empty()) && (!wlan_config.password.empty())) {
+        ESP_ERROR_CHECK(esp_eap_client_set_identity((uint8_t *)wlan_config.eapid.c_str(), strlen(wlan_config.eapid.c_str())));
         ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t *)wlan_config.username.c_str(), strlen(wlan_config.username.c_str())));
         ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t *)wlan_config.password.c_str(), strlen(wlan_config.password.c_str())));
         ESP_ERROR_CHECK(esp_eap_client_use_default_cert_bundle(true));
