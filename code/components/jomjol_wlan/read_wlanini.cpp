@@ -82,6 +82,24 @@ int LoadWlanFromFile(std::string fn)
                 LogFile.WriteToFile(ESP_LOG_INFO, TAG, "SSID: " + wlan_config.ssid);
             }
 
+            else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "EPAID")) {
+                tmp = trim(splitted[1]);
+                if ((tmp[0] == '"') && (tmp[tmp.length() - 1] == '"')) {
+                    tmp = tmp.substr(1, tmp.length() - 2);
+                }
+                wlan_config.epaid = tmp;
+                LogFile.WriteToFile(ESP_LOG_INFO, TAG, "EPA-ID: " + wlan_config.epaid);
+            }
+
+            else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "USERNAME")) {
+                tmp = trim(splitted[1]);
+                if ((tmp[0] == '"') && (tmp[tmp.length() - 1] == '"')) {
+                    tmp = tmp.substr(1, tmp.length() - 2);
+                }
+                wlan_config.username = tmp;
+                LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Username: " + wlan_config.username);
+            }
+
             else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "PASSWORD")) {
                 tmp = splitted[1];
                 if ((tmp[0] == '"') && (tmp[tmp.length() - 1] == '"')) {
