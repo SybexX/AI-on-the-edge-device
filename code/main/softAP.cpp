@@ -192,6 +192,8 @@ esp_err_t config_ini_handler(httpd_req_t *req)
     std::string fn = "/sdcard/firmware/";
     std::string _task = "";
     std::string ssid = "";
+    std::string epaid = "";
+    std::string user = "";
     std::string pwd = "";
     std::string hn = ""; // hostname
     std::string ip = "";
@@ -199,8 +201,9 @@ esp_err_t config_ini_handler(httpd_req_t *req)
     std::string nm = ""; // netmask
     std::string dns = "";
     std::string rssithreshold = ""; // rssi threshold for WIFI roaming
+    std::string httpuser = "";
+    std::string httppw = "";
     std::string text = "";
-
 
     if (httpd_req_get_url_query_str(req, _query, 400) == ESP_OK) {
         ESP_LOGD(TAG, "Query: %s", _query);
@@ -208,6 +211,16 @@ esp_err_t config_ini_handler(httpd_req_t *req)
         if (httpd_query_key_value(_query, "ssid", _valuechar, 100) == ESP_OK) {
             ESP_LOGD(TAG, "ssid is found: %s", _valuechar);
             ssid = UrlDecode(std::string(_valuechar));
+        }
+
+        if (httpd_query_key_value(_query, "epaid", _valuechar, 100) == ESP_OK) {
+            ESP_LOGD(TAG, "epaid is found: %s", _valuechar);
+            epaid = UrlDecode(std::string(_valuechar));
+        }
+
+        if (httpd_query_key_value(_query, "user", _valuechar, 100) == ESP_OK) {
+            ESP_LOGD(TAG, "user is found: %s", _valuechar);
+            user = UrlDecode(std::string(_valuechar));
         }
 
         if (httpd_query_key_value(_query, "pwd", _valuechar, 100) == ESP_OK) {
@@ -249,6 +262,16 @@ esp_err_t config_ini_handler(httpd_req_t *req)
             ESP_LOGD(TAG, "rssithreshold is found: %s", _valuechar);
             rssithreshold = UrlDecode(std::string(_valuechar));
         }
+
+        if (httpd_query_key_value(_query, "httpuser", _valuechar, 100) == ESP_OK) {
+            ESP_LOGD(TAG, "http_user is found: %s", _valuechar);
+            httpuser = UrlDecode(std::string(_valuechar));
+        }
+
+        if (httpd_query_key_value(_query, "httppw", _valuechar, 100) == ESP_OK) {
+            ESP_LOGD(TAG, "http_pw is found: %s", _valuechar);
+            httppw = UrlDecode(std::string(_valuechar));
+        }
     }
 
     FILE *configfilehandle = fopen(WLAN_CONFIG_FILE, "w");
@@ -267,6 +290,22 @@ esp_err_t config_ini_handler(httpd_req_t *req)
     }
     fputs(ssid.c_str(), configfilehandle);
 
+    if (epaid.length()) {
+        epaid = "epaid = \"" + epaid + "\"\n";
+    }
+    else {
+        epaid = ";epaid = \"\"\n";
+    }
+    fputs(epaid.c_str(), configfilehandle);
+
+    if (user.length()) {
+        user = "user = \"" + user + "\"\n";
+    }
+    else {
+        user = ";user = \"\"\n";
+    }
+    fputs(user.c_str(), configfilehandle);
+   
     if (pwd.length()) {
         pwd = "password = \"" + pwd + "\"\n";
     }
@@ -349,6 +388,32 @@ esp_err_t config_ini_handler(httpd_req_t *req)
     }
     fputs(rssithreshold.c_str(), configfilehandle);
 
+    text = "\n;++++++++++++++++++++++++++++++++++\n";
+    text += "; Password Protection of the Web Interface and the REST API\n";
+    text += "; When those parameters are active, the Web Interface and the REST API are protected by a username and password.\n";
+    text += "; Note: This is be a WEAK and INSECURE way to protect the Web Interface and the REST API.\n";
+    text += ";       There was no audit nor a security review to check the correct implementation of the protection!\n";
+    text += ";       The password gets transmitted unencrypted (plain text), this means it is very easy to extract it\n";
+    text += ";       for somebody who has access to your WIFI!\n";
+    text += ";       USE AT YOUR OWN RISK!\n\n";
+    fputs(text.c_str(), configfilehandle);
+
+    if (httpuser.length()) {
+        httpuser = "http_username = \"" + httpuser + "\"\n";
+    }
+    else {
+        httpuser = ";http_username = \"myusername\"\n";
+    }
+    fputs(httpuser.c_str(), configfilehandle);
+
+    if (httppw.length()) {
+        httppw = "http_password = \"" + httppw + "\"\n";
+    }
+    else {
+        httppw = ";http_password = \"mypassword\"\n";
+    }
+    fputs(httppw.c_str(), configfilehandle);
+   
     fflush(configfilehandle);
     fclose(configfilehandle);
 
