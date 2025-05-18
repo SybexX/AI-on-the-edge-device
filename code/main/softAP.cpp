@@ -192,7 +192,7 @@ esp_err_t config_ini_handler(httpd_req_t *req)
     std::string fn = "/sdcard/firmware/";
     std::string _task = "";
     std::string ssid = "";
-    std::string epaid = "";
+    std::string eapid = "";
     std::string user = "";
     std::string pwd = "";
     std::string hn = ""; // hostname
@@ -213,9 +213,9 @@ esp_err_t config_ini_handler(httpd_req_t *req)
             ssid = UrlDecode(std::string(_valuechar));
         }
 
-        if (httpd_query_key_value(_query, "epaid", _valuechar, 100) == ESP_OK) {
-            ESP_LOGD(TAG, "epaid is found: %s", _valuechar);
-            epaid = UrlDecode(std::string(_valuechar));
+        if (httpd_query_key_value(_query, "eapid", _valuechar, 100) == ESP_OK) {
+            ESP_LOGD(TAG, "eapid is found: %s", _valuechar);
+            eapid = UrlDecode(std::string(_valuechar));
         }
 
         if (httpd_query_key_value(_query, "user", _valuechar, 100) == ESP_OK) {
@@ -290,13 +290,13 @@ esp_err_t config_ini_handler(httpd_req_t *req)
     }
     fputs(ssid.c_str(), configfilehandle);
 
-    if (epaid.length()) {
-        epaid = "epaid = \"" + epaid + "\"\n";
+    if (eapid.length()) {
+        eapid = "eapid = \"" + eapid + "\"\n";
     }
     else {
-        epaid = ";epaid = \"\"\n";
+        eapid = ";eapid = \"\"\n";
     }
-    fputs(epaid.c_str(), configfilehandle);
+    fputs(eapid.c_str(), configfilehandle);
 
     if (user.length()) {
         user = "username = \"" + user + "\"\n";
