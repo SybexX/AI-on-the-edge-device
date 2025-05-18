@@ -22,6 +22,7 @@
 #include <netdb.h>
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "esp_eap_client.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -590,8 +591,13 @@ esp_err_t wifi_init_sta(void)
 // wifi_config.sta.ft_enabled = 1;	 // 802.11r (BSS Fast Transition) -> Upcoming IDF version 5.0 will support 11r
 #endif
 
-    strcpy((char *)wifi_config.sta.ssid, (const char *)wlan_config.ssid.c_str());
-    strcpy((char *)wifi_config.sta.password, (const char *)wlan_config.password.c_str());
+    if (!wlan_config.username.empty()) {
+        strcpy((char *)wifi_config.sta.ssid, (const char *)wlan_config.ssid.c_str());
+    }
+    else {
+        strcpy((char *)wifi_config.sta.ssid, (const char *)wlan_config.ssid.c_str());
+        strcpy((char *)wifi_config.sta.password, (const char *)wlan_config.password.c_str());
+    }
 
     retval = esp_wifi_set_mode(WIFI_MODE_STA);
     if (retval != ESP_OK) {
@@ -610,6 +616,14 @@ esp_err_t wifi_init_sta(void)
         return retval;
     }
 
+    if ((!wlan_config.username.empty()) && (!wlan_config.epaid.empty()) && (!wlan_config.password.empty())) {
+        ESP_ERROR_CHECK(esp_eap_client_set_identity((uint8_t *)wlan_config.epaid.c_str(), strlen(wlan_config.epaid.c_str())));
+        ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t *)wlan_config.username.c_str(), strlen(wlan_config.username.c_str())));
+        ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t *)wlan_config.password.c_str(), strlen(wlan_config.password.c_str())));
+        ESP_ERROR_CHECK(esp_eap_client_use_default_cert_bundle(true));
+        ESP_ERROR_CHECK(esp_wifi_sta_enterprise_enable());
+    }
+    
     retval = esp_wifi_start();
     if (retval != ESP_OK) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_wifi_start: Error: " + std::to_string(retval));
