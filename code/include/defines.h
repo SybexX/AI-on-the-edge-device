@@ -70,6 +70,8 @@
     //server_GPIO + server_file + SoftAP
     #define CONFIG_FILE "/sdcard/config/config.ini"
     #define CONFIG_FILE_BACKUP "/sdcard/config/config.bak"
+    #define CONFIG_FILE_DEMO "/sdcard/demo/config.ini"
+    #define CONFIG_FILE_DEMO_BACKUP "/sdcard/demo/config.bak"
 
 
     //interface_mqtt + read_wlanini
