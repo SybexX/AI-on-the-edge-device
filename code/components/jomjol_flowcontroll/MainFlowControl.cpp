@@ -116,7 +116,14 @@ void doInit(void)
 #ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "Start flowctrl.InitFlow(config);");
 #endif
-    flowctrl.InitFlow(CONFIG_FILE);
+
+    if (CCstatus.DemoMode) {
+        flowctrl.InitFlow(CONFIG_FILE_DEMO);
+    }
+    else {
+        flowctrl.InitFlow(CONFIG_FILE);
+    }
+
 #ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "Finished flowctrl.InitFlow(config);");
 #endif
