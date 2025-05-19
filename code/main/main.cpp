@@ -20,6 +20,7 @@
 #endif
 ///////////////////////////////
 
+#include "ClassControllCamera.h"
 #include "ClassLogFile.h"
 
 #include "connect_wlan.h"
@@ -579,7 +580,22 @@ void migrateConfiguration(void) {
     }
 
     std::string section = "";
-    std::ifstream ifs(CONFIG_FILE);
+    std::string CONFIG_SELECTED = CONFIG_FILE;
+    if (CCstatus.DemoMode) {
+        if (!FileExists(CONFIG_FILE_DEMO)) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Config file seems to be missing!");
+            return;
+        }
+        CONFIG_SELECTED = CONFIG_FILE_DEMO;
+    }
+    else {
+        if (!FileExists(CONFIG_FILE)) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Config file seems to be missing!");
+            return;
+        }
+    }
+    std::ifstream ifs(CONFIG_SELECTED);
+	
     std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
     /* Split config file it array of lines */
@@ -879,13 +895,26 @@ void migrateConfiguration(void) {
     }
 
     if (migrated) {
-        // At least one replacement happened
-        if (!RenameFile(CONFIG_FILE, CONFIG_FILE_BACKUP)) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create backup of Config file!");
-            return;
-        }
+        FILE *pfile;
 
-        FILE *pfile = fopen(CONFIG_FILE, "w");
+        if (CCstatus.DemoMode) {
+            // At least one replacement happened
+            if (!RenameFile(CONFIG_FILE_DEMO, CONFIG_FILE_DEMO_BACKUP)) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create backup of Config file!");
+                return;
+            }
+
+            pfile = fopen(CONFIG_FILE_DEMO, "w");
+        }
+        else {
+            // At least one replacement happened
+            if (!RenameFile(CONFIG_FILE, CONFIG_FILE_BACKUP)) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create backup of Config file!");
+                return;
+            }
+
+            pfile = fopen(CONFIG_FILE, "w");
+        }
 
         for (int i = 0; i < configLines.size(); i++) {
             if (!isInString(configLines[i], ";UNUSED_PARAMETER")) {
@@ -895,7 +924,13 @@ void migrateConfiguration(void) {
         }
 
         fclose(pfile);
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Config file migrated. Saved backup to " + string(CONFIG_FILE_BACKUP));
+
+        if (CCstatus.DemoMode) {
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Config file migrated. Saved backup to " + string(CONFIG_FILE_BACKUP));
+        }
+        else {
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Config file migrated. Saved backup to " + string(CONFIG_FILE_DEMO_BACKUP));
+        }
     }
 }
 
@@ -912,35 +947,13 @@ std::vector<std::string> splitString(const std::string& str) {
     return tokens;
 }
 
-/*bool replace_all(std::string& s, std::string const& toReplace, std::string const& replaceWith) {
-    std::string buf;
-    std::size_t pos = 0;
-    std::size_t prevPos;
-    bool found = false;
-
-    // Reserves rough estimate of final size of string.
-    buf.reserve(s.size());
-
-    while (true) {
-        prevPos = pos;
-        pos = s.find(toReplace, pos);
-        if (pos == std::string::npos) {
-            break;
-        }
-        found = true;
-        buf.append(s, prevPos, pos - prevPos);
-        buf += replaceWith;
-        pos += toReplace.size();
-    }
-
-    buf.append(s, prevPos, s.size() - prevPos);
-    s.swap(buf);
-
-    return found;
-}*/
-
 bool setCpuFrequency(void) {
-    ConfigFile configFile = ConfigFile(CONFIG_FILE); 
+    ConfigFile configFile = ConfigFile(CONFIG_FILE);
+
+    if (CCstatus.DemoMode) {
+        ConfigFile configFile = ConfigFile(CONFIG_FILE_DEMO);
+    }
+	
     string cpuFrequency = "160";
     esp_pm_config_t  pm_config; 
 
