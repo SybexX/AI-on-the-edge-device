@@ -16,6 +16,7 @@
 
 #include "server_GPIO.h"
 
+#include "ClassControllCamera.h"
 #include "ClassLogFile.h"
 #include "configFile.h"
 #include "Helper.h"
@@ -673,8 +674,14 @@ static GpioHandler *gpioHandler = NULL;
 
 void gpio_handler_create(httpd_handle_t server) 
 {
-    if (gpioHandler == NULL)
-        gpioHandler = new GpioHandler(CONFIG_FILE, server);
+    if (gpioHandler == NULL) {
+        if (CCstatus.DemoMode) {
+            gpioHandler = new GpioHandler(CONFIG_FILE_DEMO, server);
+        }
+        else {
+            gpioHandler = new GpioHandler(CONFIG_FILE, server);
+        }
+    }
 }
 
 void gpio_handler_init() 
