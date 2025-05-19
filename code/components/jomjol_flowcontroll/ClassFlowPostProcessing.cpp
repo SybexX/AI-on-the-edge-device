@@ -1,6 +1,7 @@
 #include "ClassFlowPostProcessing.h"
 #include "Helper.h"
 #include "ClassFlowTakeImage.h"
+#include "ClassControllCamera.h"
 #include "ClassLogFile.h"
 
 #include <iomanip>
@@ -316,7 +317,14 @@ ClassFlowPostProcessing::ClassFlowPostProcessing(std::vector<ClassFlow*>* lfc, C
     PreValueAgeStartup = 30;
     ErrorMessage = false;
     ListFlowControll = NULL;
-    FilePreValue = FormatFileName("/sdcard/config/prevalue.ini");
+	
+    if (CCstatus.DemoMode) {
+        FilePreValue = FormatFileName("/sdcard/demo/prevalue.ini");
+    }
+    else {
+        FilePreValue = FormatFileName("/sdcard/config/prevalue.ini");
+    }
+	
     ListFlowControll = lfc;
     flowTakeImage = NULL;
     UpdatePreValueINI = false;
