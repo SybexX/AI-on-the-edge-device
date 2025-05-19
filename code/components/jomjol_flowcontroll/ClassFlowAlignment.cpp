@@ -6,6 +6,7 @@
 #include "CRotateImage.h"
 #include "esp_log.h"
 
+#include "ClassControllCamera.h"
 #include "ClassLogFile.h"
 #include "psram.h"
 #include "../../include/defines.h"
@@ -22,7 +23,14 @@ void ClassFlowAlignment::SetInitialParameter(void)
     initialflip = false;
     SaveAllFiles = false;
     namerawimage = "/sdcard/img_tmp/raw.jpg";
-    FileStoreRefAlignment = "/sdcard/config/align.txt";
+    
+    if (CCstatus.DemoMode) {
+        FileStoreRefAlignment = "/sdcard/demo/align.txt";
+    }
+    else {
+        FileStoreRefAlignment = "/sdcard/config/align.txt";
+    }
+    
     ListFlowControll = NULL;
     AlignAndCutImage = NULL;
     ImageBasis = NULL;
