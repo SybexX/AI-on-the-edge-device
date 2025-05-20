@@ -507,6 +507,7 @@ esp_err_t wifi_init_sta(void)
     }
 
     my_sta = esp_netif_create_default_wifi_sta();
+    assert(my_sta);
 
     if (!wlan_config.ipaddress.empty() && !wlan_config.gateway.empty() && !wlan_config.netmask.empty()) {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Manual interface config -> IP: " + wlan_config.ipaddress + ", Gateway: " + std::string(wlan_config.gateway) + ", Netmask: " + std::string(wlan_config.netmask));
@@ -577,18 +578,20 @@ esp_err_t wifi_init_sta(void)
     }
 #endif
 
+    // ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+
     wifi_config_t wifi_config = {};
 
     wifi_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;     // Scan all channels instead of stopping after first match
     wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL; // Sort by signal strength and keep up to 4 best APs
-    // wifi_config.sta.failure_retry_cnt = 3;					// IDF version 5.0 will support this
+    wifi_config.sta.failure_retry_cnt = 3;					// IDF version 5.0 will support this
 
 #ifdef WLAN_USE_MESH_ROAMING
     wifi_config.sta.rm_enabled = 1;  // 802.11k (Radio Resource Management)
     wifi_config.sta.btm_enabled = 1; // 802.11v (BSS Transition Management)
-    // wifi_config.sta.mbo_enabled = 1;	 // Multiband Operation (better use of Wi-Fi network resources in roaming decisions) -> not activated to save heap
+    wifi_config.sta.mbo_enabled = 1;	 // Multiband Operation (better use of Wi-Fi network resources in roaming decisions) -> not activated to save heap
     wifi_config.sta.pmf_cfg.capable = 1; // 802.11w (Protected Management Frame, activated by default if other device also advertizes PMF capability)
-// wifi_config.sta.ft_enabled = 1;	 // 802.11r (BSS Fast Transition) -> Upcoming IDF version 5.0 will support 11r
+    wifi_config.sta.ft_enabled = 1;	 // 802.11r (BSS Fast Transition) -> Upcoming IDF version 5.0 will support 11r
 #endif
 
     if (!wlan_config.username.empty()) {
@@ -617,11 +620,52 @@ esp_err_t wifi_init_sta(void)
     }
 
     if ((!wlan_config.username.empty()) && (!wlan_config.eapid.empty()) && (!wlan_config.password.empty())) {
-        ESP_ERROR_CHECK(esp_eap_client_set_identity((uint8_t *)wlan_config.eapid.c_str(), strlen(wlan_config.eapid.c_str())));
-        ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t *)wlan_config.username.c_str(), strlen(wlan_config.username.c_str())));
-        ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t *)wlan_config.password.c_str(), strlen(wlan_config.password.c_str())));
-        ESP_ERROR_CHECK(esp_eap_client_use_default_cert_bundle(true));
-        ESP_ERROR_CHECK(esp_wifi_sta_enterprise_enable());
+        retval = esp_eap_client_set_identity((const unsigned char *)wlan_config.eapid.c_str(), (int)strlen(wlan_config.eapid.c_str()));
+        if (retval != ESP_OK) {
+            if (retval == ESP_ERR_INVALID_ARG) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_eap_client_set_identity: Invalid argument (len <= 0 or len >= 128)! Error: " + std::to_string(retval));
+            }
+            else {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_eap_client_set_identity: Error: " + std::to_string(retval));
+            }
+            return retval;
+        }
+        
+        retval = esp_eap_client_set_username((const unsigned char *)wlan_config.username.c_str(), (int)strlen(wlan_config.username.c_str()));
+        if (retval != ESP_OK) {
+            if (retval == ESP_ERR_INVALID_ARG) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_eap_client_set_username: Invalid argument (len <= 0 or len >= 128)! Error: " + std::to_string(retval));
+            }
+            else {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_eap_client_set_username: Error: " + std::to_string(retval));
+            }
+            return retval;
+        }
+
+        retval = esp_eap_client_set_password((const unsigned char *)wlan_config.password.c_str(), (int)strlen(wlan_config.password.c_str()));
+        if (retval != ESP_OK) {
+            if (retval == ESP_ERR_INVALID_ARG) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_eap_client_set_password: Invalid argument (len <= 0)! Error: " + std::to_string(retval));
+            }
+            else {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_eap_client_set_password: Error: " + std::to_string(retval));
+            }
+            return retval;
+        }
+        
+#ifdef WIFI_USE_DEFAULT_CERT_BUNDLE
+        retval = esp_eap_client_use_default_cert_bundle(true);
+        if (retval != ESP_OK) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_eap_client_use_default_cert_bundle: Error: " + std::to_string(retval));
+            return retval;
+        }
+#endif
+        
+        retval = esp_wifi_sta_enterprise_enable();
+        if (retval != ESP_OK) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_wifi_sta_enterprise_enable: Error: " + std::to_string(retval));
+            return retval;
+        }
     }
     
     retval = esp_wifi_start();
