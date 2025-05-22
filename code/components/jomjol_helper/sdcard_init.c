@@ -414,7 +414,8 @@ esp_err_t esp_vfs_fat_sdmmc_mount_mh(const char* base_path, const sdmmc_host_t* 
         s_saved_ctx_id = 0;
     }
 
-    ctx = calloc(sizeof(mh_vfs_fat_sd_ctx_t), 1);
+    size_t ctx_size = sizeof(mh_vfs_fat_sd_ctx_t);
+    ctx = calloc(ctx_size, 1);
 
     if (!ctx) {
         CHECK_EXECUTE_RESULT(ESP_ERR_NO_MEM, "no mem");
@@ -509,7 +510,8 @@ esp_err_t esp_vfs_fat_sdspi_mount_mh(const char* base_path, const sdmmc_host_t* 
         s_saved_ctx_id = 0;
     }
 
-    ctx = calloc(sizeof(mh_vfs_fat_sd_ctx_t), 1);
+    size_t ctx_size = sizeof(mh_vfs_fat_sd_ctx_t);
+    ctx = calloc(ctx_size, 1);
 
     if (!ctx) {
         CHECK_EXECUTE_RESULT(ESP_ERR_NO_MEM, "no mem");

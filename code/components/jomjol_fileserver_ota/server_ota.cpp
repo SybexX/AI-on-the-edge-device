@@ -27,7 +27,7 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 
 #include <sys/stat.h>
 
-#include "../../include/defines.h"
+#include "defines.h"
 #include "MainFlowControl.h"
 #include "server_file.h"
 #include "server_GPIO.h"

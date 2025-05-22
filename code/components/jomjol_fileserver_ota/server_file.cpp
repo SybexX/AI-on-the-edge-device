@@ -33,7 +33,7 @@ extern "C" {
 #include <esp_spiffs.h>
 #include "esp_http_server.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 #include "ClassLogFile.h"
 
 #include "MainFlowControl.h"

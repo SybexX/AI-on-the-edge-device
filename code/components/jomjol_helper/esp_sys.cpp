@@ -1,4 +1,4 @@
-#include "../../include/defines.h"
+#include "defines.h"
 
 #ifdef DEBUG_ENABLE_SYSINFO
 

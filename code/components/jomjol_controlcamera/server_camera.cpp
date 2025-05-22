@@ -12,7 +12,7 @@
 
 #include "basic_auth.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 static const char *TAG = "server_cam";
 

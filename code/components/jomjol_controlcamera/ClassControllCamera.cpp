@@ -13,7 +13,7 @@
 #include "server_ota.h"
 #include "server_GPIO.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 #include <esp_event.h>
 #include <esp_log.h>
@@ -102,6 +102,8 @@ static camera_config_t camera_config = {
     .fb_count = 1,                     // if more than one, i2s runs in continuous mode. Use only with JPEG
     .fb_location = CAMERA_FB_IN_PSRAM, /*!< The location where the frame buffer will be allocated */
     .grab_mode = CAMERA_GRAB_LATEST,   // only from new esp32cam version
+
+    .sccb_i2c_port = 0, /*!< If pin_sccb_sda is -1, use the already configured I2C bus by number */
 };
 
 typedef struct {
@@ -414,8 +416,7 @@ void CCamera::SetCamContrastBrightness(sensor_t *s, int _contrast, int _brightne
 // - if imageSize = 0 then the image is not zoomed
 // - if imageSize = max value, then the image is fully zoomed in
 // - a zoom step is >>> Width + 32 px / Height + 24 px
-void CCamera::SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, int &imageWidth, int &imageHeight, int &zoomOffsetX,
-                                 int &zoomOffsetY)
+void CCamera::SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, int &imageWidth, int &imageHeight, int &zoomOffsetX, int &zoomOffsetY)
 {
     // for OV2640, This works only if the aspect ratio of 4:3 is preserved in the window size.
     // use only values divisible by 8 without remainder
@@ -484,8 +485,7 @@ void CCamera::SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, in
                         _imageSize_temp = (59 - imageSize);
                     }
                     SanitizeZoomParams(_imageSize_temp, frameSizeX, frameSizeY, _imageWidth, _imageHeight, _offsetx, _offsety);
-                    SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth,
-                                 CCstatus.ImageHeight, imageVflip);
+                    SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth, CCstatus.ImageHeight, imageVflip);
                     break;
 
                 case OV3660_PID:
@@ -497,8 +497,7 @@ void CCamera::SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, in
                         _imageSize_temp = (43 - imageSize);
                     }
                     SanitizeZoomParams(_imageSize_temp, frameSizeX, frameSizeY, _imageWidth, _imageHeight, _offsetx, _offsety);
-                    SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth,
-                                 CCstatus.ImageHeight, imageVflip);
+                    SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth, CCstatus.ImageHeight, imageVflip);
                     break;
 
                 case OV2640_PID:
@@ -510,8 +509,7 @@ void CCamera::SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, in
                         _imageSize_temp = (29 - imageSize);
                     }
                     SanitizeZoomParams(_imageSize_temp, frameSizeX, frameSizeY, _imageWidth, _imageHeight, _offsetx, _offsety);
-                    SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth,
-                                 CCstatus.ImageHeight, imageVflip);
+                    SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth, CCstatus.ImageHeight, imageVflip);
                     break;
 
                 default:
@@ -525,8 +523,7 @@ void CCamera::SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, in
     }
 }
 
-void CCamera::SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize,
-                                 int imageVflip)
+void CCamera::SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip)
 {
     sensor_t *s = esp_camera_sensor_get();
 
@@ -546,8 +543,7 @@ void CCamera::SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, 
     }
 }
 
-void CCamera::SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput,
-                           int yOutput, int imageVflip)
+void CCamera::SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip)
 {
     if (CCstatus.CamSensor_id == OV2640_PID) {
         s->set_res_raw(s, 0, 0, 0, 0, xOffset, yOffset, xTotal, yTotal, xOutput, yOutput, false, false);
@@ -558,12 +554,10 @@ void CCamera::SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOff
         bool binning = (xTotal >= (frameSizeX >> 1));
 
         if (imageVflip == true) {
-            s->set_res_raw(s, xOffset, yOffset, xOffset + xTotal - 1, yOffset + yTotal - 1, 0, 0, frameSizeX, frameSizeY, xOutput, yOutput,
-                           scale, binning);
+            s->set_res_raw(s, xOffset, yOffset, xOffset + xTotal - 1, yOffset + yTotal - 1, 0, 0, frameSizeX, frameSizeY, xOutput, yOutput, scale, binning);
         }
         else {
-            s->set_res_raw(s, xOffset, yOffset, xOffset + xTotal, yOffset + yTotal, 0, 0, frameSizeX, frameSizeY, xOutput, yOutput, scale,
-                           binning);
+            s->set_res_raw(s, xOffset, yOffset, xOffset + xTotal, yOffset + yTotal, 0, 0, frameSizeX, frameSizeY, xOutput, yOutput, scale, binning);
         }
     }
 }
@@ -666,10 +660,8 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
     int height = CCstatus.ImageHeight;
 
 #ifdef DEBUG_DETAIL_ON
-    std::string _zw = "Targetimage: " + std::to_string((int)_Image->rgb_image) + " Size: " + std::to_string(_Image->width) + ", " +
-                      std::to_string(_Image->height);
-    _zw = _zw + " _zwImage: " + std::to_string((int)_zwImage->rgb_image) + " Size: " + std::to_string(_zwImage->width) + ", " +
-          std::to_string(_zwImage->height);
+    std::string _zw = "Targetimage: " + std::to_string((int)_Image->rgb_image) + " Size: " + std::to_string(_Image->width) + ", " + std::to_string(_Image->height);
+    _zw = _zw + " _zwImage: " + std::to_string((int)_zwImage->rgb_image) + " Size: " + std::to_string(_zwImage->width) + ", " + std::to_string(_zwImage->height);
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, _zw);
 #endif
 
@@ -868,8 +860,7 @@ esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
     // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
     if (CFstatus.changedCameraSettings) {
         Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX,
-                                  CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
+        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
         Camera.LedIntensity = CCstatus.ImageLedIntensity;
         CFstatus.changedCameraSettings = false;
     }
@@ -1108,8 +1099,7 @@ void CCamera::useDemoMode(void)
 
     fclose(fd);
 
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG,
-                        "Using Demo mode (" + std::to_string(demoFiles.size()) + " files) instead of real camera image!");
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Using Demo mode (" + std::to_string(demoFiles.size()) + " files) instead of real camera image!");
 
     for (auto file : demoFiles) {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, file);

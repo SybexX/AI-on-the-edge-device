@@ -11,7 +11,7 @@
 
 #include "SmartLeds.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 typedef enum {
     GPIO_PIN_MODE_DISABLED = 0x0,

@@ -13,7 +13,7 @@
 #include <string>
 #include <esp_http_server.h>
 #include "CImageBasis.h"
-#include "../../include/defines.h"
+#include "defines.h"
 
 typedef struct
 {

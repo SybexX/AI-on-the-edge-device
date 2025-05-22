@@ -16,7 +16,7 @@
 #include "server_mqtt.h"
 
 #include <time.h>
-#include "../../include/defines.h"
+#include "defines.h"
 
 static const char *TAG = "MQTT";
 

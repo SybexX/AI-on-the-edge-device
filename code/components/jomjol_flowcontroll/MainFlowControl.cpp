@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "../../include/defines.h"
+#include "defines.h"
 #include "Helper.h"
 #include "statusled.h"
 

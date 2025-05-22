@@ -22,7 +22,7 @@ extern "C" {
 
 #include "minizip.h"
 #include "Helper.h"
-#include "../../include/defines.h"
+#include "defines.h"
 
 static const char *TAG = "SERVER HELP";
 

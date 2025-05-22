@@ -6,7 +6,7 @@
 #include "configFile.h"
 #include <esp_log.h>
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 static const char *TAG = "CONFIG";
 

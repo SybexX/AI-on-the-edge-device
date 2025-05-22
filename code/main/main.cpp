@@ -10,7 +10,7 @@
 
 #include "esp_chip_info.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 // SD-Card ////////////////////
 #include "esp_vfs_fat.h"
@@ -185,9 +185,7 @@ extern "C" void app_main(void)
     else {
         // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
         size_t psram_size = esp_psram_get_size(); // size_t psram_size = esp_psram_get_size(); // comming in IDF 5.0
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG,
-                            "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size / 1024 / 1024) + "MB / " +
-                                std::to_string(psram_size / 1024 / 1024 * 8) + "MBit)");
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size / 1024 / 1024) + "MB / " + std::to_string(psram_size / 1024 / 1024 * 8) + "MBit)");
 
         // Check PSRAM size
         // ********************************************
@@ -270,8 +268,7 @@ extern "C" void app_main(void)
     }
 
     if (getHTMLcommit().substr(0, 7) != std::string(GIT_REV).substr(0, 7)) { // Compare the first 7 characters of both hashes
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG,
-                            "Web UI version (" + getHTMLcommit() + ") does not match firmware version (" + std::string(GIT_REV) + ")");
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Web UI version (" + getHTMLcommit() + ") does not match firmware version (" + std::string(GIT_REV) + ")");
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Recommendation: Repeat installation using AI-on-the-edge-device__update__*.zip");
     }
 
@@ -360,15 +357,11 @@ extern "C" void app_main(void)
     esp_chip_info_t chipInfo;
     esp_chip_info(&chipInfo);
 
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG,
-                        "Device info: CPU cores: " + std::to_string(chipInfo.cores) +
-                            ", Chip revision: " + std::to_string(chipInfo.revision));
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device info: CPU cores: " + std::to_string(chipInfo.cores) + ", Chip revision: " + std::to_string(chipInfo.revision));
 
     // Print SD-Card info
     // ********************************************
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG,
-                        "SD card info: Name: " + getSDCardName() + ", Capacity: " + getSDCardCapacity() +
-                            "MB, Free: " + getSDCardFreePartitionSpace() + "MB");
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "SD card info: Name: " + getSDCardName() + ", Capacity: " + getSDCardCapacity() + "MB, Free: " + getSDCardFreePartitionSpace() + "MB");
 
     xDelay = 2000 / portTICK_PERIOD_MS;
     ESP_LOGD(TAG, "main: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
@@ -489,7 +482,8 @@ bool Init_NVS_SDCard(void)
         .format_if_mount_failed = false,
         .max_files = 12,           // previously -> 2022-09-21: 5, 2023-01-02: 7
         .allocation_unit_size = 0, // 0 = auto
-        .disk_status_check_enable = 0,
+        .disk_status_check_enable = false,
+        .use_one_fat = false,
     };
 
     sdmmc_card_t *card;
@@ -556,9 +550,7 @@ void Init_Camera(void)
 
         if (camStatus != ESP_OK) { // Camera init failed again
             sprintf(camStatusHex, "0x%02x", camStatus);
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG,
-                                "Camera init failed (" + std::string(camStatusHex) +
-                                    ")! Check camera module and/or proper electrical connection");
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Check camera module and/or proper electrical connection");
             setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
             Camera.LightOnOff(false); // make sure flashlight is off
             StatusLED(CAM_INIT, 1, true);
@@ -652,17 +644,13 @@ void migrateConfiguration(void)
             else if ((isInString(configLines[i], "Saturation")) && (!isInString(configLines[i], "CamSaturation"))) {
                 migrated = migrated | replaceString(configLines[i], "Saturation", "CamSaturation");
             }
-            else if ((isInString(configLines[i], "Sharpness")) && (!isInString(configLines[i], "CamSharpness")) &&
-                     (!isInString(configLines[i], "CamAutoSharpness"))) {
+            else if ((isInString(configLines[i], "Sharpness")) && (!isInString(configLines[i], "CamSharpness")) && (!isInString(configLines[i], "CamAutoSharpness"))) {
                 migrated = migrated | replaceString(configLines[i], "Sharpness", "CamSharpness");
             }
-            else if ((isInString(configLines[i], "Aec2")) && (!isInString(configLines[i], "CamAec")) &&
-                     (!isInString(configLines[i], "CamAec2"))) {
+            else if ((isInString(configLines[i], "Aec2")) && (!isInString(configLines[i], "CamAec")) && (!isInString(configLines[i], "CamAec2"))) {
                 migrated = migrated | replaceString(configLines[i], "Aec2", "CamAec2");
             }
-            else if ((isInString(configLines[i], "Zoom")) && (!isInString(configLines[i], "CamZoom")) &&
-                     (!isInString(configLines[i], "ZoomMode")) && (!isInString(configLines[i], "ZoomOffsetX")) &&
-                     (!isInString(configLines[i], "ZoomOffsetY"))) {
+            else if ((isInString(configLines[i], "Zoom")) && (!isInString(configLines[i], "CamZoom")) && (!isInString(configLines[i], "ZoomMode")) && (!isInString(configLines[i], "ZoomOffsetX")) && (!isInString(configLines[i], "ZoomOffsetY"))) {
                 CamZoom_lines = i;
                 if (splitted.size() < 2) {
                     CamZoom_value = false;
@@ -688,8 +676,7 @@ void migrateConfiguration(void)
                 }
                 CamZoom_found = true;
             }
-            else if ((isInString(configLines[i], "ZoomOffsetX")) && (!isInString(configLines[i], "CamZoom")) &&
-                     (!isInString(configLines[i], "ZoomOffsetY"))) {
+            else if ((isInString(configLines[i], "ZoomOffsetX")) && (!isInString(configLines[i], "CamZoom")) && (!isInString(configLines[i], "ZoomOffsetY"))) {
                 CamZoomOffsetX_lines = i;
                 if (splitted.size() < 2) {
                     CamZoomOffsetX_value = 0;
@@ -704,8 +691,7 @@ void migrateConfiguration(void)
                 }
                 CamZoom_found = true;
             }
-            else if ((isInString(configLines[i], "ZoomOffsetY")) && (!isInString(configLines[i], "CamZoom")) &&
-                     (!isInString(configLines[i], "ZoomOffsetX"))) {
+            else if ((isInString(configLines[i], "ZoomOffsetY")) && (!isInString(configLines[i], "CamZoom")) && (!isInString(configLines[i], "ZoomOffsetX"))) {
                 CamZoomOffsetY_lines = i;
                 if (splitted.size() < 2) {
                     CamZoomOffsetY_value = 0;
@@ -749,8 +735,7 @@ void migrateConfiguration(void)
         else if (section == "[Analog]") {
             migrated = migrated | replaceString(configLines[i], "LogImageLocation", "ROIImagesLocation");
             migrated = migrated | replaceString(configLines[i], "LogfileRetentionInDays", "ROIImagesRetention");
-            migrated = migrated |
-                       replaceString(configLines[i], "ExtendedResolution", ";UNUSED_PARAMETER"); // This parameter is no longer used
+            migrated = migrated | replaceString(configLines[i], "ExtendedResolution", ";UNUSED_PARAMETER"); // This parameter is no longer used
         }
         else if (section == "[PostProcessing]") {
             /* AllowNegativeRates has a <NUMBER> as prefix! */
@@ -772,29 +757,25 @@ void migrateConfiguration(void)
                 migrated = migrated | replaceString(configLines[i], ";", "");         // Enable it
             }
             else {
-                migrated = migrated |
-                           replaceString(configLines[i], ";PreValueUse = true", ";PreValueUse = false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";PreValueUse", "PreValueUse");      // Enable it
+                migrated = migrated | replaceString(configLines[i], ";PreValueUse = true", ";PreValueUse = false"); // Set it to its default value
+                migrated = migrated | replaceString(configLines[i], ";PreValueUse", "PreValueUse");                 // Enable it
 
-                migrated = migrated |
-                           replaceString(configLines[i], ";ErrorMessage = true", ";ErrorMessage = false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";ErrorMessage", "ErrorMessage");      // Enable it
+                migrated = migrated | replaceString(configLines[i], ";ErrorMessage = true", ";ErrorMessage = false"); // Set it to its default value
+                migrated = migrated | replaceString(configLines[i], ";ErrorMessage", "ErrorMessage");                 // Enable it
 
                 migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency = true",
-                                                    ";CheckDigitIncreaseConsistency = false"); // Set it to its default value
-                migrated = migrated |
-                           replaceString(configLines[i], ";CheckDigitIncreaseConsistency", "CheckDigitIncreaseConsistency"); // Enable it
+                                                    ";CheckDigitIncreaseConsistency = false");                                          // Set it to its default value
+                migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency", "CheckDigitIncreaseConsistency"); // Enable it
             }
         }
         else if (section == "[MQTT]") {
-            migrated = migrated | replaceString(configLines[i], "SetRetainFlag", "RetainMessages"); // First rename it, enable it with its
-                                                                                                    // default value
-            migrated = migrated |
-                       replaceString(configLines[i], ";RetainMessages = true", ";RetainMessages = false"); // Set it to its default value
-            migrated = migrated | replaceString(configLines[i], ";RetainMessages", "RetainMessages");      // Enable it
+            migrated = migrated | replaceString(configLines[i], "SetRetainFlag", "RetainMessages");                   // First rename it, enable it with its
+                                                                                                                      // default value
+            migrated = migrated | replaceString(configLines[i], ";RetainMessages = true", ";RetainMessages = false"); // Set it to its default value
+            migrated = migrated | replaceString(configLines[i], ";RetainMessages", "RetainMessages");                 // Enable it
 
             migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery = true",
-                                                ";HomeassistantDiscovery = false"); // Set it to its default value
+                                                ";HomeassistantDiscovery = false");                                   // Set it to its default value
             migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery", "HomeassistantDiscovery"); // Enable it
 
             // only if string starts with "Topic" (Was the naming in very old version)
@@ -826,9 +807,8 @@ void migrateConfiguration(void)
         else if (section == "[DataLogging]") {
             migrated = migrated | replaceString(configLines[i], "DataLogRetentionInDays", "DataFilesRetention");
             /* DataLogActive is true by default! */
-            migrated = migrated |
-                       replaceString(configLines[i], ";DataLogActive = false", ";DataLogActive = true"); // Set it to its default value
-            migrated = migrated | replaceString(configLines[i], ";DataLogActive", "DataLogActive");      // Enable it
+            migrated = migrated | replaceString(configLines[i], ";DataLogActive = false", ";DataLogActive = true"); // Set it to its default value
+            migrated = migrated | replaceString(configLines[i], ";DataLogActive", "DataLogActive");                 // Enable it
         }
         else if (section == "[AutoTimer]") {
             migrated = migrated | replaceString(configLines[i], "Intervall", "Interval");
@@ -845,8 +825,7 @@ void migrateConfiguration(void)
         }
         else if (section == "[System]") {
             migrated = migrated | replaceString(configLines[i], "RSSIThreashold", "RSSIThreshold");
-            migrated = migrated |
-                       replaceString(configLines[i], "AutoAdjustSummertime", ";UNUSED_PARAMETER"); // This parameter is no longer used
+            migrated = migrated | replaceString(configLines[i], "AutoAdjustSummertime", ";UNUSED_PARAMETER"); // This parameter is no longer used
 
             migrated = migrated | replaceString(configLines[i], ";SetupMode = true", ";SetupMode = false"); // Set it to its default value
             migrated = migrated | replaceString(configLines[i], ";SetupMode", "SetupMode");                 // Enable it

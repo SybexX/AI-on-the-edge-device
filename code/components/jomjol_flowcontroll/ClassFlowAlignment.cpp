@@ -8,7 +8,7 @@
 
 #include "ClassLogFile.h"
 #include "psram.h"
-#include "../../include/defines.h"
+#include "defines.h"
 
 static const char *TAG = "ALIGN";
 
