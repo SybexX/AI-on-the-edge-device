@@ -1,7 +1,7 @@
 #include "ClassFlowControll.h"
 
-#include "connect_wlan.h"
-#include "read_wlanini.h"
+#include "connect_wifi.h"
+#include "read_network_ini.h"
 
 #include "freertos/task.h"
 
@@ -44,35 +44,35 @@ std::string ClassFlowControll::doSingleStep(std::string _stepname, std::string _
         _classname = "ClassFlowTakeImage";
     }
 
-    if ((_stepname.compare("[Alignment]") == 0) || (_stepname.compare(";[Alignment]") == 0)) {
+    else if ((_stepname.compare("[Alignment]") == 0) || (_stepname.compare(";[Alignment]") == 0)) {
         _classname = "ClassFlowAlignment";
     }
 
-    if ((_stepname.compare(0, 7, "[Digits") == 0) || (_stepname.compare(0, 8, ";[Digits") == 0)) {
+    else if ((_stepname.compare(0, 7, "[Digits") == 0) || (_stepname.compare(0, 8, ";[Digits") == 0)) {
         _classname = "ClassFlowCNNGeneral";
     }
 
-    if ((_stepname.compare("[Analog]") == 0) || (_stepname.compare(";[Analog]") == 0)) {
+    else if ((_stepname.compare("[Analog]") == 0) || (_stepname.compare(";[Analog]") == 0)) {
         _classname = "ClassFlowCNNGeneral";
     }
 
 #ifdef ENABLE_MQTT
-    if ((_stepname.compare("[MQTT]") == 0) || (_stepname.compare(";[MQTT]") == 0)) {
+    else if ((_stepname.compare("[MQTT]") == 0) || (_stepname.compare(";[MQTT]") == 0)) {
         _classname = "ClassFlowMQTT";
     }
 #endif // ENABLE_MQTT
 
 #ifdef ENABLE_INFLUXDB
-    if ((_stepname.compare("[InfluxDB]") == 0) || (_stepname.compare(";[InfluxDB]") == 0)) {
+    else if ((_stepname.compare("[InfluxDB]") == 0) || (_stepname.compare(";[InfluxDB]") == 0)) {
         _classname = "ClassFlowInfluxDB";
     }
-    if ((_stepname.compare("[InfluxDBv2]") == 0) || (_stepname.compare(";[InfluxDBv2]") == 0)) {
+    else if ((_stepname.compare("[InfluxDBv2]") == 0) || (_stepname.compare(";[InfluxDBv2]") == 0)) {
         _classname = "ClassFlowInfluxDBv2";
     }
 #endif // ENABLE_INFLUXDB
 
 #ifdef ENABLE_WEBHOOK
-    if ((_stepname.compare("[Webhook]") == 0) || (_stepname.compare(";[Webhook]") == 0)) {
+    else if ((_stepname.compare("[Webhook]") == 0) || (_stepname.compare(";[Webhook]") == 0)) {
         _classname = "ClassFlowWebhook";
     }
 #endif // ENABLE_WEBHOOK
@@ -99,37 +99,37 @@ std::string ClassFlowControll::TranslateAktstatus(std::string _input)
         return ("Take Image");
     }
 
-    if (_input.compare("ClassFlowAlignment") == 0) {
+    else if (_input.compare("ClassFlowAlignment") == 0) {
         return ("Aligning");
     }
 
-    if (_input.compare("ClassFlowCNNGeneral") == 0) {
+    else if (_input.compare("ClassFlowCNNGeneral") == 0) {
         return ("Digitization of ROIs");
     }
 
 #ifdef ENABLE_MQTT
-    if (_input.compare("ClassFlowMQTT") == 0) {
+    else if (_input.compare("ClassFlowMQTT") == 0) {
         return ("Sending MQTT");
     }
 #endif // ENABLE_MQTT
 
 #ifdef ENABLE_INFLUXDB
-    if (_input.compare("ClassFlowInfluxDB") == 0) {
+    else if (_input.compare("ClassFlowInfluxDB") == 0) {
         return ("Sending InfluxDB");
     }
 
-    if (_input.compare("ClassFlowInfluxDBv2") == 0) {
+    else if (_input.compare("ClassFlowInfluxDBv2") == 0) {
         return ("Sending InfluxDBv2");
     }
 #endif // ENABLE_INFLUXDB
 
 #ifdef ENABLE_WEBHOOK
-    if (_input.compare("ClassFlowWebhook") == 0) {
+    else if (_input.compare("ClassFlowWebhook") == 0) {
         return ("Sending Webhook");
     }
 #endif // ENABLE_WEBHOOK
 
-    if (_input.compare("ClassFlowPostProcessing") == 0) {
+    else if (_input.compare("ClassFlowPostProcessing") == 0) {
         return ("Post-Processing");
     }
 
@@ -239,44 +239,44 @@ ClassFlow *ClassFlowControll::CreateClassFlow(std::string _type)
         flowtakeimage = (ClassFlowTakeImage *)cfc;
     }
 
-    if (toUpper(_type).compare("[ALIGNMENT]") == 0) {
+    else if (toUpper(_type).compare("[ALIGNMENT]") == 0) {
         cfc = new ClassFlowAlignment(&FlowControll);
         flowalignment = (ClassFlowAlignment *)cfc;
     }
 
-    if (toUpper(_type).compare("[ANALOG]") == 0) {
+    else if (toUpper(_type).compare("[ANALOG]") == 0) {
         cfc = new ClassFlowCNNGeneral(flowalignment);
         flowanalog = (ClassFlowCNNGeneral *)cfc;
     }
 
-    if (toUpper(_type).compare(0, 7, "[DIGITS") == 0) {
+    else if (toUpper(_type).compare(0, 7, "[DIGITS") == 0) {
         cfc = new ClassFlowCNNGeneral(flowalignment);
         flowdigit = (ClassFlowCNNGeneral *)cfc;
     }
 
 #ifdef ENABLE_MQTT
-    if (toUpper(_type).compare("[MQTT]") == 0) {
+    else if (toUpper(_type).compare("[MQTT]") == 0) {
         cfc = new ClassFlowMQTT(&FlowControll);
     }
 #endif // ENABLE_MQTT
 
 #ifdef ENABLE_INFLUXDB
-    if (toUpper(_type).compare("[INFLUXDB]") == 0) {
+    else if (toUpper(_type).compare("[INFLUXDB]") == 0) {
         cfc = new ClassFlowInfluxDB(&FlowControll);
     }
 
-    if (toUpper(_type).compare("[INFLUXDBV2]") == 0) {
+    else if (toUpper(_type).compare("[INFLUXDBV2]") == 0) {
         cfc = new ClassFlowInfluxDBv2(&FlowControll);
     }
 #endif // ENABLE_INFLUXDB
 
 #ifdef ENABLE_WEBHOOK
-    if (toUpper(_type).compare("[WEBHOOK]") == 0) {
+    else if (toUpper(_type).compare("[WEBHOOK]") == 0) {
         cfc = new ClassFlowWebhook(&FlowControll);
     }
 #endif // ENABLE_WEBHOOK
 
-    if (toUpper(_type).compare("[POSTPROCESSING]") == 0) {
+    else if (toUpper(_type).compare("[POSTPROCESSING]") == 0) {
         cfc = new ClassFlowPostProcessing(&FlowControll, flowanalog, flowdigit);
         flowpostprocessing = (ClassFlowPostProcessing *)cfc;
     }
@@ -290,15 +290,15 @@ ClassFlow *ClassFlowControll::CreateClassFlow(std::string _type)
         cfc = this;
     }
 
-    if (toUpper(_type).compare("[DATALOGGING]") == 0) {
+    else if (toUpper(_type).compare("[DATALOGGING]") == 0) {
         cfc = this;
     }
 
-    if (toUpper(_type).compare("[DEBUG]") == 0) {
+    else if (toUpper(_type).compare("[DEBUG]") == 0) {
         cfc = this;
     }
 
-    if (toUpper(_type).compare("[SYSTEM]") == 0) {
+    else if (toUpper(_type).compare("[SYSTEM]") == 0) {
         cfc = this;
     }
 
@@ -309,10 +309,6 @@ void ClassFlowControll::InitFlow(std::string config)
 {
     aktstatus = "Initialization";
     aktstatusWithTime = aktstatus;
-
-    // #ifdef ENABLE_MQTT
-    // MQTTPublish(mqttServer_getMainTopic() + "/" + "status", "Initialization", 1, false); // Right now, not possible -> MQTT Service is going to be started later
-    // #endif //ENABLE_MQTT
 
     flowpostprocessing = NULL;
 
@@ -394,14 +390,6 @@ bool ClassFlowControll::doFlow(string time)
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowControll::doFlow - Start");
 #endif
-
-    /* Check if we have a valid date/time and if not restart the NTP client */
-    /* if (! getTimeIsSet()) {
-         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Time not set, restarting NTP Client!");
-         restartNtpClient();
-     }*/
-
-    // checkNtpStatus(0);
 
     for (int i = 0; i < FlowControll.size(); ++i) {
         zw_time = getCurrentTimeString("%H:%M:%S");
@@ -555,8 +543,7 @@ bool ClassFlowControll::ReadParameter(FILE *pfile, string &aktparamgraph)
         }
     }
 
-    if ((toUpper(aktparamgraph).compare("[AUTOTIMER]") != 0) && (toUpper(aktparamgraph).compare("[DEBUG]") != 0) && 
-        (toUpper(aktparamgraph).compare("[SYSTEM]") != 0 && (toUpper(aktparamgraph).compare("[DATALOGGING]") != 0))) {
+    if ((toUpper(aktparamgraph).compare("[AUTOTIMER]") != 0) && (toUpper(aktparamgraph).compare("[DEBUG]") != 0) && (toUpper(aktparamgraph).compare("[SYSTEM]") != 0 && (toUpper(aktparamgraph).compare("[DATALOGGING]") != 0))) {
         // Paragraph passt nicht zu Debug oder DataLogging
         return false;
     }
@@ -609,13 +596,13 @@ bool ClassFlowControll::ReadParameter(FILE *pfile, string &aktparamgraph)
 
             /* TimeServer and TimeZone got already read from the config, see setupTime () */
 
-#if (defined WLAN_USE_ROAMING_BY_SCANNING || (defined WLAN_USE_MESH_ROAMING && defined WLAN_USE_MESH_ROAMING_ACTIVATE_CLIENT_TRIGGERED_QUERIES))
+#if (defined WIFI_USE_ROAMING_BY_SCANNING || (defined WIFI_USE_MESH_ROAMING && defined WIFI_USE_MESH_ROAMING_ACTIVATE_CLIENT_TRIGGERED_QUERIES))
             else if (_param == "RSSITHRESHOLD") {
                 int RSSIThresholdTMP = atoi(splitted[1].c_str());
                 RSSIThresholdTMP = min(0, max(-100, RSSIThresholdTMP)); // Verify input limits (-100 - 0)
 
-                if (ChangeRSSIThreshold(WLAN_CONFIG_FILE, RSSIThresholdTMP)) {
-                    // reboot necessary so that the new wlan.ini is also used !!!
+                if (ChangeRSSIThreshold(NETWORK_CONFIG_FILE, RSSIThresholdTMP)) {
+                    // reboot necessary so that the new network.ini is also used !!!
                     fclose(pfile);
                     LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Rebooting to activate new RSSITHRESHOLD ...");
                     doReboot();
@@ -623,8 +610,8 @@ bool ClassFlowControll::ReadParameter(FILE *pfile, string &aktparamgraph)
             }
 #endif
             else if (_param == "HOSTNAME") {
-                if (ChangeHostName(WLAN_CONFIG_FILE, splitted[1])) {
-                    // reboot necessary so that the new wlan.ini is also used !!!
+                if (ChangeHostName(NETWORK_CONFIG_FILE, splitted[1])) {
+                    // reboot necessary so that the new network.ini is also used !!!
                     fclose(pfile);
                     LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Rebooting to activate new HOSTNAME...");
                     doReboot();

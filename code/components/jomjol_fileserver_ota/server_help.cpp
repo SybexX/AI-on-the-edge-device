@@ -214,8 +214,8 @@ void delete_all_in_directory(std::string _directory)
     /* Iterate over all files / folders and fetch their names and sizes */
     while ((entry = readdir(dir)) != NULL) {
         if (!(entry->d_type == DT_DIR)) {
-            if (strcmp("wlan.ini", entry->d_name) != 0) {
-                // auf wlan.ini soll nicht zugegriffen werden !!!
+            if (strcmp("network.ini", entry->d_name) != 0) {
+                // auf network.ini soll nicht zugegriffen werden !!!
                 filename = _directory + "/" + std::string(entry->d_name);
                 LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Deleting file: " + filename);
                 /* Delete file */

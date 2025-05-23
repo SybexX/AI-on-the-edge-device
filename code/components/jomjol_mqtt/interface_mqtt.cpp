@@ -5,7 +5,7 @@
 #if DEBUG_DETAIL_ON
 #include "esp_timer.h"
 #endif
-#include "connect_wlan.h"
+#include "connect_wifi.h"
 #include "mqtt_client.h"
 #include "ClassLogFile.h"
 #include "MainFlowControl.h"

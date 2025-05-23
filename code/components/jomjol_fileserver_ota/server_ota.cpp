@@ -37,7 +37,7 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 #endif // ENABLE_MQTT
 
 #include "ClassControllCamera.h"
-#include "connect_wlan.h"
+#include "connect_wifi.h"
 
 #include "ClassLogFile.h"
 
@@ -116,12 +116,12 @@ void task_do_Update_ZIP(void *pvParameter)
     }
     else if (filetype == "BIN") {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Do firmware update - file: " + _file_name_update);
-		
+
         // Execute the firmware update
         if (!ota_update_task(_file_name_update)) {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Firmware update failed");
         }
-		
+
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Trigger reboot due to firmware update");
         doRebootOTA();
     }
@@ -147,7 +147,7 @@ void CheckUpdate(void)
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Inital Setup triggered");
     }
     fclose(pfile);
-	
+
     DeleteFile("/sdcard/update.txt"); // Prevent Boot Loop!!!
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Start update process (" + _file_name_update + ")");
 
@@ -173,11 +173,8 @@ static bool ota_update_task(std::string fn)
     const esp_partition_t *running = esp_ota_get_running_partition();
 
     if (configured != running) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG,
-                            "Configured OTA boot partition at offset " + to_string(configured->address) + ", but running from offset " +
-                                to_string(running->address));
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG,
-                            "(This can happen if either the OTA boot data or preferred boot image become somehow corrupted.)");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Configured OTA boot partition at offset " + to_string(configured->address) + ", but running from offset " + to_string(running->address));
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "(This can happen if either the OTA boot data or preferred boot image become somehow corrupted.)");
     }
 
     ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)", running->type, running->subtype, (unsigned int)running->address);
@@ -192,21 +189,20 @@ static bool ota_update_task(std::string fn)
     }
 
     int binary_file_length = 0;
-    bool image_header_was_checked = false;	// deal with all receive packet
+    bool image_header_was_checked = false; // deal with all receive packet
     int data_read = fread(ota_write_data, 1, SERVER_OTA_SCRATCH_BUFSIZE, f);
 
     while (data_read > 0) {
         if (image_header_was_checked == false) {
             esp_app_desc_t new_app_info;
-			
+
             if (data_read > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t)) {
                 // check current version with downloading
-                memcpy(&new_app_info, &ota_write_data[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)],
-                           sizeof(esp_app_desc_t));
+                memcpy(&new_app_info, &ota_write_data[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
                 ESP_LOGI(TAG, "New firmware version: %s", new_app_info.version);
 
                 esp_app_desc_t running_app_info;
-				
+
                 if (esp_ota_get_partition_description(running, &running_app_info) == ESP_OK) {
                     ESP_LOGI(TAG, "Running firmware version: %s", running_app_info.version);
                 }
@@ -214,7 +210,7 @@ static bool ota_update_task(std::string fn)
 #ifdef CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE
                 const esp_partition_t *last_invalid_app = esp_ota_get_last_invalid_partition();
                 esp_app_desc_t invalid_app_info;
-				
+
                 if (esp_ota_get_partition_description(last_invalid_app, &invalid_app_info) == ESP_OK) {
                     ESP_LOGI(TAG, "Last invalid firmware version: %s", invalid_app_info.version);
                 }
@@ -223,9 +219,7 @@ static bool ota_update_task(std::string fn)
                 if (last_invalid_app != NULL) {
                     if (memcmp(invalid_app_info.version, new_app_info.version, sizeof(new_app_info.version)) == 0) {
                         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "New version is the same as invalid version");
-                        LogFile.WriteToFile(ESP_LOG_WARN, TAG,
-                                                "Previously, there was an attempt to launch the firmware with " +
-                                                    std::string(invalid_app_info.version) + " version, but it failed");
+                        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Previously, there was an attempt to launch the firmware with " + std::string(invalid_app_info.version) + " version, but it failed");
                         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "The firmware has been rolled back to the previous version");
                         infinite_loop();
                     }
@@ -238,7 +232,7 @@ static bool ota_update_task(std::string fn)
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_ota_begin failed (" + std::string(esp_err_to_name(err)) + ")");
                     return false;
                 }
-				
+
                 ESP_LOGI(TAG, "esp_ota_begin succeeded");
             }
             else {
@@ -258,7 +252,7 @@ static bool ota_update_task(std::string fn)
 
         data_read = fread(ota_write_data, 1, SERVER_OTA_SCRATCH_BUFSIZE, f);
     }
-	
+
     fclose(f);
 
     ESP_LOGI(TAG, "Total Write binary data length: %d", binary_file_length);
@@ -268,7 +262,7 @@ static bool ota_update_task(std::string fn)
         if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image validation failed, image is corrupted");
         }
-		
+
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_ota_end failed (" + std::string(esp_err_to_name(err)) + ")!");
         return false;
     }
@@ -414,13 +408,13 @@ esp_err_t handler_ota_update(httpd_req_t *req)
     if (_task.compare("emptyfirmwaredir") == 0) {
         ESP_LOGD(TAG, "Start empty directory /firmware");
         delete_all_in_directory("/sdcard/firmware");
-		
+
         std::string zw = "firmware directory deleted\n";
         ESP_LOGD(TAG, "%s", zw.c_str());
 
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
-		
+
         /* Respond with an empty chunk to signal HTTP response completion */
         httpd_resp_send_chunk(req, NULL, 0);
 

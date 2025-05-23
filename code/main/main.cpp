@@ -24,8 +24,8 @@
 
 #include "ClassLogFile.h"
 
-#include "connect_wlan.h"
-#include "read_wlanini.h"
+#include "connect_wifi.h"
+#include "read_network_ini.h"
 
 #include "server_main.h"
 #include "MainFlowControl.h"
@@ -73,7 +73,7 @@
 #endif
 
 // #ifdef CONFIG_HEAP_TRACING_STANDALONE
-#if defined HEAP_TRACING_MAIN_WIFI || defined HEAP_TRACING_MAIN_START
+#if defined HEAP_TRACING_MAIN_NETWORK || defined HEAP_TRACING_MAIN_START
 #include <esp_heap_trace.h>
 #define NUM_RECORDS 300
 static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in internal RAM
@@ -102,7 +102,7 @@ void Init_Camera(void);
 extern "C" void app_main(void)
 {
 // #ifdef CONFIG_HEAP_TRACING_STANDALONE
-#if defined HEAP_TRACING_MAIN_WIFI || defined HEAP_TRACING_MAIN_START
+#if defined HEAP_TRACING_MAIN_NETWORK || defined HEAP_TRACING_MAIN_START
     // register a buffer to record the memory trace
     ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, NUM_RECORDS));
 #endif
@@ -241,7 +241,7 @@ extern "C" void app_main(void)
 #endif
 
 // Start SoftAP for initial remote setup
-// Note: Start AP if no wlan.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
+// Note: Start AP if no network.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
 // ********************************************
 #ifdef ENABLE_SOFTAP
     CheckStartAPMode();
@@ -293,29 +293,29 @@ extern "C" void app_main(void)
     heap_trace_dump();
 #endif
 
-#ifdef HEAP_TRACING_MAIN_WIFI
+#ifdef HEAP_TRACING_MAIN_NETWORK
     ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
 #endif
 
-    // Read WLAN parameter and start WIFI
+    // Read WIFI parameter and start NETWORK
     // ********************************************
-    int iWLANStatus = LoadWlanFromFile(WLAN_CONFIG_FILE);
-    if (iWLANStatus == 0) {
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "WLAN config loaded, init WIFI...");
+    int iWIFIStatus = LoadWifiFromFile(NETWORK_CONFIG_FILE);
+    if (iWIFIStatus == 0) {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "NETWORK config loaded, init NETWORK...");
         if (wifi_init_sta() != ESP_OK) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "WIFI init failed. Device init aborted!");
-            StatusLED(WLAN_INIT, 3, true);
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "NETWORK init failed. Device init aborted!");
+            StatusLED(WIFI_INIT, 3, true);
             return;
         }
 
         init_basic_auth();
     }
-    else if (iWLANStatus == -1) { // wlan.ini not available, potentially empty or content not readable
-        StatusLED(WLAN_INIT, 1, true);
-        return; // No way to continue without reading the wlan.ini
+    else if (iWIFIStatus == -1) { // network.ini not available, potentially empty or content not readable
+        StatusLED(WIFI_INIT, 1, true);
+        return; // No way to continue without reading the network.ini
     }
-    else if (iWLANStatus == -2) { // SSID or password not configured
-        StatusLED(WLAN_INIT, 2, true);
+    else if (iWIFIStatus == -2) { // SSID or password not configured
+        StatusLED(WIFI_INIT, 2, true);
         return; // No way to continue with empty SSID or password!
     }
 
@@ -333,7 +333,7 @@ extern "C" void app_main(void)
     // ********************************************
     esp_log_level_set("wifi", ESP_LOG_WARN);
 
-#ifdef HEAP_TRACING_MAIN_WIFI
+#ifdef HEAP_TRACING_MAIN_NETWORK
     ESP_ERROR_CHECK(heap_trace_stop());
     heap_trace_dump();
 #endif

@@ -19,7 +19,6 @@
 #include <time.h>
 
 // #define DEBUG_DETAIL_ON
-// #define WIFITURNOFF
 
 static const char *TAG = "TAKEIMAGE";
 
@@ -419,10 +418,6 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
 #endif
 
-#ifdef WIFITURNOFF
-    esp_wifi_stop(); // to save power usage and
-#endif
-
     // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
     if (CFstatus.changedCameraSettings) {
         Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
@@ -432,10 +427,6 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
     }
 
     takePictureWithFlash(flash_duration);
-
-#ifdef WIFITURNOFF
-    esp_wifi_start();
-#endif
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After takePictureWithFlash");

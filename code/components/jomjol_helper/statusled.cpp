@@ -68,14 +68,14 @@ void StatusLED(StatusLedSource _eSource, int _iCode, bool _bInfinite)
 {
     // ESP_LOGD(TAG, "StatusLED - start");
 
-    if (_eSource == WLAN_CONN) {
-        StatusLEDData.iSourceBlinkCnt = WLAN_CONN;
+    if (_eSource == WIFI_CONN) {
+        StatusLEDData.iSourceBlinkCnt = WIFI_CONN;
         StatusLEDData.iCodeBlinkCnt = _iCode;
         StatusLEDData.iBlinkTime = 250;
         StatusLEDData.bInfinite = _bInfinite;
     }
-    else if (_eSource == WLAN_INIT) {
-        StatusLEDData.iSourceBlinkCnt = WLAN_INIT;
+    else if (_eSource == WIFI_INIT) {
+        StatusLEDData.iSourceBlinkCnt = WIFI_INIT;
         StatusLEDData.iCodeBlinkCnt = _iCode;
         StatusLEDData.iBlinkTime = 250;
         StatusLEDData.bInfinite = _bInfinite;

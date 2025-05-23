@@ -24,8 +24,8 @@
 
 #include "server_file.h"
 
-#include "read_wlanini.h"
-#include "connect_wlan.h"
+#include "read_network_ini.h"
+#include "connect_wifi.h"
 #include "psram.h"
 #include "basic_auth.h"
 
@@ -1571,13 +1571,13 @@ void task_autodoFlow(void *pvParameter)
             StatusLED(TIME_CHECK, 1, false);
         }
 
-#if (defined WLAN_USE_MESH_ROAMING && defined WLAN_USE_MESH_ROAMING_ACTIVATE_CLIENT_TRIGGERED_QUERIES)
+#if (defined WIFI_USE_MESH_ROAMING && defined WIFI_USE_MESH_ROAMING_ACTIVATE_CLIENT_TRIGGERED_QUERIES)
         wifiRoamingQuery();
 #endif
 
 // Scan channels and check if an AP with better RSSI is available, then disconnect and try to reconnect to AP with better RSSI
 // NOTE: Keep this direct before the following task delay, because scan is done in blocking mode and this takes ca. 1,5 - 2s.
-#ifdef WLAN_USE_ROAMING_BY_SCANNING
+#ifdef WIFI_USE_ROAMING_BY_SCANNING
         wifiRoamByScanning();
 #endif
 

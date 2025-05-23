@@ -2,7 +2,7 @@
 #include <sstream>
 #include "ClassFlowWebhook.h"
 #include "Helper.h"
-#include "connect_wlan.h"
+#include "connect_wifi.h"
 
 #include "time_sntp.h"
 #include "interface_webhook.h"

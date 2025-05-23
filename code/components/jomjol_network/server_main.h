@@ -9,7 +9,8 @@
 #include <sys/param.h>
 #include "nvs_flash.h"
 #include "esp_netif.h"
-#include "esp_eth.h"
+#include "esp_eth_driver.h"
+#include "esp_eth_netif_glue.h"
 #include "server_GPIO.h"
 
 #include <esp_http_server.h>

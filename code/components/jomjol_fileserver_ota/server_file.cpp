@@ -248,8 +248,8 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
 
     // Iterate over all files / folders and fetch their names and sizes
     while ((entry = readdir(pdir)) != NULL) {
-        // wlan.ini soll nicht angezeigt werden!
-        if (strcmp("wlan.ini", entry->d_name) != 0) {
+        // network.ini soll nicht angezeigt werden!
+        if (strcmp("network.ini", entry->d_name) != 0) {
             entrytype = (entry->d_type == DT_DIR ? "directory" : "file");
 
             strlcpy(entrypath + dirpath_len, entry->d_name, sizeof(entrypath) - dirpath_len);
@@ -372,9 +372,7 @@ static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
 
             if (fseek(fd, pos - std::min((long)LOGFILE_LAST_PART_BYTES, pos), SEEK_SET)) {
                 // Go LOGFILE_LAST_PART_BYTES bytes back from EOF
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG,
-                                    "Failed to go back " + to_string(std::min((long)LOGFILE_LAST_PART_BYTES, pos)) +
-                                        " bytes within the file!");
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to go back " + to_string(std::min((long)LOGFILE_LAST_PART_BYTES, pos)) + " bytes within the file!");
                 return ESP_FAIL;
             }
         }
@@ -461,9 +459,7 @@ static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
             ESP_LOGI(TAG, "File contains %ld bytes", pos);
 
             if (fseek(fd, pos - std::min((long)LOGFILE_LAST_PART_BYTES, pos), SEEK_SET)) { // Go LOGFILE_LAST_PART_BYTES bytes back from EOF
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG,
-                                    "Failed to go back " + to_string(std::min((long)LOGFILE_LAST_PART_BYTES, pos)) +
-                                        " bytes within the file!");
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to go back " + to_string(std::min((long)LOGFILE_LAST_PART_BYTES, pos)) + " bytes within the file!");
                 return ESP_FAIL;
             }
         }
@@ -519,8 +515,7 @@ static esp_err_t download_get_handler(httpd_req_t *req)
     struct stat file_stat;
     ESP_LOGD(TAG, "uri: %s", req->uri);
 
-    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                             req->uri + sizeof("/fileserver") - 1, sizeof(filepath));
+    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/fileserver") - 1, sizeof(filepath));
 
     ESP_LOGD(TAG, "uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
@@ -556,10 +551,10 @@ static esp_err_t download_get_handler(httpd_req_t *req)
         return http_resp_dir_html(req, filepath, filename, readonly);
     }
 
-    std::string testwlan = toUpper(std::string(filename));
+    std::string test_network = toUpper(std::string(filename));
 
-    if ((stat(filepath, &file_stat) == -1) || (testwlan.compare("/WLAN.INI") == 0)) {
-        // wlan.ini soll nicht angezeigt werden!
+    if ((stat(filepath, &file_stat) == -1) || (test_network.compare("/NETWORK.INI") == 0)) {
+        // network.ini soll nicht angezeigt werden!
         /* If file not present on SPIFFS check if URI
          * corresponds to one of the hardcoded paths */
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to stat file: " + std::string(filepath) + "!");
@@ -629,8 +624,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
 
     /* Skip leading "/upload" from URI to get filename */
     /* Note sizeof() counts NULL termination hence the -1 */
-    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                             req->uri + sizeof("/upload") - 1, sizeof(filepath));
+    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/upload") - 1, sizeof(filepath));
 
     if (!filename) {
         /* Respond with 413 Error */
@@ -782,11 +776,8 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
         directory = "/fileserver" + directory;
 
         /* Redirect onto root to see the updated file list */
-        if (strcmp(filename, "/config/config.ini") == 0 || strcmp(filename, "/config/ref0.jpg") == 0 ||
-            strcmp(filename, "/config/ref0_org.jpg") == 0 || strcmp(filename, "/config/ref1.jpg") == 0 ||
-            strcmp(filename, "/config/ref1_org.jpg") == 0 || strcmp(filename, "/config/reference.jpg") == 0 ||
-            strcmp(filename, "/img_tmp/ref0.jpg") == 0 || strcmp(filename, "/img_tmp/ref0_org.jpg") == 0 ||
-            strcmp(filename, "/img_tmp/ref1.jpg") == 0 || strcmp(filename, "/img_tmp/ref1_org.jpg") == 0 ||
+        if (strcmp(filename, "/config/config.ini") == 0 || strcmp(filename, "/config/ref0.jpg") == 0 || strcmp(filename, "/config/ref0_org.jpg") == 0 || strcmp(filename, "/config/ref1.jpg") == 0 || strcmp(filename, "/config/ref1_org.jpg") == 0 ||
+            strcmp(filename, "/config/reference.jpg") == 0 || strcmp(filename, "/img_tmp/ref0.jpg") == 0 || strcmp(filename, "/img_tmp/ref0_org.jpg") == 0 || strcmp(filename, "/img_tmp/ref1.jpg") == 0 || strcmp(filename, "/img_tmp/ref1_org.jpg") == 0 ||
             strcmp(filename, "/img_tmp/reference.jpg") == 0) {
             httpd_resp_set_status(req, HTTPD_200); // Avoid reloading of folder content
         }
@@ -830,8 +821,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
     if (_task.compare("deldircontent") == 0) {
         /* Skip leading "/delete" from URI to get filename */
         /* Note sizeof() counts NULL termination hence the -1 */
-        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                                 req->uri + sizeof("/delete") - 1, sizeof(filepath));
+        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/delete") - 1, sizeof(filepath));
 
         if (!filename) {
             /* Respond with 414 Error */
@@ -851,8 +841,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
     else {
         /* Skip leading "/delete" from URI to get filename */
         /* Note sizeof() counts NULL termination hence the -1 */
-        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                                 req->uri + sizeof("/delete") - 1, sizeof(filepath));
+        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/delete") - 1, sizeof(filepath));
 
         if (!filename) {
             /* Respond with 500 Internal Server Error */
@@ -869,10 +858,10 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
             return ESP_FAIL;
         }
 
-        if (strcmp(filename, "wlan.ini") == 0) {
+        if (strcmp(filename, "network.ini") == 0) {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to delete protected file : " + string(filename));
 
-            httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Not allowed to delete wlan.ini");
+            httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "Not allowed to delete network.ini");
             return ESP_FAIL;
         }
 
@@ -905,11 +894,8 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
         ESP_LOGD(TAG, "Directory danach 4: %s", directory.c_str());
 
         /* Redirect onto root to see the updated file list */
-        if (strcmp(filename, "/config/config.ini") == 0 || strcmp(filename, "/config/ref0.jpg") == 0 ||
-            strcmp(filename, "/config/ref0_org.jpg") == 0 || strcmp(filename, "/config/ref1.jpg") == 0 ||
-            strcmp(filename, "/config/ref1_org.jpg") == 0 || strcmp(filename, "/config/reference.jpg") == 0 ||
-            strcmp(filename, "/img_tmp/ref0.jpg") == 0 || strcmp(filename, "/img_tmp/ref0_org.jpg") == 0 ||
-            strcmp(filename, "/img_tmp/ref1.jpg") == 0 || strcmp(filename, "/img_tmp/ref1_org.jpg") == 0 ||
+        if (strcmp(filename, "/config/config.ini") == 0 || strcmp(filename, "/config/ref0.jpg") == 0 || strcmp(filename, "/config/ref0_org.jpg") == 0 || strcmp(filename, "/config/ref1.jpg") == 0 || strcmp(filename, "/config/ref1_org.jpg") == 0 ||
+            strcmp(filename, "/config/reference.jpg") == 0 || strcmp(filename, "/img_tmp/ref0.jpg") == 0 || strcmp(filename, "/img_tmp/ref0_org.jpg") == 0 || strcmp(filename, "/img_tmp/ref1.jpg") == 0 || strcmp(filename, "/img_tmp/ref1_org.jpg") == 0 ||
             strcmp(filename, "/img_tmp/reference.jpg") == 0) {
             httpd_resp_set_status(req, HTTPD_200); // Avoid reloading of folder content
         }

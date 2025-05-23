@@ -11,13 +11,13 @@
 #include <sys/param.h>
 #include "nvs_flash.h"
 #include "esp_netif.h"
-#include "esp_eth.h"
-#include "protocol_examples_common.h"
+#include "esp_eth_driver.h"
+#include "esp_eth_netif_glue.h"
 #include "esp_tls_crypto.h"
 #include <esp_http_server.h>
 
 void CheckStartAPMode();
 
-#endif  //SOFTAP_H
+#endif // SOFTAP_H
 
-#endif //#ifdef ENABLE_SOFTAP
+#endif // #ifdef ENABLE_SOFTAP
