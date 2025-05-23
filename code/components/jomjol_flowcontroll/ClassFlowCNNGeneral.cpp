@@ -321,8 +321,7 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE *pfile, string &aktparamgraph)
         }
     }
 
-    if ((toUpper(aktparamgraph).compare("[ANALOG]") != 0) && (toUpper(aktparamgraph).compare("[;ANALOG]") != 0) && 
-        (toUpper(aktparamgraph).compare("[DIGIT]") != 0) && (toUpper(aktparamgraph).compare("[;DIGIT]") != 0) &&
+    if ((toUpper(aktparamgraph).compare("[ANALOG]") != 0) && (toUpper(aktparamgraph).compare("[;ANALOG]") != 0) && (toUpper(aktparamgraph).compare("[DIGIT]") != 0) && (toUpper(aktparamgraph).compare("[;DIGIT]") != 0) &&
         (toUpper(aktparamgraph).compare("[DIGITS]") != 0) && (toUpper(aktparamgraph).compare("[;DIGITS]") != 0)) {
         // Paragraph passt nicht
         return false;

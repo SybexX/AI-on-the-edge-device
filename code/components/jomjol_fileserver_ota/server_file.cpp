@@ -67,7 +67,9 @@ esp_err_t get_numbers_file_handler(httpd_req_t *req)
 {
     std::string ret = flowctrl.getNumbersName();
 
+    ESP_LOGD(TAG, "uri: %s", req->uri);
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
     httpd_resp_set_type(req, "text/plain");
 
     httpd_resp_sendstr_chunk(req, ret.c_str());
@@ -79,14 +81,14 @@ esp_err_t get_numbers_file_handler(httpd_req_t *req)
 esp_err_t get_data_file_handler(httpd_req_t *req)
 {
     struct dirent *entry;
-
     std::string _filename, _fileext;
     size_t pos = 0;
-
     const char verz_name[] = "/sdcard/log/data";
     ESP_LOGD(TAG, "Suche data files in /sdcard/log/data");
 
+    ESP_LOGD(TAG, "uri: %s", req->uri);
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
     httpd_resp_set_type(req, "text/plain");
 
     DIR *dir = opendir(verz_name);
@@ -122,14 +124,14 @@ esp_err_t get_data_file_handler(httpd_req_t *req)
 esp_err_t get_tflite_file_handler(httpd_req_t *req)
 {
     struct dirent *entry;
-
     std::string _filename, _fileext;
     size_t pos = 0;
-
     const char verz_name[] = "/sdcard/config";
     ESP_LOGD(TAG, "Suche TFLITE in /sdcard/config/");
 
+    ESP_LOGD(TAG, "uri: %s", req->uri);
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
     httpd_resp_set_type(req, "text/plain");
 
     DIR *dir = opendir(verz_name);
@@ -171,14 +173,14 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
     char entrypath[FILE_PATH_MAX];
     char entrysize[16];
     const char *entrytype;
-
     struct dirent *entry;
     struct stat entry_stat;
-
     char dirpath_corrected[FILE_PATH_MAX];
     strcpy(dirpath_corrected, dirpath);
-
     file_server_data *server_data = (file_server_data *)req->user_ctx;
+
+    ESP_LOGD(TAG, "uri: %s", req->uri);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     if ((strlen(dirpath_corrected) - 1) > strlen(server_data->base_path)) {
         // if dirpath is not mountpoint, the last "\" needs to be removed
@@ -200,8 +202,6 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, get404());
         return ESP_FAIL;
     }
-
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     // Send HTML file header
     httpd_resp_sendstr_chunk(req, "<!DOCTYPE html><html lang=\"en\" xml:lang=\"en\"><head>");
@@ -340,13 +340,13 @@ static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "data_get_last_part_handler");
 
-    FILE *fd = NULL;
     ESP_LOGD(TAG, "uri: %s", req->uri);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     std::string currentfilename = LogFile.GetCurrentFileNameData();
     ESP_LOGD(TAG, "uri: %s, filename: %s, filepath: %s", req->uri, currentfilename.c_str(), currentfilename.c_str());
 
-    fd = fopen(currentfilename.c_str(), "r");
+    FILE *fd = fopen(currentfilename.c_str(), "r");
     if (!fd) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to read file: " + currentfilename + "!");
         /* Respond with 404 Error */
@@ -354,7 +354,6 @@ static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
         return ESP_FAIL;
     }
 
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     set_content_type_from_file(req, currentfilename.c_str());
 
     if (!send_full_file) {
@@ -422,8 +421,8 @@ static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "log_get_last_part_handler");
 
-    FILE *fd = NULL;
-    ESP_LOGI(TAG, "uri: %s", req->uri);
+    ESP_LOGD(TAG, "uri: %s", req->uri);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     const char *filename = "";
 
@@ -433,8 +432,7 @@ static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
     // Since the log file is still could open for writing, we need to close it first
     LogFile.CloseLogFileAppendHandle();
 
-    fd = fopen(currentfilename.c_str(), "r");
-
+    FILE *fd = fopen(currentfilename.c_str(), "r");
     if (!fd) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to read file: " + currentfilename + "!");
         /* Respond with 404 Error */
@@ -442,7 +440,6 @@ static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
         return ESP_FAIL;
     }
 
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     set_content_type_from_file(req, filename);
 
     if (!send_full_file) {
@@ -513,10 +510,11 @@ static esp_err_t download_get_handler(httpd_req_t *req)
     char filepath[FILE_PATH_MAX];
     FILE *fd = NULL;
     struct stat file_stat;
+
     ESP_LOGD(TAG, "uri: %s", req->uri);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/fileserver") - 1, sizeof(filepath));
-
     ESP_LOGD(TAG, "uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     if (!filename) {
@@ -572,8 +570,6 @@ static esp_err_t download_get_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-
     ESP_LOGD(TAG, "Sending file: %s (%ld bytes)...", filename, file_stat.st_size);
     set_content_type_from_file(req, filename);
 
@@ -619,7 +615,6 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
     struct stat file_stat;
 
     ESP_LOGI(TAG, "uri: %s", req->uri);
-
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     /* Skip leading "/upload" from URI to get filename */
@@ -799,7 +794,6 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
 
     char filepath[FILE_PATH_MAX];
     struct stat file_stat;
-
     char _query[200];
     char _valuechar[30];
     std::string fn = "/sdcard/firmware/";
@@ -807,6 +801,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
     std::string directory;
     std::string zw;
 
+    ESP_LOGI(TAG, "uri: %s", req->uri);
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     if (httpd_req_get_url_query_str(req, _query, 200) == ESP_OK) {

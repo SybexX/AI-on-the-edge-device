@@ -501,7 +501,8 @@ void CheckStartAPMode()
         StatusLED(AP_OR_OTA, 2, true);
         wifi_init_softAP();
         start_webserverAP();
-        while (1) { // wait until reboot within task_do_Update_ZIP
+        while (1) { 
+            // wait until reboot within task_do_Update_ZIP
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }

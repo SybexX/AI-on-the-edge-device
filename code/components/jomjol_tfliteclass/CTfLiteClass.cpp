@@ -9,9 +9,7 @@
 
 // #define DEBUG_DETAIL_ON
 
-
 static const char *TAG = "TFLITE";
-
 
 void CTfLiteClass::MakeStaticResolver()
 {
@@ -27,7 +25,6 @@ void CTfLiteClass::MakeStaticResolver()
     resolver.AddDequantize();
 }
 
-
 float CTfLiteClass::GetOutputValue(int nr)
 {
     TfLiteTensor *output2 = this->interpreter->output(0);
@@ -40,7 +37,6 @@ float CTfLiteClass::GetOutputValue(int nr)
     return output2->data.f[nr];
 }
 
-
 int CTfLiteClass::GetClassFromImageBasis(CImageBasis *rs)
 {
     if (!LoadInputImageBasis(rs)) {
@@ -51,7 +47,6 @@ int CTfLiteClass::GetClassFromImageBasis(CImageBasis *rs)
 
     return GetOutClassification();
 }
-
 
 int CTfLiteClass::GetOutClassification(int _von, int _bis)
 {
@@ -93,7 +88,6 @@ int CTfLiteClass::GetOutClassification(int _von, int _bis)
     return (zw_class - _von);
 }
 
-
 void CTfLiteClass::GetInputDimension(bool silent = false)
 {
     TfLiteTensor *input2 = this->interpreter->input(0);
@@ -121,7 +115,6 @@ void CTfLiteClass::GetInputDimension(bool silent = false)
     }
 }
 
-
 int CTfLiteClass::ReadInputDimenstion(int _dim)
 {
     if (_dim == 0) {
@@ -136,7 +129,6 @@ int CTfLiteClass::ReadInputDimenstion(int _dim)
 
     return -1;
 }
-
 
 int CTfLiteClass::GetAnzOutPut(bool silent)
 {
@@ -155,7 +147,6 @@ int CTfLiteClass::GetAnzOutPut(bool silent)
         }
     }
 
-
     float fo;
 
     // Process the inference results.
@@ -169,14 +160,12 @@ int CTfLiteClass::GetAnzOutPut(bool silent)
     return numeroutput;
 }
 
-
 void CTfLiteClass::Invoke()
 {
     if (interpreter != nullptr) {
         interpreter->Invoke();
     }
 }
-
 
 bool CTfLiteClass::LoadInputImageBasis(CImageBasis *rs)
 {
@@ -213,7 +202,6 @@ bool CTfLiteClass::LoadInputImageBasis(CImageBasis *rs)
     return true;
 }
 
-
 bool CTfLiteClass::MakeAllocate()
 {
     MakeStaticResolver();
@@ -224,7 +212,7 @@ bool CTfLiteClass::MakeAllocate()
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::MakeAllocate");
     this->interpreter = new tflite::MicroInterpreter(this->model, resolver, this->tensor_arena, this->kTensorArenaSize);
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Trying to load the model. If it crashes here, it ist most likely due to a corrupted model!");
+    // LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Trying to load the model. If it crashes here, it ist most likely due to a corrupted model!");
 
     if (this->interpreter) {
         TfLiteStatus allocate_status = this->interpreter->AllocateTensors();
@@ -249,7 +237,6 @@ bool CTfLiteClass::MakeAllocate()
     return true;
 }
 
-
 void CTfLiteClass::GetInputTensorSize()
 {
 #ifdef DEBUG_DETAIL_ON
@@ -259,14 +246,12 @@ void CTfLiteClass::GetInputTensorSize()
 #endif
 }
 
-
 long CTfLiteClass::GetFileSize(std::string filename)
 {
     struct stat stat_buf;
     long rc = -1;
 
     FILE *pFile = fopen(filename.c_str(), "rb"); // previously only "rb
-
     if (pFile != NULL) {
         rc = stat(filename.c_str(), &stat_buf);
         fclose(pFile);
@@ -275,13 +260,11 @@ long CTfLiteClass::GetFileSize(std::string filename)
     return rc == 0 ? stat_buf.st_size : -1;
 }
 
-
 bool CTfLiteClass::ReadFileToModel(std::string _fn)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::ReadFileToModel: " + _fn);
 
     long size = GetFileSize(_fn);
-
     if (size == -1) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Model file doesn't exist: " + _fn + "!");
         return false;
@@ -301,7 +284,6 @@ bool CTfLiteClass::ReadFileToModel(std::string _fn)
 
     if (modelfile != NULL) {
         FILE *pFile = fopen(_fn.c_str(), "rb"); // previously only "rb
-
         if (pFile != NULL) {
             fread(modelfile, 1, size, pFile);
             fclose(pFile);
@@ -325,7 +307,6 @@ bool CTfLiteClass::ReadFileToModel(std::string _fn)
     }
 }
 
-
 bool CTfLiteClass::LoadModel(std::string _fn)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::LoadModel");
@@ -340,9 +321,14 @@ bool CTfLiteClass::LoadModel(std::string _fn)
         return false;
     }
 
+    // check version to make sure supported
+    if (model->version() != TFLITE_SCHEMA_VERSION) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Model provided is schema version " + std::to_string(model->version()) + " not equal to supported version " + std::to_string(TFLITE_SCHEMA_VERSION));
+        return false;
+    }
+
     return true;
 }
-
 
 CTfLiteClass::CTfLiteClass()
 {
@@ -355,10 +341,8 @@ CTfLiteClass::CTfLiteClass()
     this->tensor_arena = (uint8_t *)psram_get_shared_tensor_arena_memory();
 }
 
-
 CTfLiteClass::~CTfLiteClass()
 {
     delete this->interpreter;
-
     psram_free_shared_tensor_arena_and_model_memory();
 }

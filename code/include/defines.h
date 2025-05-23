@@ -74,6 +74,7 @@
 
 // ClassFlowControll + Main + SoftAP
 #define NETWORK_CONFIG_FILE "/sdcard/network.ini"
+//#define WLAN_CONFIG_FILE "/sdcard/wlan.ini"
 
 
 // main

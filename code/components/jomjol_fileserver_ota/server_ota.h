@@ -19,4 +19,4 @@ void hard_restart();
 
 void register_server_ota_sdcard_uri(httpd_handle_t server);
 
-#endif //SERVEROTA_H
+#endif // SERVEROTA_H

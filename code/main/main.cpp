@@ -145,13 +145,16 @@ extern "C" void app_main(void)
     // ********************************************
     int iSDCardStatus = SDCardCheckRW();
     if (iSDCardStatus < 0) {
-        if (iSDCardStatus <= -1 && iSDCardStatus >= -2) { // write error
+        if (iSDCardStatus <= -1 && iSDCardStatus >= -2) {
+            // write error
             StatusLED(SDCARD_CHECK, 1, true);
         }
-        else if (iSDCardStatus <= -3 && iSDCardStatus >= -5) { // read error
+        else if (iSDCardStatus <= -3 && iSDCardStatus >= -5) {
+            // read error
             StatusLED(SDCARD_CHECK, 2, true);
         }
-        else if (iSDCardStatus == -6) { // delete error
+        else if (iSDCardStatus == -6) {
+            // delete error
             StatusLED(SDCARD_CHECK, 3, true);
         }
         setSystemStatusFlag(SYSTEM_STATUS_SDCARD_CHECK_BAD); // reduced web interface going to be loaded
@@ -215,12 +218,11 @@ extern "C" void app_main(void)
                     setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
                     StatusLED(PSRAM_INIT, 3, true);
                 }
-                else {
-                    Init_Camera();
-                }
             }
         }
     }
+
+    Init_Camera();
 
     // Migrate parameter in config.ini to new naming (firmware 15.0 and newer)
     // ********************************************
@@ -240,13 +242,6 @@ extern "C" void app_main(void)
     initTempsensor();
 #endif
 
-// Start SoftAP for initial remote setup
-// Note: Start AP if no network.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
-// ********************************************
-#ifdef ENABLE_SOFTAP
-    CheckStartAPMode();
-#endif
-
     // SD card: Check presence of some mandatory folders / files
     // ********************************************
     if (!SDCardCheckFolderFilePresence()) {
@@ -254,11 +249,19 @@ extern "C" void app_main(void)
         setSystemStatusFlag(SYSTEM_STATUS_FOLDER_CHECK_BAD); // reduced web interface going to be loaded
     }
 
+// Start SoftAP for initial remote setup
+// Note: Start AP if no network.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
+// ********************************************
+#ifdef ENABLE_SOFTAP
+    CheckStartAPMode();
+#endif
+
     // Check version information
     // ********************************************
     std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) + ", Web UI: " + getHTMLversion();
 
-    if (std::string(GIT_TAG) != "") { // We are on a tag, add it as prefix
+    if (std::string(GIT_TAG) != "") {
+        // We are on a tag, add it as prefix
         versionFormated = "Tag: '" + std::string(GIT_TAG) + "', " + versionFormated;
     }
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, versionFormated);
@@ -275,8 +278,8 @@ extern "C" void app_main(void)
     // Check reboot reason
     // ********************************************
     CheckIsPlannedReboot();
-    if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC)) { // If system reboot was not triggered by user and reboot was
-                                                                          // caused by execption
+    if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC)) {
+        // If system reboot was not triggered by user and reboot was caused by execption
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reset reason: " + getResetReason());
         LogFile.WriteToFile(ESP_LOG_WARN, TAG,
                             "Device was rebooted due to a software exception! Log level is set to DEBUG until the next reboot. "
@@ -310,11 +313,13 @@ extern "C" void app_main(void)
 
         init_basic_auth();
     }
-    else if (iWIFIStatus == -1) { // network.ini not available, potentially empty or content not readable
+    else if (iWIFIStatus == -1) {
+        // network.ini not available, potentially empty or content not readable
         StatusLED(WIFI_INIT, 1, true);
         return; // No way to continue without reading the network.ini
     }
-    else if (iWIFIStatus == -2) { // SSID or password not configured
+    else if (iWIFIStatus == -2) {
+        // SSID or password not configured
         StatusLED(WIFI_INIT, 2, true);
         return; // No way to continue with empty SSID or password!
     }
@@ -376,6 +381,7 @@ extern "C" void app_main(void)
     register_server_main_flow_task_uri(server);
     register_server_file_uri(server, "/sdcard");
     register_server_ota_sdcard_uri(server);
+
 #ifdef ENABLE_MQTT
     register_server_mqtt_uri(server);
 #endif // ENABLE_MQTT
@@ -385,22 +391,20 @@ extern "C" void app_main(void)
     ESP_LOGD(TAG, "Before reg server main");
     register_server_main_uri(server, "/sdcard");
 
-    // Only for testing purpose
-    // setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
-    // setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-
     // Check main init + start TFlite task
     // ********************************************
-    if (getSystemStatus() == 0) { // No error flag is set
+    if (getSystemStatus() == 0) {
+        // No error flag is set
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initialization completed successfully");
         InitializeFlowTask();
     }
-    else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || // Non critical errors occured, we try to continue...
-             isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD)) {
+    else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD)) {
+        // Non critical errors occured, we try to continue...
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Initialization completed with non-critical errors!");
         InitializeFlowTask();
     }
-    else { // Any other error is critical and makes running the flow impossible. Init is going to abort.
+    else {
+        // Any other error is critical and makes running the flow impossible. Init is going to abort.
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Initialization failed. Flow task start aborted. Loading reduced web interface...");
     }
 }
@@ -504,7 +508,8 @@ bool Init_NVS_SDCard(void)
             ESP_LOGE(TAG, "Failed to mount FAT filesystem on SD card. Check SD card filesystem (only FAT supported) or try another card");
             StatusLED(SDCARD_INIT, 1, true);
         }
-        else if (ret == 263) { // Error code: 0x107 --> usually: SD not found
+        else if (ret == 263) {
+            // Error code: 0x107 --> usually: SD not found
             ESP_LOGE(TAG, "SD card init failed. Check if SD card is properly inserted into SD card slot or try another card");
             StatusLED(SDCARD_INIT, 2, true);
         }
@@ -515,7 +520,6 @@ bool Init_NVS_SDCard(void)
         return false;
     }
 
-    // sdmmc_card_print_info(stdout, card);  // With activated CONFIG_NEWLIB_NANO_FORMAT --> capacity not printed correctly anymore
     SaveSDCardInfo(card);
     return true;
 }
@@ -535,7 +539,8 @@ void Init_Camera(void)
 
     // Check camera init
     // ********************************************
-    if (camStatus != ESP_OK) { // Camera init failed, retry to init
+    if (camStatus != ESP_OK) {
+        // Camera init failed, retry to init
         char camStatusHex[33];
         sprintf(camStatusHex, "0x%02x", camStatus);
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Camera init failed (" + std::string(camStatusHex) + "), retrying...");
@@ -544,20 +549,22 @@ void Init_Camera(void)
         camStatus = Camera.InitCam();
         Camera.LightOnOff(false);
 
-        xDelay = 2000 / portTICK_PERIOD_MS;
         ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
         vTaskDelay(xDelay);
 
-        if (camStatus != ESP_OK) { // Camera init failed again
+        if (camStatus != ESP_OK) {
+            // Camera init failed again
             sprintf(camStatusHex, "0x%02x", camStatus);
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Check camera module and/or proper electrical connection");
+            // LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Please disconnect the ESP32 briefly from the power supply and connect it again!");
             setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
             Camera.LightOnOff(false); // make sure flashlight is off
             StatusLED(CAM_INIT, 1, true);
         }
     }
 
-    if (camStatus == ESP_OK) { // ESP_OK -> Camera init OK --> continue to perform camera framebuffer check
+    if (camStatus == ESP_OK) {
+        // ESP_OK -> Camera init OK --> continue to perform camera framebuffer check
         // Camera framebuffer check
         // ********************************************
         if (!Camera.testCamera()) {
@@ -763,20 +770,17 @@ void migrateConfiguration(void)
                 migrated = migrated | replaceString(configLines[i], ";ErrorMessage = true", ";ErrorMessage = false"); // Set it to its default value
                 migrated = migrated | replaceString(configLines[i], ";ErrorMessage", "ErrorMessage");                 // Enable it
 
-                migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency = true",
-                                                    ";CheckDigitIncreaseConsistency = false");                                          // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency", "CheckDigitIncreaseConsistency"); // Enable it
+                migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency = true", ";CheckDigitIncreaseConsistency = false"); // Set it to its default value
+                migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency", "CheckDigitIncreaseConsistency");                 // Enable it
             }
         }
         else if (section == "[MQTT]") {
-            migrated = migrated | replaceString(configLines[i], "SetRetainFlag", "RetainMessages");                   // First rename it, enable it with its
-                                                                                                                      // default value
+            migrated = migrated | replaceString(configLines[i], "SetRetainFlag", "RetainMessages");                   // First rename it, enable it with its default value
             migrated = migrated | replaceString(configLines[i], ";RetainMessages = true", ";RetainMessages = false"); // Set it to its default value
             migrated = migrated | replaceString(configLines[i], ";RetainMessages", "RetainMessages");                 // Enable it
 
-            migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery = true",
-                                                ";HomeassistantDiscovery = false");                                   // Set it to its default value
-            migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery", "HomeassistantDiscovery"); // Enable it
+            migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery = true", ";HomeassistantDiscovery = false"); // Set it to its default value
+            migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery", "HomeassistantDiscovery");                 // Enable it
 
             // only if string starts with "Topic" (Was the naming in very old version)
             if (configLines[i].rfind("Topic", 0) != std::string::npos) {
@@ -815,8 +819,7 @@ void migrateConfiguration(void)
             migrated = migrated | replaceString(configLines[i], "Autostart", ";UNUSED_PARAMETER"); // This parameter is no longer used
         }
         else if (section == "[Debug]") {
-            migrated = migrated | replaceString(configLines[i], "Logfile ", "LogLevel "); // Whitespace needed so it does not match
-                                                                                          // `LogfileRetentionInDays`
+            migrated = migrated | replaceString(configLines[i], "Logfile ", "LogLevel "); // Whitespace needed so it does not match `LogfileRetentionInDays`
             /* LogLevel (resp. LogFile) was originally a boolean, but we switched it to an int
              * For both cases (true/false), we set it to level 2 (WARNING) */
             migrated = migrated | replaceString(configLines[i], "LogLevel = true", "LogLevel = 2");
@@ -938,33 +941,6 @@ std::vector<std::string> splitString(const std::string &str)
     return tokens;
 }
 
-/*bool replace_all(std::string& s, std::string const& toReplace, std::string const& replaceWith) {
-    std::string buf;
-    std::size_t pos = 0;
-    std::size_t prevPos;
-    bool found = false;
-
-    // Reserves rough estimate of final size of string.
-    buf.reserve(s.size());
-
-    while (true) {
-        prevPos = pos;
-        pos = s.find(toReplace, pos);
-        if (pos == std::string::npos) {
-            break;
-        }
-        found = true;
-        buf.append(s, prevPos, pos - prevPos);
-        buf += replaceWith;
-        pos += toReplace.size();
-    }
-
-    buf.append(s, prevPos, s.size() - prevPos);
-    s.swap(buf);
-
-    return found;
-}*/
-
 bool setCpuFrequency(void)
 {
     ConfigFile configFile = ConfigFile(CONFIG_FILE);
@@ -1020,10 +996,7 @@ bool setCpuFrequency(void)
         }
     }
     else {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG,
-                            "Unknown CPU frequency: " + cpuFrequency +
-                                "! "
-                                "It must be 160 or 240!");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unknown CPU frequency: " + cpuFrequency + "! It must be 160 or 240!");
         return false;
     }
 

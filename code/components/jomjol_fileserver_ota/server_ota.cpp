@@ -385,6 +385,9 @@ esp_err_t handler_ota_update(httpd_req_t *req)
     bool _file_del = false;
     std::string _task = "";
 
+    ESP_LOGD(TAG, "uri: %s", req->uri);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
     if (httpd_req_get_url_query_str(req, _query, 200) == ESP_OK) {
         ESP_LOGD(TAG, "Query: %s", _query);
 
@@ -412,7 +415,6 @@ esp_err_t handler_ota_update(httpd_req_t *req)
         std::string zw = "firmware directory deleted\n";
         ESP_LOGD(TAG, "%s", zw.c_str());
 
-        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
 
         /* Respond with an empty chunk to signal HTTP response completion */
@@ -503,7 +505,6 @@ esp_err_t handler_ota_update(httpd_req_t *req)
     }
 
     string zw = "ota without parameter - should not be the case!";
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
     httpd_resp_send_chunk(req, NULL, 0);
 
@@ -538,8 +539,7 @@ void task_reboot(void *DeleteMainFlow)
     std::string _s_zw = "reboot";
     fwrite(_s_zw.c_str(), strlen(_s_zw.c_str()), 1, pfile);
     fclose(pfile);
-
-    vTaskDelay(3000 / portTICK_PERIOD_MS);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
     if ((bool)DeleteMainFlow) {
         DeleteMainFlowTask(); // Kill autoflow task if executed in extra task, if not don't kill parent task
@@ -547,20 +547,29 @@ void task_reboot(void *DeleteMainFlow)
 
     Camera.LightOnOff(false);
     StatusLEDOff();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 
 /* Stop service tasks */
 #ifdef ENABLE_MQTT
     MQTTdestroy_client(true);
 #endif // ENABLE_MQTT
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 
     gpio_handler_destroy();
-    esp_camera_deinit();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    esp_err_t ret = esp_camera_deinit();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    if(ret != ESP_OK) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "camera deinit failed, Please disconnect the ESP32 briefly from the power supply and connect it again!");
+    }
+
     WIFIDestroy();
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    vTaskDelay(3000 / portTICK_PERIOD_MS);
     esp_restart(); // Reset type: CPU reset (Reset both CPUs)
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
     hard_restart(); // Reset type: System reset (Triggered by watchdog), if esp_restart stalls (WDT needs to be activated)
 
     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Reboot failed!");
@@ -588,12 +597,20 @@ void doRebootOTA()
 
     Camera.LightOnOff(false);
     StatusLEDOff();
-    esp_camera_deinit();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    gpio_handler_destroy();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    esp_err_t ret = esp_camera_deinit();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    if (ret != ESP_OK) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "camera deinit failed, Please disconnect the ESP32 briefly from the power supply and connect it again!");
+    }
+
     esp_restart(); // Reset type: CPU reset (Reset both CPUs)
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
     hard_restart(); // Reset type: System reset (Triggered by watchdog), if esp_restart stalls (WDT needs to be activated)
 }
 
@@ -602,6 +619,9 @@ esp_err_t handler_reboot(httpd_req_t *req)
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("handler_reboot - Start");
 #endif
+
+    ESP_LOGD(TAG, "uri: %s", req->uri);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "handler_reboot");
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "!!! System will restart within 5 sec!!!");
@@ -615,7 +635,6 @@ esp_err_t handler_reboot(httpd_req_t *req)
                            "<script>m('Rebooting!<br>The page will automatically reload in around 25..60s.<br><br>');</script>"
                            "</body></html>";
 
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_send(req, response.c_str(), strlen(response.c_str()));
 
     doReboot();

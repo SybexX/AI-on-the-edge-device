@@ -1517,9 +1517,6 @@ void task_autodoFlow(void *pvParameter)
     if (isSetupModusActive()) {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "We are in Setup Mode -> Not starting Auto Flow!");
         autostartIsEnabled = false;
-        // 15.7.0 Setup Wizard cannot take a Reference Picture #2953
-        // std::string zw_time = getCurrentTimeString(LOGFILE_TIME_FORMAT);
-        // flowctrl.doFlowTakeImageOnly(zw_time);
     }
 
     if (autostartIsEnabled) {
