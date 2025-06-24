@@ -2,7 +2,6 @@
 // if ENABLE_SOFTAP = disabled, set CONFIG_ESP_WIFI_SOFTAP_SUPPORT=n in sdkconfig.defaults to save 28k of flash
 #include "../../include/defines.h"
 
-
 #include "softAP.h"
 
 /*  WiFi softAP Example
@@ -131,7 +130,6 @@ void SendHTTPResponse(httpd_req_t *req)
         //        message += "</tr><tr><td>DNS</td><td><input type=\"text\" name=\"dns\" id=\"dns\"></td><td>Leave emtpy if set by router (DHCP)</td></tr>";
         //        message += "<tr><td>RSSI Threshold</td><td><input type=\"number\" name=\"name\" id=\"threshold\" min=\"-100\"  max=\"0\" step=\"1\" value = \"0\"></td><td>WLAN Mesh Parameter: Threshold for RSSI value to check for start switching access
         //        point in a mesh system (if actual RSSI is lower). Possible values: -100 to 0, 0 = disabled - Value will be transfered to wlan.ini at next startup)</td></tr>"; httpd_resp_send_chunk(req, message.c_str(), strlen(message.c_str()));
-
 
         message = "<button class=\"button\" type=\"button\" onclick=\"wr()\">Write wlan.ini</button>";
         message += "<script language=\"JavaScript\">async function wr(){";
@@ -514,7 +512,7 @@ httpd_handle_t start_webserverAP(void)
         .uri = "/reboot", // Match all URIs of type /path/to/file
         .method = HTTP_GET,
         .handler = APPLY_BASIC_AUTH_FILTER(reboot_handlerAP),
-        .user_ctx = NULL // Pass server data as context
+        .user_ctx = NULL, // Pass server data as context
     };
     httpd_register_uri_handler(server, &reboot_handle);
 
@@ -522,7 +520,7 @@ httpd_handle_t start_webserverAP(void)
         .uri = "/config", // Match all URIs of type /path/to/file
         .method = HTTP_GET,
         .handler = APPLY_BASIC_AUTH_FILTER(config_ini_handler),
-        .user_ctx = NULL // Pass server data as context
+        .user_ctx = NULL, // Pass server data as context
     };
     httpd_register_uri_handler(server, &config_ini_handle);
 
@@ -531,11 +529,16 @@ httpd_handle_t start_webserverAP(void)
         .uri = "/upload/*", // Match all URIs of type /upload/path/to/file
         .method = HTTP_POST,
         .handler = APPLY_BASIC_AUTH_FILTER(upload_post_handlerAP),
-        .user_ctx = NULL // Pass server data as context
+        .user_ctx = NULL, // Pass server data as context
     };
     httpd_register_uri_handler(server, &file_uploadAP);
 
-    httpd_uri_t test_uri = {.uri = "*", .method = HTTP_GET, .handler = APPLY_BASIC_AUTH_FILTER(test_handler), .user_ctx = NULL};
+    httpd_uri_t test_uri = {
+        .uri = "*", 
+        .method = HTTP_GET, 
+        .handler = APPLY_BASIC_AUTH_FILTER(test_handler), 
+        .user_ctx = NULL, // Pass server data as context
+    };
     httpd_register_uri_handler(server, &test_uri);
 
     return NULL;
@@ -559,7 +562,8 @@ void CheckStartAPMode()
         StatusLED(AP_OR_OTA, 2, true);
         wifi_init_softAP();
         start_webserverAP();
-        while (1) { // wait until reboot within task_do_Update_ZIP
+        while (1) { 
+            // wait until reboot within task_do_Update_ZIP
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }
