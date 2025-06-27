@@ -13,3 +13,6 @@
 [submodule "code/components/esp-protocols"]
 	path = code/components/esp-protocols
 	url = https://github.com/espressif/esp-protocols.git
+[submodule "code/components/esp-modbus"]
+	path = code/components/esp-modbus
+	url = https://github.com/espressif/esp-modbus.git
