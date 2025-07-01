@@ -124,7 +124,7 @@ bool ClassFlowPostProcessing::SetPreValue(double _newvalue, string _numbers, boo
                 NUMBERS[j]->PreValue = ReturnRawValueAsDouble;
             }
 
-            NUMBERS[j]->ReturnPreValue = std::to_string(NUMBERS[j]->PreValue);
+            NUMBERS[j]->ReturnPreValue = RundeOutput(NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma);
             NUMBERS[j]->PreValueOkay = true;
 
             if (_extern) {
