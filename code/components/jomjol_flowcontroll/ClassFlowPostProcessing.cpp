@@ -71,6 +71,13 @@ string ClassFlowPostProcessing::getJsonFromNumber(int i, std::string _lineend) {
         json += "    \"rate\": \"\"," + _lineend;
     }
 
+    if (NUMBERS[i]->ReturnChangeAbsolute.length() > 0) {
+        json += "    \"absrate\": \"" + NUMBERS[i]->ReturnChangeAbsolute + "\"," + _lineend;
+    }
+    else {
+        json += "    \"absrate\": \"\"," + _lineend;
+    }
+
     json += "    \"timestamp\": \"" + NUMBERS[i]->timeStamp + "\"" + _lineend;
     json += "  }" + _lineend;
 
