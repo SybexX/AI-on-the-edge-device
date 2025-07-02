@@ -1,5 +1,6 @@
 #include "ClassFlowAlignment.h"
 #include "ClassFlowTakeImage.h"
+#include "ClassControllCamera.h"
 #include "ClassFlow.h"
 #include "MainFlowControl.h"
 
@@ -16,10 +17,10 @@ static const char *TAG = "ALIGN";
 
 void ClassFlowAlignment::SetInitialParameter(void)
 {
-    initialrotate = 0;
+    CCstatus.ImageInitialRotate = 0;
     anz_ref = 0;
-    use_antialiasing = false;
-    initialflip = false;
+    CCstatus.ImageAntialiasing = true;
+    CCstatus.ImageInitialFlip = false;
     SaveAllFiles = false;
     namerawimage = "/sdcard/img_tmp/raw.jpg";
     FileStoreRefAlignment = "/sdcard/config/align.txt";
@@ -47,7 +48,7 @@ ClassFlowAlignment::ClassFlowAlignment(std::vector<ClassFlow *> *lfc)
     }
 
     // the function take pictures does not exist --> must be created first ONLY FOR TEST PURPOSES
-    if (!ImageBasis)  {
+    if (!ImageBasis) {
         ESP_LOGD(TAG, "CImageBasis had to be created");
         ImageBasis = new CImageBasis("ImageBasis", namerawimage);
     }
@@ -62,29 +63,26 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
 
     aktparamgraph = trim(aktparamgraph);
 
-    if (aktparamgraph.size() == 0)
-    {
+    if (aktparamgraph.size() == 0) {
         if (!this->GetNextParagraph(pfile, aktparamgraph)) {
             return false;
         }
     }
 
-    if (aktparamgraph.compare("[Alignment]") != 0)
-    {
+    if (aktparamgraph.compare("[Alignment]") != 0) {
         // Paragraph does not fit Alignment
         return false;
     }
 
-    while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph))
-    {
+    while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph)) {
         splitted = ZerlegeZeile(aktparamgraph);
 
         if ((toUpper(splitted[0]) == "FLIPIMAGESIZE") && (splitted.size() > 1)) {
-            initialflip = alphanumericToBoolean(splitted[1]);
+            CCstatus.ImageInitialFlip = alphanumericToBoolean(splitted[1]);
         }
         else if (((toUpper(splitted[0]) == "initialrotate") || (toUpper(splitted[0]) == "INITIALROTATE")) && (splitted.size() > 1)) {
             if (isStringNumeric(splitted[1])) {
-                this->initialrotate = std::stod(splitted[1]);
+                CCstatus.ImageInitialRotate = std::stod(splitted[1]);
             }
         }
         else if ((toUpper(splitted[0]) == "SEARCHFIELDX") && (splitted.size() > 1)) {
@@ -98,18 +96,16 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
             }
         }
         else if ((toUpper(splitted[0]) == "ANTIALIASING") && (splitted.size() > 1)) {
-            use_antialiasing = alphanumericToBoolean(splitted[1]);
+            CCstatus.ImageAntialiasing = alphanumericToBoolean(splitted[1]);
         }
         else if ((splitted.size() == 3) && (anz_ref < 2)) {
-            if ((isStringNumeric(splitted[1])) && (isStringNumeric(splitted[2])))
-            {
+            if ((isStringNumeric(splitted[1])) && (isStringNumeric(splitted[2]))) {
                 References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
                 References[anz_ref].target_x = std::stod(splitted[1]);
                 References[anz_ref].target_y = std::stod(splitted[2]);
                 anz_ref++;
             }
-            else
-            {
+            else {
                 References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
                 References[anz_ref].target_x = 10;
                 References[anz_ref].target_y = 10;
@@ -171,7 +167,7 @@ bool ClassFlowAlignment::doFlow(string time)
 {
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
     // AlgROI needs to be allocated before ImageTMP to avoid heap fragmentation
-    if (!AlgROI)  {
+    if (!AlgROI) {
         AlgROI = (ImageData *)heap_caps_realloc(AlgROI, sizeof(ImageData), MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
 
         if (!AlgROI) {
@@ -204,9 +200,9 @@ bool ClassFlowAlignment::doFlow(string time)
         return false;
     }
 
-    CRotateImage rt("rawImage", AlignAndCutImage, ImageTMP, initialflip);
+    CRotateImage rt("rawImage", AlignAndCutImage, ImageTMP, CCstatus.ImageInitialFlip);
 
-    if (initialflip) {
+    if (CCstatus.ImageInitialFlip) {
         int _zw = ImageBasis->height;
         ImageBasis->height = ImageBasis->width;
         ImageBasis->width = _zw;
@@ -216,12 +212,12 @@ bool ClassFlowAlignment::doFlow(string time)
         ImageTMP->height = _zw;
     }
 
-    if ((initialrotate != 0) || initialflip) {
-        if (use_antialiasing) {
-            rt.RotateAntiAliasing(initialrotate);
+    if ((CCstatus.ImageInitialRotate != 0) || CCstatus.ImageInitialFlip) {
+        if (CCstatus.ImageAntialiasing) {
+            rt.RotateAntiAliasing(CCstatus.ImageInitialRotate);
         }
         else {
-            rt.Rotate(initialrotate);
+            rt.Rotate(CCstatus.ImageInitialRotate);
         }
 
         if (SaveAllFiles) {

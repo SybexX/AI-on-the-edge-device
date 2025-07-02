@@ -14,10 +14,7 @@ using namespace std;
 
 class ClassFlowAlignment : public ClassFlow
 {
-protected:
-    float initialrotate;
-    bool initialflip;
-    bool use_antialiasing;
+  protected:
     RefInfo References[2];
     int anz_ref;
     string namerawimage;
@@ -30,7 +27,7 @@ protected:
     bool LoadReferenceAlignmentValues(void);
     void SaveReferenceAlignmentValues();
 
-public:
+  public:
     CImageBasis *ImageBasis, *ImageTMP;
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
     ImageData *AlgROI;

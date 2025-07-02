@@ -13,11 +13,17 @@ CRotateImage::CRotateImage(std::string _name, CImageBasis *_org, CImageBasis *_t
     width = _org->width;
     height = _org->height;
     bpp = _org->bpp;
-    externalImage = true;   
-    ImageTMP = _temp;   
-    ImageOrg = _org; 
+    externalImage = true;
+    ImageTMP = _temp;
+    ImageOrg = _org;
     islocked = false;
     doflip = _flip;
+}
+
+void CRotateImage::Rotate(float _angle)
+{
+    // ESP_LOGD(TAG, "width %d, height %d", width, height);
+    Rotate(_angle, width / 2, height / 2);
 }
 
 void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
@@ -78,6 +84,12 @@ void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
     }
 
     RGBImageRelease();
+}
+
+void CRotateImage::RotateAntiAliasing(float _angle)
+{
+    // ESP_LOGD(TAG, "width %d, height %d", width, height);
+    RotateAntiAliasing(_angle, width / 2, height / 2);
 }
 
 void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
@@ -156,18 +168,6 @@ void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
     }
 
     RGBImageRelease();
-}
-
-void CRotateImage::Rotate(float _angle)
-{
-//    ESP_LOGD(TAG, "width %d, height %d", width, height);
-    Rotate(_angle, width / 2, height / 2);
-}
-
-void CRotateImage::RotateAntiAliasing(float _angle)
-{
-//    ESP_LOGD(TAG, "width %d, height %d", width, height);
-    RotateAntiAliasing(_angle, width / 2, height / 2);
 }
 
 void CRotateImage::Translate(int _dx, int _dy)

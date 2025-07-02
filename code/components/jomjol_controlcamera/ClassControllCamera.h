@@ -51,6 +51,10 @@ typedef struct
     int ImageWidth;
     int ImageHeight;
 
+    float ImageInitialRotate;
+    bool ImageInitialFlip;
+    bool ImageAntialiasing;
+    
     int ImageLedIntensity;
 
     bool ImageZoomEnabled;
