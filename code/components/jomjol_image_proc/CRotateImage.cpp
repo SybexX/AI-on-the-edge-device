@@ -36,6 +36,11 @@ void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
     float x_rot = ((float)_centerx * (1 - cos_angle)) - ((float)_centery * sin_angle);
     float y_rot = ((float)_centerx * sin_angle) + ((float)_centery * (1 - cos_angle));
 
+    if (doflip) {
+        x_rot = x_rot + (width/2) - (height/2);
+        y_rot = y_rot - (width/2) + (height/2);
+    }
+    
     int memsize = width * height * channels;
     uint8_t *odata;
 
@@ -102,6 +107,11 @@ void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
     float x_rot = ((float)_centerx * (1 - cos_angle)) - ((float)_centery * sin_angle);
     float y_rot = ((float)_centerx * sin_angle) + ((float)_centery * (1 - cos_angle));
 
+    if (doflip) {
+        x_rot = x_rot + (width/2) - (height/2);
+        y_rot = y_rot - (width/2) + (height/2);
+    }
+    
     int memsize = width * height * channels;
     uint8_t *odata;
 
