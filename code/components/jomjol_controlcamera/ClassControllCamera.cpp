@@ -124,7 +124,7 @@ esp_err_t CCamera::InitCam(void)
 {
     ESP_LOGD(TAG, "Init Camera");
 
-    TickType_t cam_xDelay = 100 / portTICK_PERIOD_MS;
+    TickType_t cam_xDelay = 500 / portTICK_PERIOD_MS;
 
     CCstatus.ImageQuality = camera_config.jpeg_quality;
     CCstatus.ImageFrameSize = camera_config.frame_size;
@@ -136,46 +136,42 @@ esp_err_t CCamera::InitCam(void)
     // initialize the camera
     esp_err_t err = esp_camera_init(&camera_config);
     vTaskDelay(cam_xDelay);
-
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE(TAG, "Camera Init Failed");
         return err;
     }
 
-    CCstatus.CameraInitSuccessful = true;
+    CCstatus.CameraInitSuccessful = false;
 
     // Get a reference to the sensor
     sensor_t *s = esp_camera_sensor_get();
 
-    if (s != NULL)
-    {
+    if (s != NULL) {
         CCstatus.CamSensor_id = s->id.PID;
 
         // Dump camera module, warn for unsupported modules.
-        switch (CCstatus.CamSensor_id)
-        {
+        switch (CCstatus.CamSensor_id) {
         case OV2640_PID:
             ESP_LOGI(TAG, "OV2640 camera module detected");
+            CCstatus.CameraInitSuccessful = true;
             break;
         case OV3660_PID:
             ESP_LOGI(TAG, "OV3660 camera module detected");
+            CCstatus.CameraInitSuccessful = true;
             break;
         case OV5640_PID:
             ESP_LOGI(TAG, "OV5640 camera module detected");
+            CCstatus.CameraInitSuccessful = true;
             break;
         default:
             ESP_LOGE(TAG, "Camera module is unknown and not properly supported!");
-            CCstatus.CameraInitSuccessful = false;
         }
     }
 
-    if (CCstatus.CameraInitSuccessful)
-    {
+    if (CCstatus.CameraInitSuccessful) {
         return ESP_OK;
     }
-    else
-    {
+    else {
         return ESP_FAIL;
     }
 }
@@ -185,16 +181,14 @@ bool CCamera::testCamera(void)
     bool success;
     camera_fb_t *fb = esp_camera_fb_get();
 
-    if (fb)
-    {
+    if (fb) {
         success = true;
     }
-    else
-    {
+    else {
         success = false;
     }
-
-    esp_camera_fb_return(fb);
+    // esp_camera_fb_return(fb);
+    esp_camera_return_all();
 
     return success;
 }
