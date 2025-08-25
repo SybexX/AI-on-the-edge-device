@@ -26,12 +26,16 @@ extern "C"
 #include <esp_log.h>
 #include <esp_mac.h>
 #include <esp_timer.h>
-#include "../../include/defines.h"
+#include "defines.h"
 
 #include "ClassLogFile.h"
 
 #include "esp_vfs_fat.h"
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0))
+#include "esp_private/sdmmc_common.h"
+#else
 #include "../sdmmc_common.h"
+#endif
 
 static const char *TAG = "HELPER";
 
@@ -43,7 +47,63 @@ sdmmc_cid_t SDCardCid;
 sdmmc_csd_t SDCardCsd;
 bool SDCardIsMMC;
 
+bool all_pw_encrypted = true;
+
 // #define DEBUG_DETAIL_ON
+
+#if CONFIG_SOC_TEMP_SENSOR_SUPPORTED
+// The ESP32-S2/C3/S3/C2 has a built-in temperature sensor.
+// The temperature sensor module contains an 8-bit Sigma-Delta ADC and a temperature offset DAC.
+// https://github.com/espressif/esp-idf/blob/master/examples/peripherals/temperature_sensor/
+temperature_sensor_handle_t temp_handle = NULL;
+temperature_sensor_config_t temp_sensor = {
+	.range_min = -10,
+	.range_max = 80,
+	.clk_src = TEMPERATURE_SENSOR_CLK_SRC_DEFAULT,
+};
+
+void initTempsensor(void)
+{
+	ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor, &temp_handle));
+
+	xTaskCreate(
+		[](void *pvParameters)
+		{
+			while (1)
+			{
+				// Get converted sensor data
+				float tsens_out;
+
+				// Enable temperature sensor
+				ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
+				ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_handle, &tsens_out));
+				tsens_value = tsens_out;
+				// Disable the temperature sensor if it is not needed and save the power
+				ESP_ERROR_CHECK(temperature_sensor_disable(temp_handle));
+
+				vTaskDelay(pdMS_TO_TICKS(5000));
+			}
+		},
+		"tempsensor_task", 2048, NULL, 5, NULL);
+}
+
+float temperatureRead(void)
+{
+	return tsens_value;
+}
+
+#elif CONFIG_IDF_TARGET_ESP32
+
+// CPU Temp
+extern "C" uint8_t temprature_sens_read(void);
+
+float temperatureRead(void)
+{
+	// convert Fahrenheit to Celsius (F-32) * (5/9) = degree Celsius
+	tsens_value = (temprature_sens_read() - 32) / 1.8;
+	return tsens_value;
+}
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 string getESPHeapInfo()
@@ -250,10 +310,11 @@ bool MakeDir(std::string path)
 {
 	std::string parent;
 
-	LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Creating folder " + path + "...");
+	// LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Creating folder " + path + "...");
+	ESP_LOGD(TAG, "Creating folder %s...", path.c_str());
 
 	bool bSuccess = false;
-	int nRC = ::mkdir(path.c_str(), 0775);
+	int nRC = mkdir(path.c_str(), 0775);
 
 	if (nRC == -1)
 	{
@@ -262,16 +323,18 @@ bool MakeDir(std::string path)
 		case ENOENT:
 			// parent didn't exist, try to create it
 			parent = path.substr(0, path.find_last_of('/'));
-			LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Need to create parent folder first: " + parent);
+			// LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Need to create parent folder first: " + parent);
+			ESP_LOGD(TAG, "Need to create parent folder first: %s", parent.c_str());
 
 			if (MakeDir(parent))
 			{
 				// Now, try to create again.
-				bSuccess = 0 == ::mkdir(path.c_str(), 0775);
+				bSuccess = 0 == mkdir(path.c_str(), 0775);
 			}
 			else
 			{
-				LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create parent folder: " + parent);
+				// LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create parent folder: " + parent);
+				ESP_LOGE(TAG, "Failed to create parent folder: %s", parent.c_str());
 				bSuccess = false;
 			}
 			break;
@@ -282,7 +345,8 @@ bool MakeDir(std::string path)
 			break;
 
 		default:
-			LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create folder: " + path + " (errno: " + std::to_string(errno) + ")");
+			// LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create folder: " + path + " (errno: " + std::to_string(errno) + ")");
+			ESP_LOGE(TAG, "Failed to create folder: %s (errno: %s)", path.c_str(), std::to_string(errno).c_str());
 			bSuccess = false;
 			break;
 		}
@@ -336,26 +400,91 @@ string trim(string istring, string adddelimiter)
 	}
 }
 
+std::string trim_string_left_right(std::string istring, std::string adddelimiter)
+{
+	bool trimmed = false;
+
+	if (ctype_space(istring[istring.length() - 1], adddelimiter))
+	{
+		istring.erase(istring.length() - 1);
+		trimmed = true;
+	}
+
+	if (ctype_space(istring[0], adddelimiter))
+	{
+		istring.erase(0, 1);
+		trimmed = true;
+	}
+
+	if ((trimmed == false) || (istring.size() == 0))
+	{
+		return istring;
+	}
+	else
+	{
+		return trim_string_left_right(istring, adddelimiter);
+	}
+}
+
+std::string trim_string_left(std::string istring, std::string adddelimiter)
+{
+	bool trimmed = false;
+
+	if (ctype_space(istring[0], adddelimiter))
+	{
+		istring.erase(0, 1);
+		trimmed = true;
+	}
+
+	if ((trimmed == false) || (istring.size() == 0))
+	{
+		return istring;
+	}
+	else
+	{
+		return trim_string_left(istring, adddelimiter);
+	}
+}
+
+std::string trim_string_right(std::string istring, std::string adddelimiter)
+{
+	bool trimmed = false;
+
+	if (ctype_space(istring[istring.length() - 1], adddelimiter))
+	{
+		istring.erase(istring.length() - 1);
+		trimmed = true;
+	}
+
+	if ((trimmed == false) || (istring.size() == 0))
+	{
+		return istring;
+	}
+	else
+	{
+		return trim_string_right(istring, adddelimiter);
+	}
+}
+
 size_t findDelimiterPos(string input, string delimiter)
 {
 	size_t pos = std::string::npos;
-	// size_t zw;
 	string akt_del;
 
 	for (int anz = 0; anz < delimiter.length(); ++anz)
 	{
 		akt_del = delimiter[anz];
-		size_t zw = input.find(akt_del);
+		size_t size_temp = input.find(akt_del);
 
-		if (zw != std::string::npos)
+		if (size_temp != std::string::npos)
 		{
-			if ((pos != std::string::npos) && (zw < pos))
+			if ((pos != std::string::npos) && (size_temp < pos))
 			{
-				pos = zw;
+				pos = size_temp;
 			}
 			else
 			{
-				pos = zw;
+				pos = size_temp;
 			}
 		}
 	}
@@ -365,7 +494,6 @@ size_t findDelimiterPos(string input, string delimiter)
 
 bool RenameFile(string from, string to)
 {
-	// ESP_LOGI(logTag, "Renaming File: %s", from.c_str());
 	FILE *fpSourceFile = fopen(from.c_str(), "rb");
 
 	// Sourcefile does not exist otherwise there is a mistake when renaming!
@@ -453,7 +581,7 @@ bool CopyFile(string input, string output)
 	input = FormatFileName(input);
 	output = FormatFileName(output);
 
-	if (toUpper(input).compare(WLAN_CONFIG_FILE) == 0)
+	if ((toUpper(input).compare(WLAN_CONFIG_FILE) == 0) || (toUpper(input).compare(NETWORK_CONFIG_FILE) == 0))
 	{
 		ESP_LOGD(TAG, "wlan.ini kann nicht kopiert werden!");
 		return false;
@@ -497,11 +625,7 @@ string getFileFullFileName(string filename)
 		return "";
 	}
 
-	//	ESP_LOGD(TAG, "Last position: %d", lastpos);
-
-	string zw = filename.substr(lastpos + 1, filename.size() - lastpos);
-
-	return zw;
+	return filename.substr(lastpos + 1, filename.size() - lastpos);
 }
 
 string getDirectory(string filename)
@@ -518,10 +642,7 @@ string getDirectory(string filename)
 		return "";
 	}
 
-	//	ESP_LOGD(TAG, "Directory: %d", lastpos);
-
-	string zw = filename.substr(0, lastpos - 1);
-	return zw;
+	return filename.substr(0, lastpos - 1);
 }
 
 string getFileType(string filename)
@@ -539,10 +660,7 @@ string getFileType(string filename)
 		return "";
 	}
 
-	string zw = filename.substr(lastpos + 1, filename.size() - lastpos);
-	zw = toUpper(zw);
-
-	return zw;
+	return toUpper(filename.substr(lastpos + 1, filename.size() - lastpos));
 }
 
 /* recursive mkdir */
@@ -643,13 +761,6 @@ string toLower(string in)
 	return in;
 }
 
-// CPU Temp
-extern "C" uint8_t temprature_sens_read();
-float temperatureRead()
-{
-	return (temprature_sens_read() - 32) / 1.8;
-}
-
 time_t addDays(time_t startTime, int days)
 {
 	struct tm *tm = localtime(&startTime);
@@ -706,60 +817,189 @@ int removeFolder(const char *folderPath, const char *logTag)
 	return deleted;
 }
 
-std::vector<string> HelperZerlegeZeile(std::string input, std::string _delimiter = "")
+std::vector<std::string> splitString(const std::string &str)
 {
-	std::vector<string> Output;
-	std::string delimiter = " =,";
+	std::vector<std::string> tokens;
 
-	if (_delimiter.length() > 0)
+	std::stringstream ss(str);
+	std::string token;
+
+	while (std::getline(ss, token, '\n'))
 	{
-		delimiter = _delimiter;
+		tokens.push_back(token);
 	}
 
-	return ZerlegeZeile(input, delimiter);
+	return tokens;
 }
 
-std::vector<string> ZerlegeZeile(std::string input, std::string delimiter)
+std::vector<std::string> splitLine(std::string input, std::string _delimiter)
 {
-	std::vector<string> Output;
-	/* The input can have multiple formats:
-	 *  - key = value
-	 *  - key = value1 value2 value3 ...
-	 *  - key value1 value2 value3 ...
-	 *
-	 * Examples:
-	 *  - ImageSize = VGA
-	 *  - IO0 = input disabled 10 false false
-	 *  - main.dig1 28 144 55 100 false
-	 *
-	 * This causes issues eg. if a password key has a whitespace or equal sign in its value.
-	 * As a workaround and to not break any legacy usage, we enforce to only use the
-	 * equal sign, if the key is "password"
-	 */
-	if ((input.find("password") != string::npos) || (input.find("Token") != string::npos))
+	std::vector<std::string> Output;
+
+	// wenn input nicht leer ist
+	if (input.length() > 1)
 	{
-		// Line contains a password, use the equal sign as the only delimiter and only split on first occurrence
-		size_t pos = input.find("=");
-		Output.push_back(trim(input.substr(0, pos), ""));
-		Output.push_back(trim(input.substr(pos + 1, string::npos), ""));
+		if ((toUpper(input).find("PASSWORD") != std::string::npos) || (input.find("SSID") != std::string::npos) || (toUpper(input).find("TOKEN") != std::string::npos) || (toUpper(input).find("APIKEY") != std::string::npos) ||
+			(input.find("**##**") != std::string::npos))
+		{
+			size_t pos1 = input.find(_delimiter);
+			size_t pos2 = input.find(" ");
+
+			// wenn _delimiter im string gefunden wird
+			if (pos1 != std::string::npos)
+			{
+				Output.push_back(trim_string_left_right(input.substr(0, pos1), ""));
+
+				// wenn der string einen Wert enthält
+				if ((input.size() - 1) > pos1)
+				{
+					// überprüfe die erste Stelle
+					std::string value = input.substr(pos1, std::string::npos);
+					value.erase(0, 1);
+					value = trim_string_left_right(value, "");
+
+					if ((value.substr(0, 1) == "\"") && (value.substr(value.size() - 1, std::string::npos) == "\""))
+					{
+						value = value.substr(1, value.size() - 2);
+					}
+
+					std::string is_pw_encrypted = value.substr(0, 6);
+
+					if (is_pw_encrypted == "**##**")
+					{
+						Output.push_back(EncryptDecryptString(value.substr(6, std::string::npos)));
+					}
+					else
+					{
+						Output.push_back(value.substr(0, std::string::npos));
+					}
+				}
+				else
+				{
+					Output.push_back("");
+				}
+			}
+			// wenn Leerzeichen im string gefunden wird
+			else if (pos2 != std::string::npos)
+			{
+				Output.push_back(trim_string_left_right(input.substr(0, pos2), ""));
+
+				// wenn der string einen Wert enthält
+				if ((input.size() - 1) > pos2)
+				{
+					// überprüfe die erste Stelle
+					std::string value = input.substr(pos2, std::string::npos);
+					value.erase(0, 1);
+					value = trim_string_left_right(value, "");
+
+					if ((value.substr(0, 1) == "\"") && (value.substr(value.size() - 1, std::string::npos) == "\""))
+					{
+						value = value.substr(1, value.size() - 2);
+					}
+
+					std::string is_pw_encrypted = value.substr(0, 6);
+
+					if (is_pw_encrypted == "**##**")
+					{
+						Output.push_back(EncryptDecryptString(value.substr(6, std::string::npos)));
+					}
+					else
+					{
+						Output.push_back(value.substr(0, std::string::npos));
+					}
+				}
+				else
+				{
+					Output.push_back("");
+				}
+			}
+			else
+			{
+				Output.push_back(input);
+			}
+		}
+		else
+		{
+			// Legacy Mode
+			std::string token;
+			size_t pos1 = std::string::npos;
+
+			if (findDelimiterPos(input, _delimiter) != std::string::npos)
+			{
+				pos1 = findDelimiterPos(input, _delimiter);
+			}
+			else
+			{
+				pos1 = findDelimiterPos(input, " ");
+			}
+
+			if (pos1 != std::string::npos)
+			{
+				Output.push_back(trim_string_left_right(input.substr(0, pos1), " "));
+
+				if ((input.size() - 1) > pos1)
+				{
+					// überprüfe die erste Stelle
+					std::string value = input.substr(pos1, std::string::npos);
+					value.erase(0, 1);
+					value = trim_string_left_right(value, " ");
+
+					if (findDelimiterPos(value, _delimiter) != std::string::npos)
+					{
+						pos1 = findDelimiterPos(value, _delimiter);
+					}
+					else
+					{
+						pos1 = findDelimiterPos(value, " ");
+					}
+
+					if ((value.substr(0, 1) == "\"") && (value.substr(value.size() - 1, std::string::npos) == "\""))
+					{
+						value = value.substr(1, value.size() - 2);
+					}
+
+					while (pos1 != std::string::npos)
+					{
+						token = value.substr(0, pos1);
+						token = trim_string_left_right(token, " ");
+						if ((token.substr(0, 1) == "\"") && (token.substr(token.size() - 1, std::string::npos) == "\""))
+						{
+							token = token.substr(1, token.size() - 2);
+						}
+						Output.push_back(token);
+
+						value.erase(0, pos1 + 1);
+						value = trim_string_left_right(value, " ");
+
+						if (findDelimiterPos(value, _delimiter) != std::string::npos)
+						{
+							pos1 = findDelimiterPos(value, _delimiter);
+						}
+						else
+						{
+							pos1 = findDelimiterPos(value, " ");
+						}
+					}
+
+					if ((value.substr(0, 1) == "\"") && (value.substr(value.size() - 1, std::string::npos) == "\""))
+					{
+						value = value.substr(1, value.size() - 2);
+					}
+					Output.push_back(value);
+				}
+				else
+				{
+					Output.push_back("");
+				}
+			}
+			else
+			{
+				Output.push_back(input);
+			}
+		}
 	}
 	else
 	{
-		// Legacy Mode
-		input = trim(input, delimiter); // sonst werden delimiter am Ende (z.B. == im Token) gelöscht)
-		size_t pos = findDelimiterPos(input, delimiter);
-		std::string token;
-
-		while (pos != std::string::npos)
-		{
-			token = input.substr(0, pos);
-			token = trim(token, delimiter);
-			Output.push_back(token);
-			input.erase(0, pos + 1);
-			input = trim(input, delimiter);
-			pos = findDelimiterPos(input, delimiter);
-		}
-
 		Output.push_back(input);
 	}
 
@@ -1048,8 +1288,6 @@ string SDCardParseManufacturerIDs(int id)
 string RundeOutput(double _in, int _anzNachkomma)
 {
 	std::stringstream stream;
-	int _zw = _in;
-	//    ESP_LOGD(TAG, "AnzNachkomma: %d", _anzNachkomma);
 
 	if (_anzNachkomma > 0)
 	{
@@ -1057,10 +1295,25 @@ string RundeOutput(double _in, int _anzNachkomma)
 	}
 	else
 	{
-		stream << _zw;
+		stream << _in;
 	}
 
 	return stream.str();
+}
+
+void strinttoip4(const char *ip, int &a, int &b, int &c, int &d)
+{
+	std::string ip_temp = std::string(ip);
+	std::stringstream s(ip_temp);
+	char ch; // to temporarily store the '.'
+	s >> a >> ch >> b >> ch >> c >> ch >> d;
+}
+
+std::string BssidToString(const char *c)
+{
+	char cBssid[25];
+	sprintf(cBssid, "%02x:%02x:%02x:%02x:%02x:%02x", c[0], c[1], c[2], c[3], c[4], c[5]);
+	return std::string(cBssid);
 }
 
 string getMac(void)
@@ -1099,8 +1352,6 @@ int getSystemStatus(void)
 
 bool isSetSystemStatusFlag(SystemStatusFlag_t flag)
 {
-	// ESP_LOGE(TAG, "Flag (0x%08X) is set (0x%08X): %d", flag, systemStatus , ((systemStatus & flag) == flag));
-
 	if ((systemStatus & flag) == flag)
 	{
 		return true;
@@ -1109,6 +1360,40 @@ bool isSetSystemStatusFlag(SystemStatusFlag_t flag)
 	{
 		return false;
 	}
+}
+
+std::string getSystemStatusText(void)
+{
+	if (systemStatus == SYSTEM_STATUS_PSRAM_BAD)
+	{
+		return "PSRAM_BAD";
+	}
+	else if (systemStatus == SYSTEM_STATUS_HEAP_TOO_SMALL)
+	{
+		return "HEAP_TOO_SMALL";
+	}
+	else if (systemStatus == SYSTEM_STATUS_CAM_BAD)
+	{
+		return "CAM_BAD";
+	}
+	else if (systemStatus == SYSTEM_STATUS_SDCARD_CHECK_BAD)
+	{
+		return "SDCARD_CHECK_BAD";
+	}
+	else if (systemStatus == SYSTEM_STATUS_FOLDER_CHECK_BAD)
+	{
+		return "FOLDER_CHECK_BAD";
+	}
+	else if (systemStatus == SYSTEM_STATUS_CAM_FB_BAD)
+	{
+		return "CAM_FB_BAD";
+	}
+	else if (systemStatus == SYSTEM_STATUS_NTP_BAD)
+	{
+		return "NTP_BAD";
+	}
+
+	return "unknown";
 }
 
 time_t getUpTime(void)
@@ -1228,6 +1513,210 @@ std::string UrlDecode(const std::string &value)
 	return result;
 }
 
+// Encrypt/Decrypt a string
+std::string EncryptDecryptString(std::string toEncrypt)
+{
+	char key[3] = {'K', 'C', 'Q'}; // Any chars will work, in an array of any size
+	std::string output = toEncrypt;
+
+	for (int i = 0; i < toEncrypt.size(); i++)
+	{
+		output[i] = toEncrypt[i] ^ key[i % (sizeof(key) / sizeof(char))];
+	}
+
+	return output;
+}
+
+// Checks whether a password is decrypted
+std::string EncryptPwString(std::string toEncrypt)
+{
+	std::string string_result = "";
+
+	if (isInString(toEncrypt, (std::string)STRING_ENCRYPTED_LABEL))
+	{
+		string_result = toEncrypt;
+		all_pw_encrypted = true;
+	}
+	else
+	{
+		string_result = (std::string)STRING_ENCRYPTED_LABEL + EncryptDecryptString(toEncrypt);
+		all_pw_encrypted = false;
+	}
+
+	return string_result;
+}
+
+std::string DecryptPwString(std::string toDecrypt)
+{
+	std::string string_result = "";
+
+	if (isInString(toDecrypt, (std::string)STRING_ENCRYPTED_LABEL))
+	{
+		replaceString(toDecrypt, (std::string)STRING_ENCRYPTED_LABEL, "", false);
+		string_result = EncryptDecryptString(toDecrypt);
+		all_pw_encrypted = true;
+	}
+	else
+	{
+		string_result = toDecrypt;
+		all_pw_encrypted = false;
+	}
+
+	return string_result;
+}
+
+// Checks if all passwords on the SD are encrypted and if they are not encrypted, it encrypts them.
+esp_err_t EncryptDecryptPwOnSD(bool _encrypt, std::string filename)
+{
+	std::string line = "";
+	std::vector<std::string> splitted;
+	std::vector<std::string> neuesfile;
+	all_pw_encrypted = true;
+
+	std::string fn = FormatFileName(filename);
+	FILE *pFile = fopen(fn.c_str(), "r");
+
+	if (pFile == NULL)
+	{
+		LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "EncryptDecryptConfigPwOnSD: Unable to open file config.ini (read)");
+		fclose(pFile);
+		return ESP_FAIL;
+	}
+
+	ESP_LOGD(TAG, "EncryptDecryptConfigPwOnSD: config.ini opened");
+
+	char data_temp[256];
+
+	if (fgets(data_temp, sizeof(data_temp), pFile) == NULL)
+	{
+		line = "";
+		LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "EncryptDecryptConfigPwOnSD: File opened, but empty or content not readable");
+		fclose(pFile);
+		return ESP_FAIL;
+	}
+	else
+	{
+		line = std::string(data_temp);
+	}
+
+	if (_encrypt)
+	{
+		while ((line.size() > 0) || !(feof(pFile)))
+		{
+			splitted = splitLine(line);
+
+			if (filename == CONFIG_FILE)
+			{
+				if ((splitted.size() > 1) && (toUpper(splitted[0]) == "PASSWORD"))
+				{
+					line = "password = " + EncryptPwString(splitted[1]) + "\n";
+				}
+				else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "TOKEN"))
+				{
+					line = "Token = " + EncryptPwString(splitted[1]) + "\n";
+				}
+				else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "APIKEY"))
+				{
+					line = "apikey = " + EncryptPwString(splitted[1]) + "\n";
+				}
+			}
+			else if ((filename == WLAN_CONFIG_FILE) || (filename == NETWORK_CONFIG_FILE))
+			{
+				if ((splitted.size() > 1) && (toUpper(splitted[0]) == "PASSWORD"))
+				{
+					line = "password = \"" + EncryptPwString(splitted[1]) + "\"\n";
+				}
+				else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "HTTP_PASSWORD"))
+				{
+					line = "http_password = \"" + EncryptPwString(splitted[1]) + "\"\n";
+				}
+			}
+
+			neuesfile.push_back(line);
+
+			if (fgets(data_temp, sizeof(data_temp), pFile) == NULL)
+			{
+				line = "";
+			}
+			else
+			{
+				line = std::string(data_temp);
+			}
+		}
+	}
+	else
+	{
+		while ((line.size() > 0) || !(feof(pFile)))
+		{
+			splitted = splitLine(line);
+
+			if (filename == CONFIG_FILE)
+			{
+				if ((splitted.size() > 1) && (toUpper(splitted[0]) == "PASSWORD"))
+				{
+					line = "password = " + DecryptPwString(splitted[1]) + "\n";
+				}
+				else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "TOKEN"))
+				{
+					line = "Token = " + DecryptPwString(splitted[1]) + "\n";
+				}
+				else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "APIKEY"))
+				{
+					line = "apikey = " + DecryptPwString(splitted[1]) + "\n";
+				}
+			}
+			else if ((filename == WLAN_CONFIG_FILE) || (filename == NETWORK_CONFIG_FILE))
+			{
+				if ((splitted.size() > 1) && (toUpper(splitted[0]) == "PASSWORD"))
+				{
+					line = "password = \"" + DecryptPwString(splitted[1]) + "\"\n";
+				}
+				else if ((splitted.size() > 1) && (toUpper(splitted[0]) == "HTTP_PASSWORD"))
+				{
+					line = "http_password = \"" + DecryptPwString(splitted[1]) + "\"\n";
+				}
+			}
+
+			neuesfile.push_back(line);
+
+			if (fgets(data_temp, sizeof(data_temp), pFile) == NULL)
+			{
+				line = "";
+			}
+			else
+			{
+				line = std::string(data_temp);
+			}
+		}
+	}
+
+	fclose(pFile);
+
+	// Only write to the SD if not all passwords are encrypted
+	if ((all_pw_encrypted == false && _encrypt == true) || (all_pw_encrypted == true && _encrypt == false))
+	{
+		pFile = fopen(fn.c_str(), "w+");
+
+		if (pFile == NULL)
+		{
+			LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "EncryptDecryptConfigPwOnSD: Unable to open file config.ini (write)");
+			fclose(pFile);
+			return ESP_FAIL;
+		}
+
+		for (int i = 0; i < neuesfile.size(); ++i)
+		{
+			fputs(neuesfile[i].c_str(), pFile);
+		}
+
+		fclose(pFile);
+	}
+
+	ESP_LOGD(TAG, "EncryptDecryptConfigPwOnSD done");
+
+	return ESP_OK;
+}
+
 bool replaceString(std::string &s, std::string const &toReplace, std::string const &replaceWith)
 {
 	return replaceString(s, toReplace, replaceWith, true);
@@ -1258,7 +1747,7 @@ bool isInString(std::string &s, std::string const &toFind)
 {
 	std::size_t pos = s.find(toFind);
 
-	if (pos == std::string::npos) 
+	if (pos == std::string::npos)
 	{
 		// Not found
 		return false;
@@ -1268,11 +1757,11 @@ bool isInString(std::string &s, std::string const &toFind)
 }
 
 // from https://stackoverflow.com/a/14678800
-void replaceAll(std::string& s, const std::string& toReplace, const std::string& replaceWith)
+void replaceAll(std::string &s, const std::string &toReplace, const std::string &replaceWith)
 {
 	size_t pos = 0;
-	
-	while ((pos = s.find(toReplace, pos)) != std::string::npos) 
+
+	while ((pos = s.find(toReplace, pos)) != std::string::npos)
 	{
 		s.replace(pos, toReplace.length(), replaceWith);
 		pos += replaceWith.length();
@@ -1285,10 +1774,10 @@ bool isStringNumeric(std::string &input)
 	{
 		return false;
 	}
-    
+
 	// Replace comma with a dot
 	replaceString(input, ",", ".", false);
-	
+
 	int start = 0;
 	int punkt_existiert_schon = 0;
 
@@ -1353,7 +1842,38 @@ bool alphanumericToBoolean(std::string &input)
 	return false;
 }
 
+int alphanumericToInteger(std::string &input)
+{
+	if (isStringAlphabetic(input))
+	{
+		if (input == "TRUE" || input == "true")
+		{
+			return 1;
+		}
+		return 0;
+	}
+	else if (isStringNumeric(input))
+	{
+		return clipInt(std::stoi(input), 1, 0);
+	}
+
+	return 0;
+}
+
 int clipInt(int input, int high, int low)
+{
+	if (input < low)
+	{
+		input = low;
+	}
+	else if (input > high)
+	{
+		input = high;
+	}
+	return input;
+}
+
+float clipFloat(float input, float high, float low)
 {
 	if (input < low)
 	{
@@ -1373,5 +1893,9 @@ bool numericStrToBool(std::string input)
 
 bool stringToBoolean(std::string input)
 {
-	return (input == "TRUE");
+	if (input == "TRUE" || input == "true")
+	{
+		return true;
+	}
+	return false;
 }

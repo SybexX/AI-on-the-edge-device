@@ -7,6 +7,8 @@
 var domainname_for_testing = "";
 //var domainname_for_testing = "192.168.1.151";
 
+var fwVersion = "";
+var webUiVersion = "";
 
 /* Returns the domainname with prepended protocol.
 Eg. http://watermeter.fritz.box or http://192.168.1.5 */
@@ -38,39 +40,30 @@ function UpdatePage(_dosession = true){
     }
 }
 
-        
 function LoadHostname() {
     _domainname = getDomainname(); 
-
 
     var xhttp = new XMLHttpRequest();
     xhttp.addEventListener('load', function(event) {
         if (xhttp.status >= 200 && xhttp.status < 300) {
             hostname = xhttp.responseText;
-                document.title = hostname + " - AI on the edge";
-                document.getElementById("id_title").innerHTML  = "Digitizer - AI on the edge - " + hostname;
+            document.title = hostname + " - AI on the edge";
+            document.getElementById("id_title").innerHTML  = "Digitizer - AI on the edge - " + hostname;
         } 
         else {
                 console.warn(request.statusText, request.responseText);
         }
     });
 
-//     var xhttp = new XMLHttpRequest();
     try {
             url = _domainname + '/info?type=Hostname';     
             xhttp.open("GET", url, true);
             xhttp.send();
 
     }
-    catch (error)
-    {
-//               alert("Loading Hostname failed");
+    catch (error) {
     }
 }
-
-
-var fwVersion = "";
-var webUiVersion = "";
 
 function LoadFwVersion() {
     _domainname = getDomainname(); 
@@ -126,9 +119,8 @@ function LoadWebUiVersion() {
     }
 }
 
-
 function compareVersions() {
-    if (fwVersion == "" || webUiVersion == "") {
+    if ((fwVersion == "" || webUiVersion == "") || (fwVersion == "NaN" || webUiVersion == "NaN")) {
         return;
     }
 

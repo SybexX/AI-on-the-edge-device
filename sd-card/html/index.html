@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" xml:lang="en">
+
 <head>
-    <link rel="icon" href="favicon.ico?v=$COMMIT_HASH" type="image/x-icon">
-    <link rel="apple-touch-icon" href="watermeter.svg?v=$COMMIT_HASH" />
+    <meta charset="UTF-8"/>
     <title>AI on the edge</title>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=$COMMIT_HASH" type="text/css" >
-    <link href="firework.css?v=$COMMIT_HASH" rel="stylesheet">
+
+    <link rel="icon" href="favicon.ico?v=$COMMIT_HASH" type="image/x-icon"/>
+    <link rel="apple-touch-icon" href="watermeter.svg?v=$COMMIT_HASH"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="style.css?v=$COMMIT_HASH" type="text/css"/>
+    <link rel="stylesheet" href="firework.css?v=$COMMIT_HASH" type="text/css"/>
 
     <script type="text/javascript" src="common.js?v=$COMMIT_HASH"></script>
     <script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script>
@@ -15,8 +17,37 @@
 
     <script type="text/javascript" src="jquery-3.6.0.min.js?v=$COMMIT_HASH"></script>
     <script type="text/javascript" src="firework.js?v=$COMMIT_HASH"></script>
+    <script type="text/javascript">var domainname = getDomainname();</script>
 
-    <script>
+    <style>
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: #d8d8d8;
+            margin-top: 20px;
+        }
+        .footer-section {
+            display: flex;
+            align-items: center;
+        }
+        .footer-section img {
+            width: 24px;
+            height: 24px;
+            margin-left: 10px;
+        }
+        .donation-cards img {
+            height: 20px;
+            margin-right: 5px;
+        }
+    </style>
+
+    <script type="text/javascript">
+		var gateway = `ws://${window.location.hostname}/ws`;
+		var hostname = "watermeter";
+        var fwVersion = "NaN";
+        var webUiVersion = "NaN";
         var streamPopup;
         var streamFlashlight = false;
         var streamWindowFeatures =
@@ -24,11 +55,103 @@
             'location=no,dependent=yes,menubar=no,resizable=no,scrollbars=no,' +
             'status=no,toolbar=no,titlebar=no,' +
             'left=10,top=260,width=640px,height=480px';
+        var ws;
+        window.addEventListener('load', onLoad);
+        window.addEventListener('beforeunload', onUnload);
+
+        function onUnload(event) {		
+            ws.close();
+        }		
+		
+        function onLoad(event) {
+            initWebSocket();
+        }		
+		
+        function initWebSocket() {
+            if(ws == null) {
+                console.log('Trying to open a WebSocket connection...');
+			
+                ws = new WebSocket(gateway);
+                ws.onopen = onOpen;
+                ws.onclose = onClose;
+                ws.onmessage = onMessage;
+                ws.error = onError;
+            }
+            else {
+			    ws.close();
+            }
+        }
+
+        function onOpen(event) {
+            console.log('Connection opened');
+			ws.send('SystemInfo');
+        }
+
+        function onClose(event) {
+            console.log('Connection closed');
+            ws.onopen = null;
+            ws.onclose = null;
+            ws.onmessage = null;
+            ws = null;
+            setTimeout(initWebSocket, 10000);
+        }
+
+        function onError(event) {
+            console.log('Error occurred');
+			initWebSocket();
+        }
+		
+        function onMessage(event) {
+            // console.log(event.data);
+			
+			var myObj = JSON.parse(event.data);
+			var myKeys = Object.keys(myObj);
+			var myValues = Object.values(myObj);
+
+			for (var i = 0; i < myKeys.length; i++) {
+			    var myKey = myKeys[i];
+			    var myValue = myValues[i];
+				
+			    if(myKey == 'Hostname') {
+				    hostname = myValue;
+                    document.title = myValue + " - AI on the edge";
+                    document.getElementById("id_title").innerHTML  = "Digitizer - AI on the edge - " + myValue;
+			    }
+			    else if(myKey == 'FirmwareVersion') {
+				    fwVersion = myValue;
+					document.getElementById("Version").innerHTML  = myValue;
+					compareVersions();
+			    }
+			    else if(myKey == 'HTMLVersion') {
+				    webUiVersion = myValue;
+					console.log("Web UI Version: " + myValue);
+					compareVersions();
+			    }
+			}
+		}
+
+        function compareVersions() {
+            if ((fwVersion == "" || webUiVersion == "") || (fwVersion == "NaN" || webUiVersion == "NaN")) {
+                return;
+            }
+
+            arr = fwVersion.split(" ");
+            fWGitHash = arr[arr.length - 1].substring(0, 7);
+            arr = webUiVersion.split(" ");
+            webUiHash = arr[arr.length - 1].substring(0, 7);
+            console.log("FW Hash: " + fWGitHash + ", Web UI Hash: " + webUiHash);
+    
+            if (fWGitHash != webUiHash) {
+                firework.launch("The version of the web interface (" + webUiHash + ") does not match the firmware version (" + 
+                    fWGitHash + ")! It is suggested to keep them on the same version!", 'warning', 30000);
+            }
+        }
 
         function loadPage(page) {
             console.log("loadPage( " + page + " )");
 
-            if (streamPopup) {  // Ensure that stream popup is closed because it's blocking web interface
+            // Ensure that stream popup is closed because it's blocking web interface
+            if (streamPopup) {
                 streamPopup.close();
 			}
 
@@ -69,30 +192,6 @@
         return "";
         }        
     </script>
-    <style>
-        /* Add these styles to your existing CSS file or in a <style> tag in the head */
-        .footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background-color: #d8d8d8;
-            margin-top: 20px;
-        }
-        .footer-section {
-            display: flex;
-            align-items: center;
-        }
-        .footer-section img {
-            width: 24px;
-            height: 24px;
-            margin-left: 10px;
-        }
-        .donation-cards img {
-            height: 20px;
-            margin-right: 5px;
-        }
-    </style>
 </head>
 
 <body>
@@ -106,7 +205,6 @@
         </td>
     </tr>
 </table>
-
 
 <div class="menu" onmouseover="resetMenu()">
   <ul>
@@ -129,10 +227,9 @@
         <li style="width: 260px"><a href="#" onclick="loadPage('edit_config.html?v=$COMMIT_HASH');">Configuration</a></li>
       </ul>
 
-
     <li><a>Data<i class="arrow down"></i></a>
         <ul class="submenu">
-            <li><a href="#" onclick="loadPage(getDomainname() + '/value?full');">Recognition</a></li>
+            <li><a href="#" onclick="loadPage(getDomainname() + '/recognition');">Recognition</a></li>
             <li><a>Livestream <i class="arrow right"></i></a>
                 <ul>
                     <li><a href="#" onclick="start_livestream(false);">Live Stream (Light off)</a></li>
@@ -145,7 +242,6 @@
             <li><a href="#" onclick="loadPage('data_export.html?v=$COMMIT_HASH');">Data Export</a></li>
         </ul>
     </li>
-
 
     <li><a>System <i class="arrow down"></i></a>
         <ul class="submenu">
@@ -164,6 +260,10 @@
             <li id="HASendDiscovery" style="width: 300px" style="display:none;"><a href="#" onclick="HA_send_discovery()">Resend Homeassistant Discovery</a></li>
         </ul>
     </li>
+	
+    <li style="float: right; padding-right: 10px;">
+        <div style="font-size: 12px; color: white; padding-top: 20px;" id="system_date"></div>
+    </li>
   </ul>
 </div>
 
@@ -171,70 +271,49 @@
 
 <span id="Version" style="font-size: 10px; margin-top: -5px;padding-left: 10px;">Loading version...</span>
 
-<!-- # Disabled footer, since it wastes a lot of space and the images are broken
-<div class="footer">
-    <div class="footer-section">
-       <span>Support & Contact Us</span>
-       <a href="https://github.com/jomjol/AI-on-the-edge-device" target="_blank" title="GitHub">
-          <img src="https://github.com/jomjol/AI-on-the-edge-device/images/github-logo.png" alt="GitHub">
-       </a>
-          <img src="https://github.com/jomjol/AI-on-the-edge-device/images/gmail-logo.png" alt="Email">
-       </a>
-       <a href="https://github.com/jomjol/AI-on-the-edge-device/discussions" target="_blank" title="GitHub">
-          <img src="https://github.com/jomjol/AI-on-the-edge-device/images/discussion-logo" alt="GitHub">
-       </a>
-	
-    </div>
-    <div class="footer-section">
-       <span>Donations</span>
-       <a href="https://www.paypal.com/donate?hosted_button_id=8TRSVYNYKDSWL" target="_blank" title="Donate via PayPal">
-          <img src="https://github.com/jomjol/AI-on-the-edge-device/images/paypal.png" alt="PayPal" style="width: 60px; height: auto;">
-       </a>
-    </div>
- </div> -->
-
 <script type="text/javascript">
-    LoadHostname();
-    LoadFwVersion();
-    LoadWebUiVersion();
-    HA_send_discovery_visibility();
+        var param, category;
 
-    if (getCookie("page") == "" || getCookie("page") == "reboot_page.html?v=$COMMIT_HASH") {
-		document.cookie = "page=overview.html?v=$COMMIT_HASH" + "; path=/";
-    }
-    console.log("Loading page: " + getCookie("page"));
-    document.getElementById('maincontent').src = getCookie("page");
+        function updateTime() {
+            var _system_date = new Date();
 
-    
+            var _year = _system_date.getFullYear();
+            var _month = _system_date.getMonth() + 1;
+            var _day = _system_date.getDate();
+
+            var _hours = _system_date.getHours();
+            var _minutes = _system_date.getMinutes();
+            var _seconds = _system_date.getSeconds();
+
+            if (_month < 10) {_month = '0' + _month;}
+            if (_day < 10) {_day = '0' + _day;}
+
+            if (_hours < 10) {_hours = '0' + _hours;}
+            if (_minutes < 10) {_minutes = '0' + _minutes;}
+            if (_seconds < 10) {_seconds = '0' + _seconds;}
+
+            var day_in_week = _system_date.getDay();
+            var weekday = new Array("Sonntag", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
+
+            var _date = weekday[day_in_week] + ", " + _day + "." + _month + "." + _year + " " + _hours + ":" + _minutes + ":" + _seconds;
+            document.getElementById('system_date').innerHTML = _date;
+			
+            setTimeout(updateTime, 1);
+        }
+
     function flow_start() {
     var url = getDomainname() + '/flow_start'; 
 		var xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
                 firework.launch(xhttp.responseText, 'success', 5000);
-			    /*if (xhttp.responseText.substring(0,3) == "001") {
-					firework.launch('Flow start triggered', 'success', 5000);
-                    window.location.reload();
-				}
-				else if (xhttp.responseText.substring(0,3) == "002") {
-					firework.launch('Flow start scheduled. Start after round is completed', 'success', 5000);
-				}
-				else if (xhttp.responseText.substring(0,3) == "099") {
-					firework.launch('Flow start triggered, but start not possible (no flow task available)', 'danger', 5000);
-                }*/
 			}
 		}
 		xhttp.open("GET", url, true);
 		xhttp.send();
     }
     
-
     function HA_send_discovery_visibility()	{
-		loadConfig(domainname); 
-		ParseConfig();
-		category = getConfigCategory();
-        param = getConfigParameters();
-		
 		if (category["MQTT"]["enabled"] && param["MQTT"]["HomeassistantDiscovery"].value1 == "true") {
             document.getElementById("ManualControl").style.display="";
             document.getElementById("HASendDiscovery").style.display="";
@@ -268,7 +347,25 @@
 
         streamPopup.focus();
     }
-</script>
+	
+    function init() {
+        loadConfig(domainname); 
+        ParseConfig();
+        category = getConfigCategory();
+        param = getConfigParameters();
 
+        HA_send_discovery_visibility();
+
+        if (getCookie("page") == "" || getCookie("page") == "reboot_page.html?v=$COMMIT_HASH") {
+            document.cookie = "page=overview.html?v=$COMMIT_HASH" + "; path=/";
+        }
+			
+        console.log("Loading page: " + getCookie("page"));
+        document.getElementById('maincontent').src = getCookie("page");
+				
+        updateTime();
+    }
+    init();
+</script>
 </body>
 </html>

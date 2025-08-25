@@ -243,21 +243,55 @@ function ParseConfig() {
     category[catname]["enabled"] = false;
     category[catname]["found"] = false;
     param[catname] = new Object();
-    ParamAddValue(param, catname, "IO0", 6, false, "", [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO1", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO3", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO4", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO12", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO13", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "LEDType");
-    ParamAddValue(param, catname, "LEDNumbers");
-    ParamAddValue(param, catname, "LEDColor", 3);
-     // Default Values, um abwärtskompatiblität zu gewährleisten
-    param[catname]["LEDType"]["value1"] = "WS2812";
-    param[catname]["LEDNumbers"]["value1"] = "2";
-    param[catname]["LEDColor"]["value1"] = "50";
-    param[catname]["LEDColor"]["value2"] = "50";
-    param[catname]["LEDColor"]["value3"] = "50";
+    param[catname] = new Object();						// [pinMode, intType, pwmFrequency, ledType, ledQuantity, led_R,  led_G,  led_B, mqttEnabled, httpEnabled, gpioName]
+    ParamAddValue(param, catname, "IO1", 11, false, "", [/^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[a-zA-Z0-9_-]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    param[catname]["IO1"]["value1"] = "disabled";
+    param[catname]["IO1"]["value2"] = "disabled";
+    param[catname]["IO1"]["value3"] = "10";
+    param[catname]["IO1"]["value4"] = "WS2812";
+    param[catname]["IO1"]["value5"] = "1";
+    param[catname]["IO1"]["value6"] = "150";
+    param[catname]["IO1"]["value7"] = "150";
+    param[catname]["IO1"]["value8"] = "150";
+    param[catname]["IO1"]["value9"] = "false";
+    param[catname]["IO1"]["value10"] = "false";
+    param[catname]["IO1"]["value11"] = "IO1";
+    ParamAddValue(param, catname, "IO2", 11, false, "", [/^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[a-zA-Z0-9_-]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    param[catname]["IO2"]["value1"] = "disabled";
+    param[catname]["IO2"]["value2"] = "disabled";
+    param[catname]["IO2"]["value3"] = "10";
+    param[catname]["IO2"]["value4"] = "WS2812";
+    param[catname]["IO2"]["value5"] = "1";
+    param[catname]["IO2"]["value6"] = "150";
+    param[catname]["IO2"]["value7"] = "150";
+    param[catname]["IO2"]["value8"] = "150";
+    param[catname]["IO2"]["value9"] = "false";
+    param[catname]["IO2"]["value10"] = "false";
+    param[catname]["IO2"]["value11"] = "IO2";
+    ParamAddValue(param, catname, "IO3", 11, false, "", [/^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[a-zA-Z0-9_-]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    param[catname]["IO3"]["value1"] = "disabled";
+    param[catname]["IO3"]["value2"] = "disabled";
+    param[catname]["IO3"]["value3"] = "10";
+    param[catname]["IO3"]["value4"] = "WS2812";
+    param[catname]["IO3"]["value5"] = "1";
+    param[catname]["IO3"]["value6"] = "150";
+    param[catname]["IO3"]["value7"] = "150";
+    param[catname]["IO3"]["value8"] = "150";
+    param[catname]["IO3"]["value9"] = "false";
+    param[catname]["IO3"]["value10"] = "false";
+    param[catname]["IO3"]["value11"] = "IO3";
+    ParamAddValue(param, catname, "IO4", 11, false, "", [/^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[a-zA-Z0-9_-]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    param[catname]["IO4"]["value1"] = "disabled";
+    param[catname]["IO4"]["value2"] = "disabled";
+    param[catname]["IO4"]["value3"] = "10";
+    param[catname]["IO4"]["value4"] = "WS2812";
+    param[catname]["IO4"]["value5"] = "1";
+    param[catname]["IO4"]["value6"] = "150";
+    param[catname]["IO4"]["value7"] = "150";
+    param[catname]["IO4"]["value8"] = "150";
+    param[catname]["IO4"]["value9"] = "false";
+    param[catname]["IO4"]["value10"] = "false";
+    param[catname]["IO4"]["value11"] = "IO4";
 
     var catname = "AutoTimer";
     category[catname] = new Object();
@@ -287,13 +321,14 @@ function ParseConfig() {
     category[catname] = new Object();
     category[catname]["enabled"] = false;
     category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Tooltip");	
+    param[catname] = new Object();	
     ParamAddValue(param, catname, "TimeZone");
     ParamAddValue(param, catname, "TimeServer");         
     ParamAddValue(param, catname, "Hostname");   
     ParamAddValue(param, catname, "RSSIThreshold");   
     ParamAddValue(param, catname, "CPUFrequency");
+    ParamAddValue(param, catname, "EspDeepSleep");
+    ParamAddValue(param, catname, "Tooltip");
     ParamAddValue(param, catname, "SetupMode"); 
      
     while (aktline < config_split.length){
@@ -470,6 +505,7 @@ function ParamExtractValueAll(_param, _linesplit, _catname, _aktline, _iscom) {
 function getCamConfig() {			
     ParseConfig();		
 
+    param["System"]["EspDeepSleep"]["enabled"] = true;
     param["System"]["Tooltip"]["enabled"] = true;
     param["Alignment"]["InitialRotate"]["enabled"] = true;
 			
@@ -504,6 +540,11 @@ function getCamConfig() {
     param["TakeImage"]["CamZoomOffsetY"]["enabled"] = true;
     param["TakeImage"]["CamZoomSize"]["enabled"] = true;
     param["TakeImage"]["LEDIntensity"]["enabled"] = true;
+
+    if (!param["System"]["EspDeepSleep"]["found"]) {
+        param["System"]["EspDeepSleep"]["found"] = true;
+        param["System"]["EspDeepSleep"].value1 = 'false';
+    }
 
     if (!param["System"]["Tooltip"]["found"]) {
         param["System"]["Tooltip"]["found"] = true;

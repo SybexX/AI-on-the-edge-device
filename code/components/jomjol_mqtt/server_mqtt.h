@@ -8,16 +8,15 @@
 #include "ClassFlowDefineTypes.h"
 
 void SetHomeassistantDiscoveryEnabled(bool enabled);
-void mqttServer_setParameter(std::vector<NumberPost*>* _NUMBERS, int interval, float roundInterval);
-void mqttServer_setMeterType(std::string meterType, std::string valueUnit, std::string timeUnit,std::string rateUnit);
+void mqttServer_setParameter(std::vector<NumberPost *> *_NUMBERS, int interval, float roundInterval);
+void mqttServer_setMeterType(std::string meterType, std::string valueUnit, std::string timeUnit, std::string rateUnit);
 void setMqtt_Server_Retain(bool SetRetainFlag);
-void mqttServer_setMainTopic( std::string maintopic);
-void mqttServer_setDmoticzInTopic( std::string domoticzintopic);
-
+void mqttServer_setMainTopic(std::string maintopic);
+void mqttServer_setDmoticzInTopic(std::string domoticzintopic);
 
 std::string mqttServer_getMainTopic();
 
-void register_server_mqtt_uri(httpd_handle_t server);
+esp_err_t register_server_mqtt_uri(httpd_handle_t my_server);
 
 bool publishSystemData(int qos);
 
@@ -27,5 +26,5 @@ esp_err_t sendDiscovery_and_static_Topics(void);
 
 std::string createNodeId(std::string &topic);
 
-#endif //SERVERMQTT_H
-#endif //ENABLE_MQTT
+#endif // SERVERMQTT_H
+#endif // ENABLE_MQTT

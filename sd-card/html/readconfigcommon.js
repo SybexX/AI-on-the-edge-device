@@ -257,3 +257,104 @@ function MakeRefImageZW(zw, _enhance, _domainname){
         return false;
     }
 }
+
+function loadRawData(_data_path, _domainname = getDomainname()) {
+    var data_gesamt = "";
+    var xhttp = new XMLHttpRequest();
+	
+    xhttp.addEventListener('load', function(event) {
+        if (xhttp.status >= 200 && xhttp.status < 300) {
+            data_gesamt = xhttp.responseText;
+        } 
+        else {
+            console.warn(request.statusText, request.responseText);
+        }
+    });
+
+    try {
+        url = _domainname + '/fileserver' + _data_path;     
+        xhttp.open("GET", url, false);
+        xhttp.send();
+    } catch (error) {}
+
+    return data_gesamt;
+}
+
+// Encrypt password
+function EncryptPwString(pwToEncrypt) {
+	var _pw_temp = "**##**";
+	var pw_temp = "";
+
+	if (isInString(pwToEncrypt, _pw_temp)) {
+		pw_temp = pwToEncrypt;
+	}
+	else {
+		pw_temp = _pw_temp + encryptDecrypt(pwToEncrypt);
+	}
+
+	return pw_temp;
+}
+
+// Decrypt password
+function DecryptPwString(pwToDencrypt) {
+	var _pw_temp = "**##**";
+	var pw_temp = "";
+	
+    if (isInString(pwToDencrypt, _pw_temp))
+    {
+        var _temp = ReplaceString(pwToDencrypt, _pw_temp, "");
+        pw_temp = encryptDecrypt(_temp);
+    }
+    else
+    {
+        pw_temp = pwToDencrypt;
+    }
+
+    return pw_temp;
+}
+
+function decryptConfigPwOnSD(_domainname = getDomainname()) {
+    var url = _domainname + "/editflow?task=pw_decrypt&config_decrypt=true";
+    var xhttp = new XMLHttpRequest();  
+    
+	try {
+        xhttp.open("GET", url, false);
+        xhttp.send();
+	} catch (error) {}
+	
+	if (xhttp.responseText == "decrypted") {
+		return true;
+	}
+	else {
+        return false;
+    }
+}
+
+function decryptWifiPwOnSD(_domainname = getDomainname()) {
+    var url = _domainname + "/editflow?task=pw_decrypt&wifi_decrypt=true";
+    var xhttp = new XMLHttpRequest();  
+    
+	try {
+        xhttp.open("GET", url, false);
+        xhttp.send();
+	} catch (error) {}
+	
+	if (xhttp.responseText == "decrypted") {
+		return true;
+	}
+	else {
+        return false;
+    }
+}
+
+function encryptDecrypt(input) {
+	var key = ['K', 'C', 'Q']; //Can be any chars, and any size array
+	var output = [];
+	
+	for (var i = 0; i < input.length; i++) {
+		var charCode = input.charCodeAt(i) ^ key[i % key.length].charCodeAt(0);
+		output.push(String.fromCharCode(charCode));
+	}
+
+	return output.join("");
+}

@@ -136,6 +136,125 @@
 	<script type="text/javascript" src="readconfigparam.js?v=$COMMIT_HASH"></script>
 	
 	<script type="text/javascript">
+		var gateway = `ws://${window.location.hostname}/ws`;
+        var ws;
+		domainname = getDomainname();
+        window.addEventListener('load', onLoad);
+        window.addEventListener('beforeunload', onUnload);
+		
+        function onUnload(event) {		
+            ws.close();
+        }		
+		
+        function onLoad(event) {
+            initWebSocket();
+        }		
+		
+        function initWebSocket() {
+            if(ws == null) {
+                console.log('Trying to open a WebSocket connection...');
+			
+                ws = new WebSocket(gateway);
+                ws.onopen = onOpen;
+                ws.onclose = onClose;
+                ws.onmessage = onMessage;
+                ws.error = onError;
+            }
+            else {
+			    ws.close();
+            }
+        }		
+		
+        function onOpen(event) {
+            console.log('Connection opened');
+			
+			ws.send('BoardType');
+			ws.send('FlowStatus');
+			ws.send('Round');
+			ws.send('CpuTemp');
+			ws.send('Date');
+			ws.send('Uptime');
+			ws.send('RSSI');
+			
+			// ws.send('Value');
+			// ws.send('PreValue');
+			// ws.send('RawValue');
+			// ws.send('ValueStatus');
+        }
+
+        function onClose(event) {
+            console.log('Connection closed');
+            ws.onopen = null;
+            ws.onclose = null;
+            ws.onmessage = null;
+            ws = null;
+            setTimeout(initWebSocket, 10000);
+        }
+
+        function onMessage(event) {
+            // console.log(event.data);
+			
+			var myObj = JSON.parse(event.data);
+			var myKey = Object.keys(myObj);
+			var myValue = Object.values(myObj);
+			
+			if(myKey == 'BoardType') {
+			    console.log('BoardType: ' + myValue);
+			}
+			else if(myKey == 'FlowStatus') {
+			    $('#statusflow').html(myValue);
+			}
+			else if(myKey == 'Round') {
+			    $('#round').html("(Round: " + myValue + ")");
+			}
+			else if(myKey == 'CpuTemp') {
+			    $('#cputemp').html("CPU Temperature: " + myValue + "°C");
+			}
+			else if(myKey == 'Date') {
+			    $('#sntp_date').html("Date/Time on device: " + myValue);
+			}
+			else if(myKey == 'Uptime') {
+			    $('#uptime').html("Uptime: " + myValue);
+			}
+			else if(myKey == 'RSSI') {
+				if (myValue >= -55) {
+					$('#rssi').html("WIFI Signal: Excellent (" + myValue + "dBm)");
+				}
+				else if (myValue < -55 && myValue >= -67) {
+					$('#rssi').html("WIFI Signal: Good (" + myValue + "dBm)");
+				}
+				else if (myValue < -67 && myValue >= -78) {
+					$('#rssi').html("WIFI Signal: Fair (" + myValue + "dBm)");
+				}
+				else if (myValue < -78 && myValue >= -85) {
+					$('#rssi').html("WIFI Signal: Weak (" + myValue + "dBm)");
+				}
+				else {
+					$('#rssi').html("WIFI Signal: Unreliable (" + myValue + "dBm)");
+				}
+			}
+			else if(myKey == 'Value') {
+				console.log('Value: ' + myValue);
+			}
+			else if(myKey == 'PreValue') {
+				console.log('PreValue: ' + myValue);
+			}
+			else if(myKey == 'RawValue') {
+				console.log('RawValue: ' + myValue);
+			}
+			else if(myKey == 'ValueStatus') {
+				console.log('ValueStatus: ' + myValue);
+			}
+			else {
+				console.log('WebSocket, unknown parameter: ' + myKey + ' = ' + myValue);
+			}
+        }
+		
+        function onError(event) {
+            console.log('Error occurred');
+			initWebSocket();
+        }
+
 		function addZero(i) {
 			if (i < 10) {
 				i = "0" + i;
@@ -153,12 +272,6 @@
 			loadValue("raw", "raw", "border-collapse: collapse; width: 100%");
 			loadValue("prevalue", "prevalue", "border-collapse: collapse; width: 100%");
 			loadValue("error", "error", "border-collapse: collapse; width: 100%");
-			loadStatus();
-			loadSntpDate();
-			loadCPUTemp();
-			loadRSSI();
-			loadUptime();
-			loadRoundCounter();
 		}
 
 		function LoadROIImage(){
@@ -167,7 +280,7 @@
 			var h = addZero(d.getHours());
 			var m = addZero(d.getMinutes());
 			var s = addZero(d.getSeconds());
-			document.getElementById("img").src = getDomainname() + '/img_tmp/alg_roi.jpg?timestamp=' + timestamp;
+			document.getElementById("img").src = domainname + '/img_tmp/alg_roi.jpg?timestamp=' + timestamp;
 			$('#timestamp').html("Last Page Refresh:" + (h + ":" + m + ":" + s));
 		}
 
@@ -179,107 +292,8 @@
 			}, 300000);
 		}
 
-		function loadStatus() {
-			url = domainname + '/statusflow';     
-			var xhttp = new XMLHttpRequest();
-			xhttp.onreadystatechange = function() {
-				if (this.readyState == 4 && this.status == 200) {
-					var _rsp = xhttp.responseText;
-					$('#statusflow').html(_rsp);
-				}
-			}
-			
-			xhttp.open("GET", url, true);
-			xhttp.send();
-		}
-
-		function loadCPUTemp() {
-			url = domainname + '/cpu_temperature';     
-			var xhttp = new XMLHttpRequest();
-			xhttp.onreadystatechange = function() {
-				if (this.readyState == 4 && this.status == 200) {
-					var _rsp = xhttp.responseText;
-					$('#cputemp').html("CPU Temperature: " +_rsp + "°C");
-				}
-			}
-			
-			xhttp.open("GET", url, true);
-			xhttp.send();
-		}
-
-		function loadRSSI() {
-			url = domainname + '/rssi';     
-			var xhttp = new XMLHttpRequest();
-			xhttp.onreadystatechange = function() {
-				if (this.readyState == 4 && this.status == 200) {
-					var _rsp = xhttp.responseText;
-				
-					if (_rsp >= -55) {
-						$('#rssi').html("WIFI Signal: Excellent (" + _rsp + "dBm)");
-					}
-					else if (_rsp < -55 && _rsp >= -67) {
-						$('#rssi').html("WIFI Signal: Good (" + _rsp + "dBm)");
-					}
-					else if (_rsp < -67 && _rsp >= -78) {
-						$('#rssi').html("WIFI Signal: Fair (" + _rsp + "dBm)");
-					}
-					else if (_rsp < -78 && _rsp >= -85) {
-						$('#rssi').html("WIFI Signal: Weak (" + _rsp + "dBm)");
-					}
-					else {
-						$('#rssi').html("WIFI Signal: Unreliable (" + _rsp + "dBm)");
-					}
-				}
-			}
-			
-			xhttp.open("GET", url, true);
-			xhttp.send();		
-		}
-
-		function loadSntpDate() {
-			url = domainname + '/date';
-			var xhttp = new XMLHttpRequest();
-			xhttp.onreadystatechange = function () {
-				if (this.readyState == 4 && this.status == 200) {
-					var _rsp = xhttp.responseText;
-					$('#sntp_date').html("Date/Time on device: " + _rsp);
-				}
-			}
-
-			xhttp.open("GET", url, true);
-			xhttp.send();
-		}
-
-		function loadUptime() {
-			url = domainname + '/uptime';     
-			var xhttp = new XMLHttpRequest();
-			xhttp.onreadystatechange = function() {
-				if (this.readyState == 4 && this.status == 200) {
-					var _rsp = xhttp.responseText;
-					$('#uptime').html("Uptime: " + _rsp);
-				}
-			}
-			
-			xhttp.open("GET", url, true);
-			xhttp.send();
-		}
-
-		function loadRoundCounter() {
-			url = domainname + '/info?type=Round';     
-			var xhttp = new XMLHttpRequest();
-			xhttp.onreadystatechange = function() {
-				if (this.readyState == 4 && this.status == 200) {
-					var _rsp = xhttp.responseText;
-					$('#round').html("(Round: " + _rsp + ")");
-				}
-			}
-			
-			xhttp.open("GET", url, true);
-			xhttp.send();
-		}
-
 		function loadValue(_type, _div, _style) {
-			url = domainname + '/value?all=true&type=' + _type;     
+			url = domainname + '/value?type=' + _type;     
 			var xhttp = new XMLHttpRequest();
 			xhttp.onreadystatechange = function() {
 				if (this.readyState == 4 && this.status == 200) {
@@ -326,23 +340,7 @@
 			xhttp.send();		
 		}
 
-		/* 
-		function setImageMaxWidth() {
-			loadConfig(domainname); 
-			ParseConfig();
-			param = getConfigParameters();
-			
-			if(param["TakeImage"]["CamFrameSize"].value == "QVGA") {
-				document.getElementById("img").style.maxWidth = "320px";
-			}
-			else {
-				document.getElementById("img").style.maxWidth = "640px";
-			}
-		}
-		*/
 		function init(){
-			domainname = getDomainname();
-			// setImageMaxWidth(); // CamFrameSize was replaced by zoom - CamFrameSize is no longer needed/used for zoom 
 			Refresh();
 		}
 

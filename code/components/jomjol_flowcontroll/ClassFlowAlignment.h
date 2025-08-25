@@ -15,13 +15,9 @@ using namespace std;
 class ClassFlowAlignment : public ClassFlow
 {
 protected:
-    float initialrotate;
-    bool initialflip;
-    bool use_antialiasing;
     RefInfo References[2];
     int anz_ref;
     string namerawimage;
-    bool SaveAllFiles;
     CAlignAndCutImage *AlignAndCutImage;
     std::string FileStoreRefAlignment;
     float SAD_criteria;
@@ -40,7 +36,7 @@ public:
 
     CAlignAndCutImage *GetAlignAndCutImage() { return AlignAndCutImage; };
 
-    void DrawRef(CImageBasis *_zw);
+    void DrawRef(CImageBasis *TempImage);
 
     bool ReadParameter(FILE *pfile, string &aktparamgraph);
     bool doFlow(string time);

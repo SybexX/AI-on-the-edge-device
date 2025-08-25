@@ -188,7 +188,7 @@ function loadPrevalue(_domainname) {
 
   var xhttp = new XMLHttpRequest();
   try {
-    url = _domainname + '/value?all=true&type=raw';
+    url = _domainname + '/value?type=raw';
     xhttp.open("GET", url, false);
     xhttp.send();
     response = xhttp.responseText;

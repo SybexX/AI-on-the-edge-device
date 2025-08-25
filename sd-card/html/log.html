@@ -57,14 +57,13 @@
           </div>
     </body>
 
-    <script>  
+    <script type="text/javascript">  
         function reload() {
           //  document.getElementById('log').innerHTML += "<br><b>Reloading...<b><br><br>";
             document.getElementById('log').innerHTML += "<b>Reloading...</b>";
             window.scrollBy(0,document.body.scrollHeight);
             funcRequest(getDomainname() + '/log');
         } 
-
 
         function processLogLine(line, index, arr) {
             /* Make sure the whitespaces in the uptime field get persevered */
@@ -113,6 +112,5 @@
         }
 
         funcRequest(getDomainname() + '/log');
-
     </script>
 </html>

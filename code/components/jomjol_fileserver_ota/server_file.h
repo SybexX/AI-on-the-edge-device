@@ -3,19 +3,28 @@
 #ifndef SERVERFILE_H
 #define SERVERFILE_H
 
-#include <esp_http_server.h>
 #include <string>
+#include <esp_vfs.h>
+#include <esp_http_server.h>
 
-void register_server_file_uri(httpd_handle_t server, const char *base_path);
+#include "defines.h"
+#include "Helper.h"
 
-void unzip(std::string _in_zip_file, std::string _target_directory);
-std::string unzip_new(std::string _in_zip_file, std::string _html_tmp, std::string _html_final, std::string _target_bin, std::string _main = "/sdcard/", bool _initial_setup = false);
+typedef struct rest_server_context
+{
+    char base_path[ESP_VFS_PATH_MAX + 1];
+    char scratch[SERVER_FILE_SCRATCH_BUFSIZE];
+} rest_server_context_t;
+extern rest_server_context_t *rest_context;
 
+esp_err_t get_number_list_handler(httpd_req_t *req);
+esp_err_t get_data_list_handler(httpd_req_t *req);
+esp_err_t get_tflite_list_handler(httpd_req_t *req);
+esp_err_t get_config_list_handler(httpd_req_t *req);
 
-void delete_all_in_directory(std::string _directory);
+void unzip_file(std::string _in_zip_file, std::string _target_directory);
+std::string unzip_ota_file(std::string _in_zip_file, std::string _html_tmp, std::string _html_final, std::string _target_bin, std::string _main = "/sdcard/", bool _initial_setup = false);
 
-esp_err_t get_tflite_file_handler(httpd_req_t *req);
-esp_err_t get_data_file_handler(httpd_req_t *req);
-esp_err_t get_numbers_file_handler(httpd_req_t *req);
+esp_err_t register_server_file_uri(const char *base_path, httpd_handle_t my_server);
 
-#endif //SERVERFILE_H
+#endif // SERVERFILE_H

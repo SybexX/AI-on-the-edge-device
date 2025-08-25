@@ -2,82 +2,53 @@
 #include <string>
 #include <vector>
 #include <regex>
+#include <esp_psram.h>
+#include <esp_pm.h>
+#include <psram.h>
 
-#include "esp_psram.h"
-#include "esp_pm.h"
+#include <esp_chip_info.h>
+#include <driver/rtc_io.h>
 
-#include "psram.h"
-
-#include "esp_chip_info.h"
-
-// SD-Card ////////////////////
-#include "esp_vfs_fat.h"
-#include "ffconf.h"
-#include "driver/sdmmc_host.h"
-
-#if (ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 1, 2))
-#include "sdcard_init.h"
-#endif
-///////////////////////////////
-
-#include "ClassLogFile.h"
-
-#include "connect_wlan.h"
-#include "read_wlanini.h"
-
-#include "server_main.h"
-#include "MainFlowControl.h"
-#include "server_file.h"
-#include "server_ota.h"
-#include "time_sntp.h"
-#include "configFile.h"
-#include "server_main.h"
-#include "server_camera.h"
-#include "basic_auth.h"
-
-#ifdef ENABLE_MQTT
-    #include "server_mqtt.h"
-#endif //ENABLE_MQTT
-#include "Helper.h"
-#include "statusled.h"
-#include "sdcard_check.h"
-
-#include "../../include/defines.h"
-
-#ifdef ENABLE_SOFTAP
-    #include "softAP.h"
-#endif //ENABLE_SOFTAP
+#include <esp_vfs_fat.h>
+#include <ffconf.h>
+#include <driver/sdmmc_host.h>
 
 #ifdef DISABLE_BROWNOUT_DETECTOR
-    #include "soc/soc.h" 
-    #include "soc/rtc_cntl_reg.h" 
+#include <soc/soc.h>
+#include <soc/rtc_cntl_reg.h>
 #endif
-
-#ifdef DEBUG_ENABLE_SYSINFO
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL( 4, 0, 0 )
-    #include "esp_sys.h"
-#endif
-#endif //DEBUG_ENABLE_SYSINFO
 
 // define `gpio_pad_select_gpip` for newer versions of IDF
 #if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0))
-#include "esp_rom_gpio.h"
+#include <esp_rom_gpio.h>
 #define gpio_pad_select_gpio esp_rom_gpio_pad_select_gpio
 #endif
 
-#ifdef USE_HIMEM_IF_AVAILABLE
-    #include "esp32/himem.h"
-    #ifdef DEBUG_HIMEM_MEMORY_CHECK
-        #include "himem_memory_check.h"
-    #endif
-#endif
+#include "defines.h"
+#include "Helper.h"
 
-//#ifdef CONFIG_HEAP_TRACING_STANDALONE
-#if defined HEAP_TRACING_MAIN_WIFI || defined HEAP_TRACING_MAIN_START
-    #include <esp_heap_trace.h>
-    #define NUM_RECORDS 300
-    static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in internal RAM
-#endif
+#include "MainFlowControl.h"
+#include "ClassLogFile.h"
+
+#include "connect_wifi_ap.h"
+#include "connect_wifi_sta.h"
+#include "read_network_config.h"
+
+#include "server_main.h"
+#include "server_file.h"
+#include "server_ota.h"
+#include "server_camera.h"
+#include "server_GpioHandler.h"
+
+#ifdef ENABLE_MQTT
+#include "server_mqtt.h"
+#endif // ENABLE_MQTT
+
+#include "time_sntp.h"
+#include "configFile.h"
+#include "statusled.h"
+#include "sdcard_check.h"
+#include "basic_auth.h"
 
 extern const char *GIT_TAG;
 extern const char *GIT_REV;
@@ -88,22 +59,28 @@ extern std::string getFwVersion(void);
 extern std::string getHTMLversion(void);
 extern std::string getHTMLcommit(void);
 
-std::vector<std::string> splitString(const std::string& str);
-void migrateConfiguration(void);
-bool setCpuFrequency(void);
-
 static const char *TAG = "MAIN";
 
-#define MOUNT_POINT "/sdcard"
-
-bool Init_NVS_SDCard()
+esp_err_t Init_NVS(void)
 {
+    ESP_LOGI(TAG, "Initialize NVS");
+
     esp_err_t ret = nvs_flash_init();
-	
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        // NVS partition was truncated and needs to be erased, retry nvs_flash_init
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
+
+    return ret;
+}
+
+esp_err_t Init_SDCard(void)
+{
+    ESP_LOGI(TAG, "Initialize SD Card");
+
+    esp_err_t ret = ESP_OK;
 
     ESP_LOGD(TAG, "Using SDMMC peripheral");
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
@@ -122,7 +99,7 @@ bool Init_NVS_SDCard()
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to create a new on-chip LDO power control driver");
-        return false;
+        return ret;
     }
     host.pwr_ctrl_handle = pwr_ctrl_handle;
 #endif
@@ -161,847 +138,440 @@ bool Init_NVS_SDCard()
     slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
 
     // Der PullUp des GPIO13 wird durch slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
-    // nicht gesetzt, da er eigentlich nicht benötigt wird, 
+    // nicht gesetzt, da er eigentlich nicht benötigt wird,
     // dies führt jedoch bei schlechten Kopien des AI_THINKER Boards
     // zu Problemen mit der SD Initialisierung und eventuell sogar zur reboot-loops.
     // Um diese Probleme zu kompensieren, wird der PullUp manuel gesetzt.
-    gpio_set_pull_mode(GPIO_SDCARD_D3, GPIO_PULLUP_ONLY); // HS2_D3	
+    gpio_set_pull_mode(GPIO_SDCARD_D3, GPIO_PULLUP_ONLY); // HS2_D3
 
     // Options for mounting the filesystem.
     // If format_if_mount_failed is set to true, SD card will be partitioned and
     // formatted in case when mounting fails.
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
-        .max_files = 12,                         // previously -> 2022-09-21: 5, 2023-01-02: 7 
-        .allocation_unit_size = 0,               // 0 = auto
+        .max_files = 12,           // previously -> 2022-09-21: 5, 2023-01-02: 7
+        .allocation_unit_size = 0, // 0 = auto
         .disk_status_check_enable = 0,
     };
 
-    sdmmc_card_t* card;
-    const char mount_point[] = MOUNT_POINT;
+    sdmmc_card_t *card;
 
     // Use settings defined above to initialize SD card and mount FAT filesystem.
     // Note: esp_vfs_fat_sdmmc_mount is an all-in-one convenience function.
     // Please check its source code and implement error recovery when developing
     // production applications.
-#if (ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 1, 2))
-    ret = esp_vfs_fat_sdmmc_mount_mh(mount_point, &host, &slot_config, &mount_config, &card);
-#else
-    ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card);
-#endif
+    ret = esp_vfs_fat_sdmmc_mount(SD_PARTITION_PATH, &host, &slot_config, &mount_config, &card);
 
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
+    if (ret != ESP_OK)
+    {
+        if (ret == ESP_FAIL)
+        {
+            setStatusLED(SDCARD_INIT, 1, true);
             ESP_LOGE(TAG, "Failed to mount FAT filesystem on SD card. Check SD card filesystem (only FAT supported) or try another card");
-            StatusLED(SDCARD_INIT, 1, true);
-        } 
-        else if (ret == 263) { // Error code: 0x107 --> usually: SD not found
+        }
+        else if (ret == ESP_ERR_TIMEOUT)
+        {
+            // Error code: 0x107 --> usually: SD not found
+            setStatusLED(SDCARD_INIT, 2, true);
             ESP_LOGE(TAG, "SD card init failed. Check if SD card is properly inserted into SD card slot or try another card");
-            StatusLED(SDCARD_INIT, 2, true);
         }
-        else {
+        else
+        {
+            setStatusLED(SDCARD_INIT, 3, true);
             ESP_LOGE(TAG, "SD card init failed. Check error code or try another card");
-            StatusLED(SDCARD_INIT, 3, true);
         }
-        return false;
+        return ret;
     }
 
-    //sdmmc_card_print_info(stdout, card);  // With activated CONFIG_NEWLIB_NANO_FORMAT --> capacity not printed correctly anymore
     SaveSDCardInfo(card);
-    return true;
+    return ret;
 }
 
-extern "C" void app_main(void)
+esp_err_t Check_SDCardRW(void)
 {
-    //#ifdef CONFIG_HEAP_TRACING_STANDALONE
-    #if defined HEAP_TRACING_MAIN_WIFI || defined HEAP_TRACING_MAIN_START
-        //register a buffer to record the memory trace
-        ESP_ERROR_CHECK( heap_trace_init_standalone(trace_record, NUM_RECORDS) );
-    #endif
-        
-    TickType_t xDelay;
-        
-    #ifdef DISABLE_BROWNOUT_DETECTOR
-        WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
-    #endif
-
-    #ifdef HEAP_TRACING_MAIN_START
-        ESP_ERROR_CHECK( heap_trace_start(HEAP_TRACE_LEAKS) );
-    #endif
-
-    // ********************************************
-    // Highlight start of app_main 
-    // ********************************************
-    ESP_LOGI(TAG, "\n\n\n\n================ Start app_main =================");
- 
-    // Init SD card
-    // ********************************************
-    if (!Init_NVS_SDCard())
-    {
-        ESP_LOGE(TAG, "Device init aborted!");
-        return; // No way to continue without working SD card!
-    }
-
-    // SD card: Create log directories (if not already existing)
-    // ********************************************
-    LogFile.CreateLogDirectories(); // mandatory for logging + image saving
-
-    // ********************************************
-    // Highlight start of logfile logging
-    // Default Log Level: INFO -> Everything which needs to be logged during boot should be have level INFO, WARN OR ERROR
-    // ********************************************
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "=================================================");
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "==================== Start ======================");
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "=================================================");
+    ESP_LOGI(TAG, "SD card: basic R/W check");
 
     // SD card: basic R/W check
     // ********************************************
     int iSDCardStatus = SDCardCheckRW();
-    if (iSDCardStatus < 0) {
-        if (iSDCardStatus <= -1 && iSDCardStatus >= -2) { // write error
-            StatusLED(SDCARD_CHECK, 1, true);
+    if (iSDCardStatus < 0)
+    {
+        if (iSDCardStatus <= -1 && iSDCardStatus >= -2)
+        {
+            // write error
+            setStatusLED(SDCARD_CHECK, 1, true);
+            ESP_LOGE(TAG, "SD card: basic R/W check: write error!");
         }
-        else if (iSDCardStatus <= -3 && iSDCardStatus >= -5) { // read error
-            StatusLED(SDCARD_CHECK, 2, true);
+        else if (iSDCardStatus <= -3 && iSDCardStatus >= -5)
+        {
+            // read error
+            setStatusLED(SDCARD_CHECK, 2, true);
+            ESP_LOGE(TAG, "SD card: basic R/W check: read error!");
         }
-        else if (iSDCardStatus == -6) { // delete error
-            StatusLED(SDCARD_CHECK, 3, true);
+        else if (iSDCardStatus == -6)
+        {
+            // delete error
+            setStatusLED(SDCARD_CHECK, 3, true);
+            ESP_LOGE(TAG, "SD card: basic R/W check: delete error!");
         }
-        setSystemStatusFlag(SYSTEM_STATUS_SDCARD_CHECK_BAD); // reduced web interface going to be loaded
+
+        return ESP_FAIL;
+    }
+    else
+    {
+        // SD card: Create further mandatory directories (if not already existing)
+        // Correct creation of these folders will be checked with function "SDCardCheckFolderFilePresence"
+        // ********************************************
+        bool ret = true;
+        ret &= MakeDir("/sdcard/firmware");     // mandatory for OTA firmware update
+        ret &= MakeDir("/sdcard/img_tmp");      // mandatory for setting up alignment marks
+        ret &= MakeDir("/sdcard/demo");         // mandatory for demo mode
+        ret &= MakeDir("/sdcard/config/certs"); // mandatory for mqtt certificates
+
+        // SD card: Create log directories (if not already existing)
+        // ********************************************
+        ret &= LogFile.CreateLogDirectories(); // mandatory for logging + image saving
+
+        if (!ret)
+        {
+            // write error
+            setStatusLED(SDCARD_CHECK, 1, true);
+            return ESP_FAIL;
+        }
     }
 
-    // SD card: Create further mandatory directories (if not already existing)
-    // Correct creation of these folders will be checked with function "SDCardCheckFolderFilePresence"
-    // ********************************************
-    MakeDir("/sdcard/firmware");         // mandatory for OTA firmware update
-    MakeDir("/sdcard/img_tmp");          // mandatory for setting up alignment marks
-    MakeDir("/sdcard/demo");             // mandatory for demo mode
-    MakeDir("/sdcard/config/certs");     // mandatory for mqtt certificates
+    return ESP_OK;
+}
 
-    // Check for updates
-    // ********************************************
-    CheckOTAUpdate();
-    CheckUpdate();
+esp_err_t Init_PSRAM(void)
+{
+    ESP_LOGI(TAG, "Initialize PSRAM");
 
     // Init external PSRAM
     // ********************************************
-    esp_err_t PSRAMStatus = esp_psram_init();
-    if (PSRAMStatus == ESP_FAIL) {  // ESP_FAIL -> Failed to init PSRAM
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM init failed (" + std::to_string(PSRAMStatus) + ")! PSRAM not found or defective");
+    esp_err_t ret = ESP_OK;
+    ret = esp_psram_init();
+
+    if (ret == ESP_FAIL)
+    {
+        // ESP_FAIL -> Failed to init PSRAM
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM init failed (" + std::string(esp_err_to_name(ret)) + ")! PSRAM not found or defective");
         setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-        StatusLED(PSRAM_INIT, 1, true);
+        setStatusLED(PSRAM_INIT, 1, true);
     }
-    else { // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
+    else
+    {
+        // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
         size_t psram_size = esp_psram_get_size(); // size_t psram_size = esp_psram_get_size(); // comming in IDF 5.0
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size/1024/1024) + 
-                                               "MB / " + std::to_string(psram_size/1024/1024*8) + "MBit)");
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size / 1024 / 1024) + "MB / " + std::to_string(psram_size / 1024 / 1024 * 8) + "MBit)");
 
         // Check PSRAM size
         // ********************************************
-        if (psram_size < (4*1024*1024)) { // PSRAM is below 4 MBytes (32Mbit)
+        if (psram_size < (4 * 1024 * 1024))
+        {
+            // PSRAM is below 4 MBytes (32Mbit)
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM size >= 4MB (32Mbit) is mandatory to run this application");
             setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-            StatusLED(PSRAM_INIT, 2, true);
+            setStatusLED(PSRAM_INIT, 2, true);
+            ret = ESP_FAIL;
         }
-        else { // PSRAM size OK --> continue to check heap size
+        else
+        {
+            // PSRAM size OK --> continue to check heap size
             size_t _hsize = getESPHeapSize();
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Total heap: " + std::to_string(_hsize) + " byte");
 
             // Check heap memory
             // ********************************************
-            if (_hsize < 4000000) { // Check available Heap memory for a bit less than 4 MB (a test on a good device showed 4187558 bytes to be available)
+            if (_hsize < 4000000)
+            {
+                // Check available Heap memory for a bit less than 4 MB (a test on a good device showed 4187558 bytes to be available)
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Total heap >= 4000000 byte is mandatory to run this application");
                 setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
-                StatusLED(PSRAM_INIT, 3, true);
+                setStatusLED(PSRAM_INIT, 3, true);
+                ret = ESP_FAIL;
             }
-            else { // HEAP size OK --> continue to reserve shared memory block and check camera init
+            else
+            {
+                // HEAP size OK --> continue to reserve shared memory block and check camera init
                 /* Allocate static PSRAM memory regions */
-                if (! reserve_psram_shared_region()) {
+                if (reserve_psram_shared_region() == false)
+                {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Allocate static PSRAM memory regions failed!");
                     setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
-                    StatusLED(PSRAM_INIT, 3, true);
+                    setStatusLED(PSRAM_INIT, 3, true);
+                    ret = ESP_FAIL;
                 }
-                else { // PSRAM OK
-                    // Init camera
-                    // ********************************************
-                    PowerResetCamera();
-                    esp_err_t camStatus = Camera.InitCam();
-                    Camera.LightOnOff(false);
-
-                    xDelay = 2000 / portTICK_PERIOD_MS;
-                    ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long) xDelay * CONFIG_FREERTOS_HZ/portTICK_PERIOD_MS);
-                    vTaskDelay( xDelay );
-
-                    // Check camera init
-                    // ********************************************
-                    if (camStatus != ESP_OK) { // Camera init failed, retry to init
-                        char camStatusHex[33];
-                        sprintf(camStatusHex,"0x%02x", camStatus);
-                        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Camera init failed (" + std::string(camStatusHex) + "), retrying...");
-
-                        PowerResetCamera();
-                        camStatus = Camera.InitCam();
-                        Camera.LightOnOff(false);
-
-                        xDelay = 2000 / portTICK_PERIOD_MS;
-                        ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long) xDelay * CONFIG_FREERTOS_HZ/portTICK_PERIOD_MS);
-                        vTaskDelay( xDelay ); 
-
-                        if (camStatus != ESP_OK) { // Camera init failed again
-                            sprintf(camStatusHex,"0x%02x", camStatus);
-                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) +
-                                                                    ")! Check camera module and/or proper electrical connection");
-                            setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
-                            Camera.LightOnOff(false);   // make sure flashlight is off
-                            StatusLED(CAM_INIT, 1, true);
-                        }
-                    }
-
-                    if (camStatus == ESP_OK) { // ESP_OK -> Camera init OK --> continue to perform camera framebuffer check
-                        // Camera framebuffer check
-                        // ********************************************
-                        if (!Camera.testCamera()) {
-                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera framebuffer check failed");
-                            // Easiest would be to simply restart here and try again,
-                            // how ever there seem to be systems where it fails at startup but still work correctly later.
-                            // Therefore we treat it still as successed! */
-                            setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
-                            StatusLED(CAM_INIT, 2, false);
-                        }
-                        Camera.LightOnOff(false);   // make sure flashlight is off before start of flow
-
-                        // Print camera infos
-                        // ********************************************
-                        char caminfo[50];
-                        sensor_t * s = esp_camera_sensor_get();
-                        sprintf(caminfo, "PID: 0x%02x, VER: 0x%02x, MIDL: 0x%02x, MIDH: 0x%02x", s->id.PID, s->id.VER, s->id.MIDH, s->id.MIDL);
-                        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Camera info: " + std::string(caminfo));
-                    }
+                else
+                {
+                    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Allocate static PSRAM memory regions ok.");
+                    ret = ESP_OK;
                 }
             }
         }
     }
 
-    // Migrate parameter in config.ini to new naming (firmware 15.0 and newer)
-    // ********************************************
-    migrateConfiguration();
+    return ret;
+}
 
-    // Init time (as early as possible, but SD card needs to be initialized)
-    // ********************************************
-    setupTime();    // NTP time service: Status of time synchronization will be checked after every round (server_tflite.cpp)
+esp_err_t Init_Camera(void)
+{
+    ESP_LOGI(TAG, "Initialize Camera");
 
-    // Set CPU Frequency
+    // Init Camera
     // ********************************************
-    setCpuFrequency();
+    Camera.PowerResetCamera();
 
-    // Start SoftAP for initial remote setup
-    // Note: Start AP if no wlan.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
+    esp_err_t ret = Camera.InitCam();
+    Camera.FlashLightOnOff(false, Camera.LedIntensity);
+
+    TickType_t xDelay = 2000 / portTICK_PERIOD_MS;
+    ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
+    vTaskDelay(xDelay);
+
+    // Check camera init
     // ********************************************
-    #ifdef ENABLE_SOFTAP
-        CheckStartAPMode(); 
-    #endif
+    if (ret != ESP_OK)
+    {
+        // Camera init failed, retry to init
+        char camStatusHex[33];
+        sprintf(camStatusHex, "0x%02x", ret);
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Camera init failed (" + std::string(camStatusHex) + "), retrying...");
+
+        Camera.PowerResetCamera();
+        ret = Camera.InitCam();
+        Camera.FlashLightOnOff(false, Camera.LedIntensity);
+
+        xDelay = 2000 / portTICK_PERIOD_MS;
+        ESP_LOGD(TAG, "After camera initialization: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
+        vTaskDelay(xDelay);
+
+        if (ret != ESP_OK)
+        {
+            // Camera init failed again
+            sprintf(camStatusHex, "0x%02x", ret);
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Check camera module and/or proper electrical connection");
+            setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
+            Camera.FlashLightOnOff(false, Camera.LedIntensity); // make sure flashlight is off
+            setStatusLED(CAM_INIT, 1, true);
+        }
+    }
+
+    if (ret == ESP_OK)
+    {
+        // ESP_OK -> Camera init OK --> continue to perform camera framebuffer check
+        // Camera framebuffer check
+        // ********************************************
+        if (!Camera.testCamera())
+        {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera framebuffer check failed");
+            // ESP_LOGE(TAG, "Camera framebuffer check failed");
+            // Easiest would be to simply restart here and try again,
+            // how ever there seem to be systems where it fails at startup but still work correctly later.
+            // Therefore we treat it still as successed! */
+            setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
+            setStatusLED(CAM_INIT, 2, false);
+        }
+        Camera.FlashLightOnOff(false, Camera.LedIntensity); // make sure flashlight is off before start of flow
+
+        // Print camera infos
+        // ********************************************
+        char caminfo[50];
+        sensor_t *s = esp_camera_sensor_get();
+        sprintf(caminfo, "PID: 0x%02x, VER: 0x%02x, MIDL: 0x%02x, MIDH: 0x%02x", s->id.PID, s->id.VER, s->id.MIDH, s->id.MIDL);
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Camera info: " + std::string(caminfo));
+    }
+
+    return ret;
+}
+
+extern "C" void app_main(void)
+{
+    TickType_t xDelay;
+
+#ifdef DISABLE_BROWNOUT_DETECTOR
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // disable brownout detector
+#endif
+
+#if (defined(BOARD_ESP32_S3_ETH_V1) || defined(BOARD_ESP32_S3_ETH_V2))
+    // Configure IO Pad as General Purpose IO,
+    // so that it can be connected to internal Matrix,
+    // then combined with one or more peripheral signals.
+    gpio_pad_select_gpio(PER_ENABLE);
+
+    gpio_set_direction(PER_ENABLE, GPIO_MODE_OUTPUT);
+    gpio_set_level(PER_ENABLE, 1);
+#endif
+
+    rtc_gpio_hold_dis(GPIO_NUM_12);
+    rtc_gpio_hold_dis(GPIO_NUM_4);
+
+    // ********************************************
+    // Highlight start of app_main
+    // ********************************************
+    ESP_LOGI(TAG, "\n\n\n\n================ Start app_main =================");
+
+    // Init NVS
+    // ********************************************
+    if (Init_NVS() != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Device init aborted in step Init_NVS()!");
+        return;
+    }
+
+    // Init SD card
+    // ********************************************
+    if (Init_SDCard() != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Device init aborted in step Init_SDCard()!");
+        return; // No way to continue without working SD card!
+    }
+
+    if (Check_SDCardRW() != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Device init aborted in step Check_SDCardRW()!");
+        return; // No way to continue without working SD card!
+    }
 
     // SD card: Check presence of some mandatory folders / files
     // ********************************************
-    if (!SDCardCheckFolderFilePresence()) {
-        StatusLED(SDCARD_CHECK, 4, true);
+    if (!SDCardCheckFolderFilePresence())
+    {
+        setStatusLED(SDCARD_CHECK, 4, true);
         setSystemStatusFlag(SYSTEM_STATUS_FOLDER_CHECK_BAD); // reduced web interface going to be loaded
     }
 
+    // Init external PSRAM
+    // ********************************************
+    if (Init_PSRAM() != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Device init aborted in step Init_PSRAM()!");
+        return; // No way to continue without working SD card!
+    }
+
+    // Check for updates
+    // ********************************************
+    checkOTAUpdate();
+    checkUpdate();
+
+#if defined(CONFIG_SOC_TEMP_SENSOR_SUPPORTED)
+    // temperature sensor
+    // ********************************************
+    initTempsensor();
+#endif
+
+    // Init external PSRAM
+    // ********************************************
+    if (Init_Camera() != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Device init aborted in step Init_Camera()!");
+        return; // No way to continue without working SD card!
+    }
+
+    // Init time (as early as possible, but SD card needs to be initialized)
+    // ********************************************
+    setupTime(); // NTP time service: Status of time synchronization will be checked after every round (server_tflite.cpp)
+
     // Check version information
     // ********************************************
-    std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) + \
-        ", Web UI: " + getHTMLversion();
-
-    if (std::string(GIT_TAG) != "") { // We are on a tag, add it as prefix
+    std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) + ", Web UI: " + getHTMLversion();
+    if (std::string(GIT_TAG) != "")
+    {
+        // We are on a tag, add it as prefix
         versionFormated = "Tag: '" + std::string(GIT_TAG) + "', " + versionFormated;
     }
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, versionFormated);
 
     if (getHTMLcommit().substr(0, 7) == "?")
+    {
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, std::string("Failed to read file html/version.txt to parse Web UI version"));
- 
-    if (getHTMLcommit().substr(0, 7) != std::string(GIT_REV).substr(0, 7)) { // Compare the first 7 characters of both hashes
+    }
+
+    if (getHTMLcommit().substr(0, 7) != std::string(GIT_REV).substr(0, 7))
+    {
+        // Compare the first 7 characters of both hashes
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Web UI version (" + getHTMLcommit() + ") does not match firmware version (" + std::string(GIT_REV) + ")");
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Recommendation: Repeat installation using AI-on-the-edge-device__update__*.zip");    
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Recommendation: Repeat installation using AI-on-the-edge-device__update__*.zip");
     }
 
     // Check reboot reason
     // ********************************************
     CheckIsPlannedReboot();
-    if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC)) {  // If system reboot was not triggered by user and reboot was caused by execption 
+    if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC) && (esp_reset_reason() != ESP_RST_DEEPSLEEP))
+    {
+        // If system reboot was not triggered by user and reboot was caused by execption
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reset reason: " + getResetReason());
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Device was rebooted due to a software exception! Log level is set to DEBUG until the next reboot. "
-                                               "Flow init is delayed by 5 minutes to check the logs or do an OTA update"); 
+                                               "Flow init is delayed by 5 minutes to check the logs or do an OTA update");
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Keep device running until crash occurs again and check logs after device is up again");
         LogFile.setLogLevel(ESP_LOG_DEBUG);
     }
-    else {
+    else if (esp_reset_reason() == ESP_RST_DEEPSLEEP)
+    {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "System Reboot was triggered by deep sleep");
+    }
+    else
+    {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Reset reason: " + getResetReason());
     }
 
-    #ifdef HEAP_TRACING_MAIN_START
-        ESP_ERROR_CHECK( heap_trace_stop() );
-        heap_trace_dump(); 
-    #endif
-    
-    #ifdef HEAP_TRACING_MAIN_WIFI
-        ESP_ERROR_CHECK( heap_trace_start(HEAP_TRACE_LEAKS) );
-    #endif
-
-    // Read WLAN parameter and start WIFI
+    // start Network
     // ********************************************
-    int iWLANStatus = LoadWlanFromFile(WLAN_CONFIG_FILE);
-    if (iWLANStatus == 0) {
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "WLAN config loaded, init WIFI...");
-        if (wifi_init_sta() != ESP_OK) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "WIFI init failed. Device init aborted!");
-            StatusLED(WLAN_INIT, 3, true);
-            return;
-        }
-
-        init_basic_auth();
-    }
-    else if (iWLANStatus == -1) {  // wlan.ini not available, potentially empty or content not readable
-        StatusLED(WLAN_INIT, 1, true);
-        return; // No way to continue without reading the wlan.ini
-    }
-    else if (iWLANStatus == -2) { // SSID or password not configured
-        StatusLED(WLAN_INIT, 2, true);
-        return; // No way to continue with empty SSID or password!
+    if (Init_Network() != ESP_OK)
+    {
+        ESP_LOGE(TAG, "!!! Device init aborted at step: Init_Network() !!!");
+        return; // No way to continue without working Network!
     }
 
     xDelay = 2000 / portTICK_PERIOD_MS;
-    ESP_LOGD(TAG, "main: sleep for: %ldms", (long) xDelay * CONFIG_FREERTOS_HZ/portTICK_PERIOD_MS);
-    vTaskDelay( xDelay );
+    ESP_LOGD(TAG, "main: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
+    vTaskDelay(xDelay);
 
     // manual reset the time
     // ********************************************
     if (!time_manual_reset_sync())
     {
-        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Manual Time Sync failed during startup" );
+        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Manual Time Sync failed during startup");
     }
 
-    // Set log level for wifi component to WARN level (default: INFO; only relevant for serial console)
-    // ********************************************
-    esp_log_level_set("wifi", ESP_LOG_WARN);
-  
-    #ifdef HEAP_TRACING_MAIN_WIFI
-        ESP_ERROR_CHECK( heap_trace_stop() );
-        heap_trace_dump(); 
-    #endif   
-
-    #ifdef DEBUG_ENABLE_SYSINFO
-        #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL( 4, 0, 0 )
-            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device Info : " + get_device_info() );
-            ESP_LOGD(TAG, "Device infos %s", get_device_info().c_str());
-        #endif
-    #endif //DEBUG_ENABLE_SYSINFO
-
-    #ifdef USE_HIMEM_IF_AVAILABLE
-        #ifdef DEBUG_HIMEM_MEMORY_CHECK
-            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Himem mem check : " + himem_memory_check() );
-            ESP_LOGD(TAG, "Himem mem check %s", himem_memory_check().c_str());
-        #endif
-    #endif
-   
     // Print Device info
     // ********************************************
     esp_chip_info_t chipInfo;
     esp_chip_info(&chipInfo);
-    
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device info: CPU cores: " + std::to_string(chipInfo.cores) + 
-                                           ", Chip revision: " + std::to_string(chipInfo.revision));
-    
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Device info: CPU cores: " + std::to_string(chipInfo.cores) + ", Chip revision: " + std::to_string(chipInfo.revision));
+
     // Print SD-Card info
     // ********************************************
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "SD card info: Name: " + getSDCardName() + ", Capacity: " + 
-                        getSDCardCapacity() + "MB, Free: " + getSDCardFreePartitionSpace() + "MB");
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "SD card info: Name: " + getSDCardName() + ", Capacity: " + getSDCardCapacity() + "MB, Free: " + getSDCardFreePartitionSpace() + "MB");
 
     xDelay = 2000 / portTICK_PERIOD_MS;
-    ESP_LOGD(TAG, "main: sleep for: %ldms", (long) xDelay * CONFIG_FREERTOS_HZ/portTICK_PERIOD_MS);
-    vTaskDelay( xDelay ); 
+    ESP_LOGD(TAG, "main: sleep for: %ldms", (long)xDelay * CONFIG_FREERTOS_HZ / portTICK_PERIOD_MS);
+    vTaskDelay(xDelay);
 
-    // Start webserver + register handler
-    // ********************************************
-    ESP_LOGD(TAG, "starting servers");
-
-    server = start_webserver();   
-    register_server_camera_uri(server); 
-    register_server_main_flow_task_uri(server);
-    register_server_file_uri(server, "/sdcard");
-    register_server_ota_sdcard_uri(server);
-    #ifdef ENABLE_MQTT
-        register_server_mqtt_uri(server);
-    #endif //ENABLE_MQTT
-
-    gpio_handler_create(server);
-
-    ESP_LOGD(TAG, "Before reg server main");
-    register_server_main_uri(server, "/sdcard");
-
-    // Only for testing purpose
-    //setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
-    //setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-
-    // Check main init + start TFlite task
-    // ********************************************
-    if (getSystemStatus() == 0) { // No error flag is set
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initialization completed successfully");
-        InitializeFlowTask();
-    }
-    else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || // Non critical errors occured, we try to continue...
-             isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD)) {
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Initialization completed with non-critical errors!");
-        InitializeFlowTask();
-    }
-    else { // Any other error is critical and makes running the flow impossible. Init is going to abort.
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Initialization failed. Flow task start aborted. Loading reduced web interface...");
-    }
-}
-
-void migrateConfiguration(void) {
-    std::vector<string> splitted;
-    bool migrated = false;
-
-    bool CamZoom_found = false;
-    int CamZoom_lines = 0;
-    bool CamZoom_value = false;
-    int CamZoomSize_lines = 0;
-    int CamZoomSize_value = 0;
-    int CamZoomOffsetX_lines = 0;
-    int CamZoomOffsetX_value = 0;
-    int CamZoomOffsetY_lines = 0;
-    int CamZoomOffsetY_value = 0;
-
-    if (!FileExists(CONFIG_FILE)) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Config file seems to be missing!");
-        return;
-    }
-
-    std::string section = "";
-    std::ifstream ifs(CONFIG_FILE);
-    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-
-    /* Split config file it array of lines */
-    std::vector<std::string> configLines = splitString(content);
-
-    /* Process each line */
-    for (int i = 0; i < configLines.size(); i++) {
-        // ESP_LOGI(TAG, "Line %d: %s", i, configLines[i].c_str());
-
-        if (configLines[i].find("[") != std::string::npos) {
-            // Start of new section
-            section = configLines[i];
-            replaceString(section, ";", "", false); // Remove possible semicolon (just for the string comparison)
-            // ESP_LOGI(TAG, "New section: %s", section.c_str());
+    if (network_config.connection_type != NETWORK_CONNECTION_WIFI_AP_SETUP)
+    {
+        // Check main init + start TFlite task
+        // ********************************************
+        if (getSystemStatus() == 0)
+        {
+            // No error flag is set
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initialization completed successfully");
+            InitializeFlowTask();
         }
-        else {
-            splitted = ZerlegeZeile(configLines[i]);
+        else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD))
+        {
+            // Non critical errors occured, we try to continue...
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SystemStatus: " + getSystemStatusText());
+            LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Initialization completed with non-critical errors!");
+            InitializeFlowTask();
         }
+        else
+        {
+            // Any other error is critical and makes running the flow impossible. Init is going to abort.
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SystemStatus: " + getSystemStatusText());
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Initialization failed. Flow task start aborted. Loading reduced web interface...");
 
-        /* Migrate parameters as needed
-         * For the boolean parameters, we make them enabled all the time now:
-         *  1. If they where disabled, set them to their default value
-         *  2. Enable them
-         * Notes:
-         * The migration has some simplifications:
-         *  - Case Sensitiveness must be like in the initial config.ini
-         *  - No Whitespace after a semicollon
-         *  - Only one whitespace before/after the equal sign
-         */
-        if (section == "[MakeImage]") {
-            migrated = migrated | replaceString(configLines[i], "[MakeImage]", "[TakeImage]"); // Rename the section itself
-        }
-
-        if (section == "[MakeImage]" || section == "[TakeImage]") {
-            if ((isInString(configLines[i], "Brightness")) && (!isInString(configLines[i], "CamBrightness"))) {
-                migrated = migrated | replaceString(configLines[i], "Brightness", "CamBrightness");
-            }
-            else if ((isInString(configLines[i], "Contrast")) && (!isInString(configLines[i], "CamContrast"))) {
-                migrated = migrated | replaceString(configLines[i], "Contrast", "CamContrast");
-            }
-            else if ((isInString(configLines[i], "Saturation")) && (!isInString(configLines[i], "CamSaturation"))) {
-                migrated = migrated | replaceString(configLines[i], "Saturation", "CamSaturation");
-            }
-            else if ((isInString(configLines[i], "Sharpness")) && (!isInString(configLines[i], "CamSharpness")) && (!isInString(configLines[i], "CamAutoSharpness"))) {
-                migrated = migrated | replaceString(configLines[i], "Sharpness", "CamSharpness");
-            }
-            else if ((isInString(configLines[i], "Aec2")) && (!isInString(configLines[i], "CamAec")) && (!isInString(configLines[i], "CamAec2"))) {
-                migrated = migrated | replaceString(configLines[i], "Aec2", "CamAec2");
-            }
-            else if ((isInString(configLines[i], "Zoom")) && (!isInString(configLines[i], "CamZoom")) && (!isInString(configLines[i], "ZoomMode")) && (!isInString(configLines[i], "ZoomOffsetX")) && (!isInString(configLines[i], "ZoomOffsetY"))) {
-                CamZoom_lines = i;
-                if (splitted.size() < 2) {
-                    CamZoom_value = false;
-                }
-                else {
-                    ESP_LOGE(TAG, "splitted[1]: %s", splitted[1].c_str());
-                    CamZoom_value = alphanumericToBoolean(splitted[1]);
-                }
-                CamZoom_found = true;
-            }
-            else if ((isInString(configLines[i], "ZoomMode")) && (!isInString(configLines[i], "CamZoom"))) {
-                CamZoomSize_lines = i;
-                if (splitted.size() < 2) {
-                    CamZoomSize_value = 0;
-                }
-                else {
-                    if (isStringNumeric(splitted[1])) {
-                        CamZoomSize_value = std::stof(splitted[1]);
-                    }
-                    else {
-                        CamZoomSize_value = 0;
-                    }
-                }
-                CamZoom_found = true;
-            }
-            else if ((isInString(configLines[i], "ZoomOffsetX")) && (!isInString(configLines[i], "CamZoom")) && (!isInString(configLines[i], "ZoomOffsetY"))) {
-                CamZoomOffsetX_lines = i;
-                if (splitted.size() < 2) {
-                    CamZoomOffsetX_value = 0;
-                }
-                else {
-                    if (isStringNumeric(splitted[1])) {
-                        CamZoomOffsetX_value = std::stof(splitted[1]);
-                    }
-                    else {
-                        CamZoomOffsetX_value = 0;
-                    }
-                }
-                CamZoom_found = true;
-            }
-            else if ((isInString(configLines[i], "ZoomOffsetY")) && (!isInString(configLines[i], "CamZoom")) && (!isInString(configLines[i], "ZoomOffsetX"))) {
-                CamZoomOffsetY_lines = i;
-                if (splitted.size() < 2) {
-                    CamZoomOffsetY_value = 0;
-                }
-                else {
-                    if (isStringNumeric(splitted[1])) {
-                        CamZoomOffsetY_value = std::stof(splitted[1]);
-                    }
-                    else {
-                        CamZoomOffsetY_value = 0;
-                    }
-                }
-                CamZoom_found = true;
-            }
-            else {
-                migrated = migrated | replaceString(configLines[i], "LogImageLocation", "RawImagesLocation");
-                migrated = migrated | replaceString(configLines[i], "LogfileRetentionInDays", "RawImagesRetention");
-
-                migrated = migrated | replaceString(configLines[i], ";Demo = true", ";Demo = false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";Demo", "Demo");                 // Enable it
-
-                migrated = migrated | replaceString(configLines[i], "ImageQuality", "CamQuality");
-                migrated = migrated | replaceString(configLines[i], "AutoExposureLevel", "CamAeLevel");
-                migrated = migrated | replaceString(configLines[i], "FixedExposure", "CamAec");
-
-                migrated = migrated | replaceString(configLines[i], "ImageSize", ";UNUSED_PARAMETER"); // This parameter is no longer used
-                migrated = migrated | replaceString(configLines[i], "Grayscale", ";UNUSED_PARAMETER"); // This parameter is no longer used
-                migrated = migrated | replaceString(configLines[i], "Negative", ";UNUSED_PARAMETER");  // This parameter is no longer used
-            }
-        }
-        else if (section == "[Alignment]") {
-            migrated = migrated | replaceString(configLines[i], "InitialMirror", ";UNUSED_PARAMETER");  // This parameter is no longer used
-            migrated = migrated | replaceString(configLines[i], ";InitialMirror", ";UNUSED_PARAMETER"); // This parameter is no longer used
-            migrated = migrated | replaceString(configLines[i], "FlipImageSize", ";UNUSED_PARAMETER");  // This parameter is no longer used
-            migrated = migrated | replaceString(configLines[i], ";FlipImageSize", ";UNUSED_PARAMETER"); // This parameter is no longer used
-        }
-        else if (section == "[Digits]") {
-            migrated = migrated | replaceString(configLines[i], "LogImageLocation", "ROIImagesLocation");
-            migrated = migrated | replaceString(configLines[i], "LogfileRetentionInDays", "ROIImagesRetention");
-        }
-        else if (section == "[Analog]") {
-            migrated = migrated | replaceString(configLines[i], "LogImageLocation", "ROIImagesLocation");
-            migrated = migrated | replaceString(configLines[i], "LogfileRetentionInDays", "ROIImagesRetention");
-            migrated = migrated | replaceString(configLines[i], "ExtendedResolution", ";UNUSED_PARAMETER"); // This parameter is no longer used
-        }
-        else if (section == "[PostProcessing]") {
-            /* AllowNegativeRates has a <NUMBER> as prefix! */
-            if (isInString(configLines[i], "AllowNegativeRates") && isInString(configLines[i], ";")) {                                                                         
-                // It is the parameter "AllowNegativeRates" and it is commented out
-                migrated = migrated | replaceString(configLines[i], "true", "false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";", "");         // Enable it
-            }
-            /* IgnoreLeadingNaN has a <NUMBER> as prefix! */
-            else if (isInString(configLines[i], "IgnoreLeadingNaN") && isInString(configLines[i], ";")) {                                                                         
-                // It is the parameter "IgnoreLeadingNaN" and it is commented out
-                migrated = migrated | replaceString(configLines[i], "true", "false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";", "");         // Enable it
-            }
-            /* ExtendedResolution has a <NUMBER> as prefix! */
-            else if (isInString(configLines[i], "ExtendedResolution") && isInString(configLines[i], ";")) {                                                                         
-                // It is the parameter "ExtendedResolution" and it is commented out
-                migrated = migrated | replaceString(configLines[i], "true", "false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";", "");         // Enable it
-            }
-            else {
-                migrated = migrated | replaceString(configLines[i], ";PreValueUse = true", ";PreValueUse = false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";PreValueUse", "PreValueUse");                 // Enable it
-
-                migrated = migrated | replaceString(configLines[i], ";ErrorMessage = true", ";ErrorMessage = false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";ErrorMessage", "ErrorMessage");                 // Enable it
-
-                migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency = true", ";CheckDigitIncreaseConsistency = false"); // Set it to its default value
-                migrated = migrated | replaceString(configLines[i], ";CheckDigitIncreaseConsistency", "CheckDigitIncreaseConsistency");                 // Enable it
-            }
-        }
-        else if (section == "[MQTT]") {
-            migrated = migrated | replaceString(configLines[i], "SetRetainFlag", "RetainMessages");                   // First rename it, enable it with its default value
-            migrated = migrated | replaceString(configLines[i], ";RetainMessages = true", ";RetainMessages = false"); // Set it to its default value
-            migrated = migrated | replaceString(configLines[i], ";RetainMessages", "RetainMessages");                 // Enable it
-
-            migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery = true", ";HomeassistantDiscovery = false"); // Set it to its default value
-            migrated = migrated | replaceString(configLines[i], ";HomeassistantDiscovery", "HomeassistantDiscovery");                 // Enable it
-
-            // only if string starts with "Topic" (Was the naming in very old version)
-            if (configLines[i].rfind("Topic", 0) != std::string::npos) {
-                migrated = migrated | replaceString(configLines[i], "Topic", "MainTopic");
-            }
-        }
-        else if (section == "[InfluxDB]") {
-            /* Fieldname has a <NUMBER> as prefix! */
-            if (isInString(configLines[i], "Fieldname")) {
-                // It is the parameter "Fieldname"
-                migrated = migrated | replaceString(configLines[i], "Fieldname", "Field"); // Rename it to Field
-            }
-        }
-        else if (section == "[InfluxDBv2]") {
-            /* Fieldname has a <NUMBER> as prefix! */
-            if (isInString(configLines[i], "Fieldname")) {
-                // It is the parameter "Fieldname"
-                migrated = migrated | replaceString(configLines[i], "Fieldname", "Field"); // Rename it to Field
-            }
-            /* Database got renamed to Bucket! */
-            else if (isInString(configLines[i], "Database")) {
-                // It is the parameter "Database"
-                migrated = migrated | replaceString(configLines[i], "Database", "Bucket"); // Rename it to Bucket
-            }
-        }
-        else if (section == "[GPIO]") {
-        }
-        else if (section == "[DataLogging]") {
-            migrated = migrated | replaceString(configLines[i], "DataLogRetentionInDays", "DataFilesRetention");
-            /* DataLogActive is true by default! */
-            migrated = migrated | replaceString(configLines[i], ";DataLogActive = false", ";DataLogActive = true"); // Set it to its default value
-            migrated = migrated | replaceString(configLines[i], ";DataLogActive", "DataLogActive");                 // Enable it
-        }
-        else if (section == "[AutoTimer]") {
-            migrated = migrated | replaceString(configLines[i], "Intervall", "Interval");
-            migrated = migrated | replaceString(configLines[i], "Autostart", ";UNUSED_PARAMETER");          // This parameter is no longer used
-        }
-        else if (section == "[Debug]") {
-            migrated = migrated | replaceString(configLines[i], "Logfile ", "LogLevel "); // Whitespace needed so it does not match `LogfileRetentionInDays`
-            /* LogLevel (resp. LogFile) was originally a boolean, but we switched it to an int
-             * For both cases (true/false), we set it to level 2 (WARNING) */
-            migrated = migrated | replaceString(configLines[i], "LogLevel = true", "LogLevel = 2");
-            migrated = migrated | replaceString(configLines[i], "LogLevel = false", "LogLevel = 2");
-            migrated = migrated | replaceString(configLines[i], "LogfileRetentionInDays", "LogfilesRetention");
-        }
-        else if (section == "[System]") {
-            migrated = migrated | replaceString(configLines[i], "RSSIThreashold", "RSSIThreshold");
-            migrated = migrated | replaceString(configLines[i], "AutoAdjustSummertime", ";UNUSED_PARAMETER"); // This parameter is no longer used
-            
-            migrated = migrated | replaceString(configLines[i], ";SetupMode = true", ";SetupMode = false"); // Set it to its default value
-            migrated = migrated | replaceString(configLines[i], ";SetupMode", "SetupMode");                 // Enable it
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
         }
     }
-
-    if (CamZoom_found == true) {
-        if (CamZoomSize_value == 0) {
-            // mode0
-            // 1600 - 640 = 960 / 2 = max-Offset (+/-) 480
-            // 1200 - 480 = 720 / 2 = max-Offset (+/-) 360
-
-            if (CamZoomOffsetX_value > 960) {
-                CamZoomOffsetX_value = 960;
-            }
-            else {
-                CamZoomOffsetX_value = (floor((CamZoomOffsetX_value - 480) / 8) * 8);
-            }
-
-            if (CamZoomOffsetY_value > 720) {
-                CamZoomOffsetY_value = 720;
-            }
-            else {
-                CamZoomOffsetY_value = (floor((CamZoomOffsetY_value - 360) / 8) * 8);
-            }
-
-            CamZoomSize_value = 29;
-        }
-        else {
-            // mode1
-            // 800 - 640 = 160 / 2 = max-Offset (+/-) 80
-            // 600 - 480 = 120 / 2 = max-Offset (+/-) 60
-
-            if (CamZoomOffsetX_value > 160) {
-                CamZoomOffsetX_value = 160;
-            }
-            else {
-                CamZoomOffsetX_value = (floor(((CamZoomOffsetX_value - 80) * 2) / 8) * 8);
-            }
-
-            if (CamZoomOffsetY_value > 120) {
-                CamZoomOffsetY_value = 120;
-            }
-            else {
-                CamZoomOffsetY_value = (floor(((CamZoomOffsetY_value - 60) * 2) / 8) * 8);
-            }
-
-            CamZoomSize_value = 9;
-        }
-
-        if (CamZoom_lines > 0) {
-            if (CamZoom_value) {
-                configLines[CamZoom_lines] = ("CamZoom = true");
-            }
-            else {
-                configLines[CamZoom_lines] = ("CamZoom = false");
-            }
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Migrated Configfile line 'Zoom' to 'CamZoom'");
-            migrated = true;
-        }
-        if (CamZoomSize_lines > 0) {
-            configLines[CamZoomSize_lines] = ("CamZoomSize = " + std::to_string(CamZoomSize_value));
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Migrated Configfile line 'ZoomMode' to 'CamZoomSize'");
-            migrated = true;
-        }
-        if (CamZoomOffsetX_lines > 0) {
-            configLines[CamZoomOffsetX_lines] = ("CamZoomOffsetX = " + std::to_string(CamZoomOffsetX_value));
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Migrated Configfile line 'ZoomOffsetX' to 'CamZoomOffsetX'");
-            migrated = true;
-        }
-        if (CamZoomOffsetY_lines > 0) {
-            configLines[CamZoomOffsetY_lines] = ("CamZoomOffsetY = " + std::to_string(CamZoomOffsetY_value));
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Migrated Configfile line 'ZoomOffsetY' to 'CamZoomOffsetY'");
-            migrated = true;
-        }
-    }
-
-    if (migrated) {
-        // At least one replacement happened
-        if (!RenameFile(CONFIG_FILE, CONFIG_FILE_BACKUP)) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create backup of Config file!");
-            return;
-        }
-
-        FILE *pfile = fopen(CONFIG_FILE, "w");
-
-        for (int i = 0; i < configLines.size(); i++) {
-            if (!isInString(configLines[i], ";UNUSED_PARAMETER")) {
-                fwrite(configLines[i].c_str(), configLines[i].length(), 1, pfile);
-                fwrite("\n", 1, 1, pfile);
-            }
-        }
-
-        fclose(pfile);
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Config file migrated. Saved backup to " + string(CONFIG_FILE_BACKUP));
-    }
-}
-
-std::vector<std::string> splitString(const std::string& str) {
-    std::vector<std::string> tokens;
- 
-    std::stringstream ss(str);
-    std::string token;
-
-    while (std::getline(ss, token, '\n')) {
-        tokens.push_back(token);
-    }
- 
-    return tokens;
-}
-
-/*bool replace_all(std::string& s, std::string const& toReplace, std::string const& replaceWith) {
-    std::string buf;
-    std::size_t pos = 0;
-    std::size_t prevPos;
-    bool found = false;
-
-    // Reserves rough estimate of final size of string.
-    buf.reserve(s.size());
-
-    while (true) {
-        prevPos = pos;
-        pos = s.find(toReplace, pos);
-        if (pos == std::string::npos) {
-            break;
-        }
-        found = true;
-        buf.append(s, prevPos, pos - prevPos);
-        buf += replaceWith;
-        pos += toReplace.size();
-    }
-
-    buf.append(s, prevPos, s.size() - prevPos);
-    s.swap(buf);
-
-    return found;
-}*/
-
-bool setCpuFrequency(void) {
-    ConfigFile configFile = ConfigFile(CONFIG_FILE); 
-    string cpuFrequency = "160";
-    esp_pm_config_t  pm_config; 
-
-    if (!configFile.ConfigFileExists()){
-        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "No ConfigFile defined - exit setCpuFrequency()!");
-        return false;
-    }
-
-    std::vector<std::string> splitted;
-    std::string line = "";
-    bool disabledLine = false;
-    bool eof = false;
-
-    /* Load config from config file */
-    while ((!configFile.GetNextParagraph(line, disabledLine, eof) || 
-            (line.compare("[System]") != 0)) && !eof) {}
-
-    if (eof || disabledLine) {
-        return false;
-    }
-
-    while (configFile.getNextLine(&line, disabledLine, eof) && 
-            !configFile.isNewParagraph(line)) {
-        splitted = ZerlegeZeile(line);
-
-        if (toUpper(splitted[0]) == "CPUFREQUENCY") {
-            if (splitted.size() < 2) {
-                cpuFrequency = "160";
-            }
-            else {
-                cpuFrequency = splitted[1];
-            }
-            break;
-        }
-    }
-
-    if (esp_pm_get_configuration(&pm_config) != ESP_OK) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to read CPU Frequency!");
-        return false;
-    }
-
-    if (cpuFrequency == "160") { // 160 is the default
-        // No change needed
-    }
-    else if (cpuFrequency == "240") {
-        pm_config.max_freq_mhz = 240;
-        pm_config.min_freq_mhz = pm_config.max_freq_mhz;
-        if (esp_pm_configure(&pm_config) != ESP_OK) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to set new CPU frequency!");
-            return false;
-        }
-    }
-    else {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unknown CPU frequency: " + cpuFrequency + "! "
-                "It must be 160 or 240!");
-        return false;
-    }
-
-    if (esp_pm_get_configuration(&pm_config) == ESP_OK) {
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, string("CPU frequency: ") + to_string(pm_config.max_freq_mhz) + " MHz");
-    }
-
-    return true;
 }

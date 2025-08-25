@@ -1,6 +1,6 @@
 //source : https://github.com/Carbon225/esp32-perfmon
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 /*
 ESP32 CPU usage monitor
