@@ -1,4 +1,4 @@
-# [16.1.0-RC1] - 2025-12-29
+# [16.1.0] - 2026-01-11
 
 For a full list of changes see [Full list of changes](https://github.com/jomjol/AI-on-the-edge-device/compare/v16.0.0...v16.1.0)
 
