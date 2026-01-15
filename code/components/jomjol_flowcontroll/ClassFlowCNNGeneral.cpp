@@ -329,7 +329,7 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE* pfile, std::string &aktparamgraph)
         splitted = ZerlegeZeile(aktparamgraph);
 
         if (splitted.size() > 1) {
-            std::string _param = toUppe(splitted[0]);
+            std::string _param = toUpper(splitted[0]);
             
             if (_param == "ROIIMAGESLOCATION") {
                 imagesLocation = "/sdcard" + splitted[1];
