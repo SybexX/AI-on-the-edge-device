@@ -329,7 +329,7 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE* pfile, std::string &aktparamgraph)
         splitted = ZerlegeZeile(aktparamgraph);
 
         if (splitted.size() > 1) {
-            std::string _param = to_upper(splitted[0]);
+            std::string _param = toUppe(splitted[0]);
             
             if (_param == "ROIIMAGESLOCATION") {
                 imagesLocation = "/sdcard" + splitted[1];
@@ -764,7 +764,7 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time) {
                         std::string temp_string = "_num (p, m): " + to_string(_num) + " " + to_string(_numplus) + " " + to_string(_numminus);
                         temp_string = temp_string + " _val (p, m): " + to_string(_val) + " " + to_string(_valplus) + " " + to_string(_valminus);
                         temp_string = temp_string + " result: " + to_string(result) + " _fit: " + to_string(_fit);
-                        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, zw);
+                        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, temp_string);
 
                         float _result_save_file = result;
 
