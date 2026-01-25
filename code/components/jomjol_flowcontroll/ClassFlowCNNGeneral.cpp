@@ -158,8 +158,8 @@ int ClassFlowCNNGeneral::PointerEvalHybridNew(float number, float number_of_pred
         // add precisition of 2 digits and round before trunc
         // a number greater than 9.994999 is returned as 10, this leads to an error during the decimal shift because the NUMBERS[j]->ReturnRawValue is one digit longer.
         // To avoid this, an additional test must be carried out, see "if ((CNNType == DoubleHyprid10) || (CNNType == Digit100))" check in getReadout()
-        // Another alternative would be "result = (int) ((int) trunc(round((number+10 % 10)*1000))) / 1000;", which could, however, lead to other errors?
-        result = (int) ((int) trunc(round((number + 10 % 10) * 100)) )  / 100;
+        // result = (int)((int)trunc(round((number + 10 % 10) * 100))) / 100;
+        result = (int)((trunc(round(number * 10.0f))) / 10.0f);
 
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "PointerEvalHybridNew - No predecessor - Result = " + std::to_string(result) +
                                                     " number: " + std::to_string(number) + " number_of_predecessors = " + std::to_string(number_of_predecessors)+ " eval_predecessors = " + std::to_string(eval_predecessors) + " Digit_Uncertainty = " +  std::to_string(Digit_Uncertainty));
