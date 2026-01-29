@@ -12,8 +12,8 @@
 using namespace std;
 
 std::string FormatFileName(std::string input);
-std::size_t file_size(const std::string& file_name);
-void FindReplace(std::string& line, std::string& oldString, std::string& newString);
+std::size_t file_size(const std::string &file_name);
+void FindReplace(std::string &line, std::string &oldString, std::string &newString);
 
 bool CopyFile(string input, string output);
 bool DeleteFile(string filename);
@@ -26,7 +26,7 @@ bool FolderExists(string foldername);
 string RundeOutput(double _in, int _anzNachkomma);
 
 size_t findDelimiterPos(string input, string delimiter);
-//string trim(string istring);
+// string trim(string istring);
 string trim(string istring, string adddelimiter = "");
 bool ctype_space(const char c, string adddelimiter);
 
@@ -35,7 +35,7 @@ string getFileFullFileName(string filename);
 string getDirectory(string filename);
 
 int mkdir_r(const char *dir, const mode_t mode);
-int removeFolder(const char* folderPath, const char* logTag);
+int removeFolder(const char *folderPath, const char *logTag);
 
 string toLower(string in);
 string toUpper(string in);
@@ -45,7 +45,7 @@ float temperatureRead();
 std::string intToHexString(int _valueInt);
 time_t addDays(time_t startTime, int days);
 
-void memCopyGen(uint8_t* _source, uint8_t* _target, int _size);
+void memCopyGen(uint8_t *_source, uint8_t *_target, int _size);
 
 std::vector<string> HelperZerlegeZeile(std::string input, std::string _delimiter);
 std::vector<std::string> ZerlegeZeile(std::string input, std::string delimiter = " =, \t");
@@ -60,7 +60,7 @@ string getSDCardPartitionSize();
 string getSDCardFreePartitionSpace();
 string getSDCardPartitionAllocationSize();
 
-void SaveSDCardInfo(sdmmc_card_t* card);
+void SaveSDCardInfo(sdmmc_card_t *card);
 string SDCardParseManufacturerIDs(int);
 string getSDCardManufacturer();
 string getSDCardName();
@@ -72,17 +72,18 @@ string getMac(void);
 /* Error bit fields
    One bit per error
    Make sure it matches https://jomjol.github.io/AI-on-the-edge-device-docs/Error-Codes */
-enum SystemStatusFlag_t {          // One bit per error
-    // First Byte
-    SYSTEM_STATUS_PSRAM_BAD         = 1 << 0, //  1, Critical Error
-    SYSTEM_STATUS_HEAP_TOO_SMALL    = 1 << 1, //  2, Critical Error
-    SYSTEM_STATUS_CAM_BAD           = 1 << 2, //  4, Critical Error
-    SYSTEM_STATUS_SDCARD_CHECK_BAD  = 1 << 3, //  8, Critical Error
-    SYSTEM_STATUS_FOLDER_CHECK_BAD  = 1 << 4, //  16, Critical Error
+enum SystemStatusFlag_t
+{                                          // One bit per error
+                                           // First Byte
+  SYSTEM_STATUS_PSRAM_BAD = 1 << 0,        //  1, Critical Error
+  SYSTEM_STATUS_HEAP_TOO_SMALL = 1 << 1,   //  2, Critical Error
+  SYSTEM_STATUS_CAM_BAD = 1 << 2,          //  4, Critical Error
+  SYSTEM_STATUS_SDCARD_CHECK_BAD = 1 << 3, //  8, Critical Error
+  SYSTEM_STATUS_FOLDER_CHECK_BAD = 1 << 4, //  16, Critical Error
 
-    // Second Byte
-    SYSTEM_STATUS_CAM_FB_BAD        = 1 << (0+8), //  8, Flow still might work
-    SYSTEM_STATUS_NTP_BAD           = 1 << (1+8), //  9, Flow will work but time will be wrong
+  // Second Byte
+  SYSTEM_STATUS_CAM_FB_BAD = 1 << (0 + 8), //  8, Flow still might work
+  SYSTEM_STATUS_NTP_BAD = 1 << (1 + 8),    //  9, Flow will work but time will be wrong
 };
 
 void setSystemStatusFlag(SystemStatusFlag_t flag);
@@ -94,22 +95,27 @@ time_t getUpTime(void);
 string getResetReason(void);
 std::string getFormatedUptime(bool compact);
 
-const char* get404(void);
+const char *get404(void);
 
-std::string UrlDecode(const std::string& value);
+std::string UrlDecode(const std::string &value);
 
-void replaceAll(std::string& s, const std::string& toReplace, const std::string& replaceWith);
-bool replaceString(std::string& s, std::string const& toReplace, std::string const& replaceWith);
-bool replaceString(std::string& s, std::string const& toReplace, std::string const& replaceWith, bool logIt);
-bool isInString(std::string& s, std::string const& toFind);
+void replaceAll(std::string &s, const std::string &toReplace, const std::string &replaceWith);
+bool replaceString(std::string &s, std::string const &toReplace, std::string const &replaceWith);
+bool replaceString(std::string &s, std::string const &toReplace, std::string const &replaceWith, bool logIt);
+bool isInString(std::string &s, std::string const &toFind);
 
 bool isStringNumeric(std::string &input);
 bool isStringAlphabetic(std::string &input);
 bool isStringAlphanumeric(std::string &input);
+
 bool alphanumericToBoolean(std::string &input);
+int alphanumericToInt(std::string &input);
 
 int clipInt(int input, int high, int low);
+int get_value_or_default_int(int _input, int _high, int _low, int _default);
+int get_value_or_default_uint(int _input, int _high, int _default);
+
 bool numericStrToBool(std::string input);
 bool stringToBoolean(std::string input);
 
-#endif //HELPER_H
+#endif // HELPER_H

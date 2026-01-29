@@ -31,7 +31,12 @@ extern "C"
 #include "ClassLogFile.h"
 
 #include "esp_vfs_fat.h"
-#include "../sdmmc_common.h"
+
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0))
+#include <esp_private/sdmmc_common.h>
+#else
+#include <../sdmmc_common.h>
+#endif
 
 static const char *TAG = "HELPER";
 
@@ -1258,7 +1263,7 @@ bool isInString(std::string &s, std::string const &toFind)
 {
 	std::size_t pos = s.find(toFind);
 
-	if (pos == std::string::npos) 
+	if (pos == std::string::npos)
 	{
 		// Not found
 		return false;
@@ -1268,11 +1273,11 @@ bool isInString(std::string &s, std::string const &toFind)
 }
 
 // from https://stackoverflow.com/a/14678800
-void replaceAll(std::string& s, const std::string& toReplace, const std::string& replaceWith)
+void replaceAll(std::string &s, const std::string &toReplace, const std::string &replaceWith)
 {
 	size_t pos = 0;
-	
-	while ((pos = s.find(toReplace, pos)) != std::string::npos) 
+
+	while ((pos = s.find(toReplace, pos)) != std::string::npos)
 	{
 		s.replace(pos, toReplace.length(), replaceWith);
 		pos += replaceWith.length();
@@ -1285,10 +1290,10 @@ bool isStringNumeric(std::string &input)
 	{
 		return false;
 	}
-    
+
 	// Replace comma with a dot
 	replaceString(input, ",", ".", false);
-	
+
 	int start = 0;
 	int punkt_existiert_schon = 0;
 
@@ -1353,6 +1358,20 @@ bool alphanumericToBoolean(std::string &input)
 	return false;
 }
 
+int alphanumericToInt(std::string &input)
+{
+	if (isStringAlphabetic(input))
+	{
+		return ((toUpper(input) == "TRUE") ? 1 : 0);
+	}
+	else if (isStringNumeric(input))
+	{
+		return (std::stoi(input));
+	}
+
+	return 0;
+}
+
 int clipInt(int input, int high, int low)
 {
 	if (input < low)
@@ -1363,7 +1382,41 @@ int clipInt(int input, int high, int low)
 	{
 		input = high;
 	}
+
 	return input;
+}
+
+int clip_int(int input, int high, int low)
+{
+	if (input < low)
+	{
+		input = low;
+	}
+	else if (input > high)
+	{
+		input = high;
+	}
+	return input;
+}
+
+int get_value_or_default_int(int _input, int _high, int _low, int _default)
+{
+	if ((_input < _low) || (_input > _high))
+	{
+		_input = _default;
+	}
+
+	return _input;
+}
+
+int get_value_or_default_uint(int _input, int _high, int _default)
+{
+	if ((_input < 0) || (_input > _high))
+	{
+		_input = _default;
+	}
+
+	return _input;
 }
 
 bool numericStrToBool(std::string input)

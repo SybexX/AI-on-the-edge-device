@@ -11,7 +11,6 @@
     //can be set in platformio with -D OPTION_TO_ACTIVATE
 
     //#define DEBUG_DETAIL_ON 
-    //#define DEBUG_DISABLE_BROWNOUT_DETECTOR
     //#define DEBUG_ENABLE_SYSINFO
     //#define DEBUG_ENABLE_PERFMON
     //#define DEBUG_HIMEM_MEMORY_CHECK
@@ -56,6 +55,9 @@
     //compiler optimization for esp-tflite-micro
     #define XTENSA
     //#define CONFIG_IDF_TARGET_ARCH_XTENSA     //not needed with platformio/espressif32 @ 5.2.0
+
+
+    #define DISABLE_BROWNOUT_DETECTOR
 
 
     //ClassControllCamera
@@ -233,6 +235,9 @@
     #define CAM_PIN_HREF     GPIO_NUM_23
     #define CAM_PIN_PCLK     GPIO_NUM_22
 
+    #define CAM_XCLK_TIMER LEDC_TIMER_0
+    #define CAM_XCLK_CHANNEL LEDC_CHANNEL_0
+
     //Statusled + ClassControllCamera
     #define BLINK_GPIO GPIO_NUM_33              // PIN for red board LED, On the board the LED is on the IO2, but it is used for the SD
 	
@@ -258,6 +263,9 @@
     #define CAM_PIN_VSYNC    GPIO_NUM_22
     #define CAM_PIN_HREF     GPIO_NUM_26
     #define CAM_PIN_PCLK     GPIO_NUM_21
+
+    #define CAM_XCLK_TIMER LEDC_TIMER_0
+    #define CAM_XCLK_CHANNEL LEDC_CHANNEL_0
 
     //Statusled + ClassControllCamera
     #define BLINK_GPIO GPIO_NUM_33              // PIN for red board LED
@@ -301,6 +309,9 @@
     #define CAM_PIN_HREF     GPIO_NUM_23
     #define CAM_PIN_PCLK     GPIO_NUM_22
 
+    #define CAM_XCLK_TIMER LEDC_TIMER_0
+    #define CAM_XCLK_CHANNEL LEDC_CHANNEL_0
+    
     //Statusled + ClassControllCamera
     #define BLINK_GPIO GPIO_NUM_33              // PIN for red board LED
 	

@@ -39,6 +39,12 @@ void ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
     rawImage->width = CCstatus.ImageWidth;
     rawImage->height = CCstatus.ImageHeight;
 
+    if (Camera.CamTempImage)
+    {
+        rawImage->width = CFstatus.ImageWidth;
+        rawImage->height = CFstatus.ImageHeight;
+    }
+
     ESP_LOGD(TAG, "flash_duration: %d", flash_duration);
 
     Camera.CaptureToBasisImage(rawImage, flash_duration);
@@ -46,7 +52,7 @@ void ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    if (CCstatus.SaveAllFiles)
+    if (Camera.SaveAllFiles)
     {
         rawImage->SaveToFile(namerawimage);
     }
@@ -64,15 +70,12 @@ void ClassFlowTakeImage::SetInitialParameter(void)
 // wird beim Start aufgerufen
 bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
 {
-    Camera.getSensorDatenToCCstatus(); // Kamera >>> CCstatus
-
-    std::vector<string> splitted;
+    Camera.get_sensor_controll_config(&CCstatus); // Kamera >>> CCstatus
 
     aktparamgraph = trim(aktparamgraph);
-
     if (aktparamgraph.size() == 0)
     {
-        if (!this->GetNextParagraph(pfile, aktparamgraph))
+        if (!GetNextParagraph(pfile, aktparamgraph))
         {
             return false;
         }
@@ -84,438 +87,452 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
         return false;
     }
 
-    while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph))
+    std::vector<string> splitted;
+
+    while (getNextLine(pfile, &aktparamgraph) && !isNewParagraph(aktparamgraph))
     {
         splitted = ZerlegeZeile(aktparamgraph);
 
-        if ((toUpper(splitted[0]) == "RAWIMAGESLOCATION") && (splitted.size() > 1))
+        if (splitted.size() > 1)
         {
-            imagesLocation = "/sdcard" + splitted[1];
-            isLogImage = true;
-        }
+            std::string _parameter = toUpper(splitted[0]);
+            std::string _value = splitted[1];
 
-        else if ((toUpper(splitted[0]) == "RAWIMAGESRETENTION") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            if (_parameter == "RAWIMAGESLOCATION")
             {
-                this->imagesRetention = std::stod(splitted[1]);
-            }          
-        }
+                imagesLocation = "/sdcard" + _value;
+                isLogImage = true;
+            }
 
-        else if ((toUpper(splitted[0]) == "SAVEALLFILES") && (splitted.size() > 1))
-        {
-            CCstatus.SaveAllFiles = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "WAITBEFORETAKINGPICTURE") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "RAWIMAGESRETENTION")
             {
-                int _WaitBeforePicture = std::stoi(splitted[1]);
-                if (_WaitBeforePicture != 0)
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.WaitBeforePicture = _WaitBeforePicture;
+                    if (std::stod(_value) >= 0)
+                    {
+                        imagesRetention = std::stod(_value);
+                    }
+                }
+            }
+
+            else if (_parameter == "SAVEALLFILES")
+            {
+                Camera.SaveAllFiles = alphanumericToBoolean(_value);
+            }
+
+            else if (_parameter == "WAITBEFORETAKINGPICTURE")
+            {
+                if (isStringNumeric(_value))
+                {
+                    int _WaitBeforePicture = std::stoi(_value);
+                    if (_WaitBeforePicture >= 0)
+                    {
+                        CCstatus.WaitBeforePicture = _WaitBeforePicture;
+                    }
+                    else
+                    {
+                        CCstatus.WaitBeforePicture = 2;
+                    }
+                }
+            }
+
+            else if (_parameter == "CAMGAINCEILING")
+            {
+                if (isStringNumeric(_value))
+                {
+                    int _ImageGainceiling = std::stoi(_value);
+                    switch (_ImageGainceiling)
+                    {
+                    case 1:
+                        CCstatus.ImageGainceiling = GAINCEILING_4X;
+                        break;
+                    case 2:
+                        CCstatus.ImageGainceiling = GAINCEILING_8X;
+                        break;
+                    case 3:
+                        CCstatus.ImageGainceiling = GAINCEILING_16X;
+                        break;
+                    case 4:
+                        CCstatus.ImageGainceiling = GAINCEILING_32X;
+                        break;
+                    case 5:
+                        CCstatus.ImageGainceiling = GAINCEILING_64X;
+                        break;
+                    case 6:
+                        CCstatus.ImageGainceiling = GAINCEILING_128X;
+                        break;
+                    default:
+                        CCstatus.ImageGainceiling = GAINCEILING_2X;
+                    }
                 }
                 else
                 {
-                    CCstatus.WaitBeforePicture = 2;
+                    std::string _ImageGainceiling = toUpper(_value);
+                    if (_ImageGainceiling == "X4")
+                    {
+                        CCstatus.ImageGainceiling = GAINCEILING_4X;
+                    }
+                    else if (_ImageGainceiling == "X8")
+                    {
+                        CCstatus.ImageGainceiling = GAINCEILING_8X;
+                    }
+                    else if (_ImageGainceiling == "X16")
+                    {
+                        CCstatus.ImageGainceiling = GAINCEILING_16X;
+                    }
+                    else if (_ImageGainceiling == "X32")
+                    {
+                        CCstatus.ImageGainceiling = GAINCEILING_32X;
+                    }
+                    else if (_ImageGainceiling == "X64")
+                    {
+                        CCstatus.ImageGainceiling = GAINCEILING_64X;
+                    }
+                    else if (_ImageGainceiling == "X128")
+                    {
+                        CCstatus.ImageGainceiling = GAINCEILING_128X;
+                    }
+                    else
+                    {
+                        CCstatus.ImageGainceiling = GAINCEILING_2X;
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMGAINCEILING") && (splitted.size() > 1))
-        {
-            std::string _ImageGainceiling = toUpper(splitted[1]);
-
-            if (isStringNumeric(_ImageGainceiling))
+            else if (_parameter == "CAMQUALITY")
             {
-                int _ImageGainceiling_ = std::stoi(_ImageGainceiling);
-                switch (_ImageGainceiling_)
+                if (isStringNumeric(_value))
                 {
-                case 1:
-                    CCstatus.ImageGainceiling = GAINCEILING_4X;
-                    break;
-                case 2:
-                    CCstatus.ImageGainceiling = GAINCEILING_8X;
-                    break;
-                case 3:
-                    CCstatus.ImageGainceiling = GAINCEILING_16X;
-                    break;
-                case 4:
-                    CCstatus.ImageGainceiling = GAINCEILING_32X;
-                    break;
-                case 5:
-                    CCstatus.ImageGainceiling = GAINCEILING_64X;
-                    break;
-                case 6:
-                    CCstatus.ImageGainceiling = GAINCEILING_128X;
-                    break;
-                default:
-                    CCstatus.ImageGainceiling = GAINCEILING_2X;
+                    int _ImageQuality = std::stoi(_value);
+                    CCstatus.ImageQuality = clipInt(_ImageQuality, 63, 6);
                 }
             }
-            else
+
+            else if (_parameter == "CAMBRIGHTNESS")
             {
-                if (_ImageGainceiling == "X4")
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageGainceiling = GAINCEILING_4X;
+                    int _ImageBrightness = std::stoi(_value);
+                    CCstatus.ImageBrightness = clipInt(_ImageBrightness, 2, -2);
                 }
-                else if (_ImageGainceiling == "X8")
+            }
+
+            else if (_parameter == "CAMCONTRAST")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageGainceiling = GAINCEILING_8X;
+                    int _ImageContrast = std::stoi(_value);
+                    CCstatus.ImageContrast = clipInt(_ImageContrast, 2, -2);
                 }
-                else if (_ImageGainceiling == "X16")
+            }
+
+            else if (_parameter == "CAMSATURATION")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageGainceiling = GAINCEILING_16X;
+                    int _ImageSaturation = std::stoi(_value);
+                    CCstatus.ImageSaturation = clipInt(_ImageSaturation, 2, -2);
                 }
-                else if (_ImageGainceiling == "X32")
+            }
+
+            else if (_parameter == "CAMSHARPNESS")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageGainceiling = GAINCEILING_32X;
+                    int _ImageSharpness = std::stoi(_value);
+                    if (Camera.CamSensorId == OV2640_PID)
+                    {
+                        CCstatus.ImageSharpness = clipInt(_ImageSharpness, 2, -2);
+                    }
+                    else
+                    {
+                        CCstatus.ImageSharpness = clipInt(_ImageSharpness, 3, -3);
+                    }
                 }
-                else if (_ImageGainceiling == "X64")
+            }
+
+            else if (_parameter == "CAMAUTOSHARPNESS")
+            {
+                CCstatus.ImageAutoSharpness = alphanumericToBoolean(_value);
+            }
+
+            else if (_parameter == "CAMSPECIALEFFECT")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageGainceiling = GAINCEILING_64X;
-                }
-                else if (_ImageGainceiling == "X128")
-                {
-                    CCstatus.ImageGainceiling = GAINCEILING_128X;
+                    int _ImageSpecialEffect = std::stoi(_value);
+                    CCstatus.ImageSpecialEffect = clipInt(_ImageSpecialEffect, 6, 0);
                 }
                 else
                 {
-                    CCstatus.ImageGainceiling = GAINCEILING_2X;
+                    std::string _ImageSpecialEffect = toUpper(_value);
+                    if (_ImageSpecialEffect == "NEGATIVE")
+                    {
+                        CCstatus.ImageSpecialEffect = 1;
+                    }
+                    else if (_ImageSpecialEffect == "GRAYSCALE")
+                    {
+                        CCstatus.ImageSpecialEffect = 2;
+                    }
+                    else if (_ImageSpecialEffect == "RED")
+                    {
+                        CCstatus.ImageSpecialEffect = 3;
+                    }
+                    else if (_ImageSpecialEffect == "GREEN")
+                    {
+                        CCstatus.ImageSpecialEffect = 4;
+                    }
+                    else if (_ImageSpecialEffect == "BLUE")
+                    {
+                        CCstatus.ImageSpecialEffect = 5;
+                    }
+                    else if (_ImageSpecialEffect == "RETRO")
+                    {
+                        CCstatus.ImageSpecialEffect = 6;
+                    }
+                    else
+                    {
+                        CCstatus.ImageSpecialEffect = 0;
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMQUALITY") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMWBMODE")
             {
-                int _ImageQuality = std::stoi(splitted[1]);
-                CCstatus.ImageQuality = clipInt(_ImageQuality, 63, 6);
-            }
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMBRIGHTNESS") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
-            {
-                int _ImageBrightness = std::stoi(splitted[1]);
-                CCstatus.ImageBrightness = clipInt(_ImageBrightness, 2, -2);
-            }
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMCONTRAST") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
-            {
-                int _ImageContrast = std::stoi(splitted[1]);
-                CCstatus.ImageContrast = clipInt(_ImageContrast, 2, -2);
-            }
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMSATURATION") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
-            {
-                int _ImageSaturation = std::stoi(splitted[1]);
-                CCstatus.ImageSaturation = clipInt(_ImageSaturation, 2, -2);
-            }
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMSHARPNESS") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
-            {
-                int _ImageSharpness = std::stoi(splitted[1]);
-                if (CCstatus.CamSensor_id == OV2640_PID)
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageSharpness = clipInt(_ImageSharpness, 2, -2);
+                    int _ImageWbMode = std::stoi(_value);
+                    CCstatus.ImageWbMode = clipInt(_ImageWbMode, 4, 0);
                 }
                 else
                 {
-                    CCstatus.ImageSharpness = clipInt(_ImageSharpness, 3, -3);
+                    std::string _ImageWbMode = toUpper(_value);
+                    if (_ImageWbMode == "SUNNY")
+                    {
+                        CCstatus.ImageWbMode = 1;
+                    }
+                    else if (_ImageWbMode == "CLOUDY")
+                    {
+                        CCstatus.ImageWbMode = 2;
+                    }
+                    else if (_ImageWbMode == "OFFICE")
+                    {
+                        CCstatus.ImageWbMode = 3;
+                    }
+                    else if (_ImageWbMode == "HOME")
+                    {
+                        CCstatus.ImageWbMode = 4;
+                    }
+                    else
+                    {
+                        CCstatus.ImageWbMode = 0;
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMAUTOSHARPNESS") && (splitted.size() > 1))
-        {
-            CCstatus.ImageAutoSharpness = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMSPECIALEFFECT") && (splitted.size() > 1))
-        {
-            std::string _ImageSpecialEffect = toUpper(splitted[1]);
-
-            if (isStringNumeric(_ImageSpecialEffect))
+            else if (_parameter == "CAMAWB")
             {
-                int _ImageSpecialEffect_ = std::stoi(_ImageSpecialEffect);
-                CCstatus.ImageSpecialEffect = clipInt(_ImageSpecialEffect_, 6, 0);
+                CCstatus.ImageAwb = alphanumericToInt(_value);
             }
-            else
+
+            else if (_parameter == "CAMAWBGAIN")
             {
-                if (_ImageSpecialEffect == "NEGATIVE")
+                CCstatus.ImageAwbGain = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMAEC")
+            {
+                CCstatus.ImageAec = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMAEC2")
+            {
+                CCstatus.ImageAec2 = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMAELEVEL")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageSpecialEffect = 1;
-                }
-                else if (_ImageSpecialEffect == "GRAYSCALE")
-                {
-                    CCstatus.ImageSpecialEffect = 2;
-                }
-                else if (_ImageSpecialEffect == "RED")
-                {
-                    CCstatus.ImageSpecialEffect = 3;
-                }
-                else if (_ImageSpecialEffect == "GREEN")
-                {
-                    CCstatus.ImageSpecialEffect = 4;
-                }
-                else if (_ImageSpecialEffect == "BLUE")
-                {
-                    CCstatus.ImageSpecialEffect = 5;
-                }
-                else if (_ImageSpecialEffect == "RETRO")
-                {
-                    CCstatus.ImageSpecialEffect = 6;
-                }
-                else
-                {
-                    CCstatus.ImageSpecialEffect = 0;
+                    int _ImageAeLevel = std::stoi(_value);
+                    if (Camera.CamSensorId == OV2640_PID)
+                    {
+                        CCstatus.ImageAeLevel = clipInt(_ImageAeLevel, 2, -2);
+                    }
+                    else
+                    {
+                        CCstatus.ImageAeLevel = clipInt(_ImageAeLevel, 5, -5);
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMWBMODE") && (splitted.size() > 1))
-        {
-            std::string _ImageWbMode = toUpper(splitted[1]);
-
-            if (isStringNumeric(_ImageWbMode))
+            else if (_parameter == "CAMAECVALUE")
             {
-                int _ImageWbMode_ = std::stoi(_ImageWbMode);
-                CCstatus.ImageWbMode = clipInt(_ImageWbMode_, 4, 0);
-            }
-            else
-            {
-                if (_ImageWbMode == "SUNNY")
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageWbMode = 1;
-                }
-                else if (_ImageWbMode == "CLOUDY")
-                {
-                    CCstatus.ImageWbMode = 2;
-                }
-                else if (_ImageWbMode == "OFFICE")
-                {
-                    CCstatus.ImageWbMode = 3;
-                }
-                else if (_ImageWbMode == "HOME")
-                {
-                    CCstatus.ImageWbMode = 4;
-                }
-                else
-                {
-                    CCstatus.ImageWbMode = 0;
+                    int _ImageAecValue = std::stoi(_value);
+                    CCstatus.ImageAecValue = clipInt(_ImageAecValue, 1200, 0);
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMAWB") && (splitted.size() > 1))
-        {
-            CCstatus.ImageAwb = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMAWBGAIN") && (splitted.size() > 1))
-        {
-            CCstatus.ImageAwbGain = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMAEC") && (splitted.size() > 1))
-        {
-            CCstatus.ImageAec = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMAEC2") && (splitted.size() > 1))
-        {
-            CCstatus.ImageAec2 = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMAELEVEL") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMAGC")
             {
-                int _ImageAeLevel = std::stoi(splitted[1]);
-                if (CCstatus.CamSensor_id == OV2640_PID)
+                CCstatus.ImageAgc = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMAGCGAIN")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageAeLevel = clipInt(_ImageAeLevel, 2, -2);
-                }
-                else
-                {
-                    CCstatus.ImageAeLevel = clipInt(_ImageAeLevel, 5, -5);
+                    int _ImageAgcGain = std::stoi(_value);
+                    CCstatus.ImageAgcGain = clipInt(_ImageAgcGain, 30, 0);
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMAECVALUE") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMBPC")
             {
-                int _ImageAecValue = std::stoi(splitted[1]);
-                CCstatus.ImageAecValue = clipInt(_ImageAecValue, 1200, 0);
+                CCstatus.ImageBpc = alphanumericToInt(_value);
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMAGC") && (splitted.size() > 1))
-        {
-            CCstatus.ImageAgc = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMAGCGAIN") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMWPC")
             {
-                int _ImageAgcGain = std::stoi(splitted[1]);
-                CCstatus.ImageAgcGain = clipInt(_ImageAgcGain, 30, 0);
+                CCstatus.ImageWpc = alphanumericToInt(_value);
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMBPC") && (splitted.size() > 1))
-        {
-            CCstatus.ImageBpc = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMWPC") && (splitted.size() > 1))
-        {
-            CCstatus.ImageWpc = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMRAWGMA") && (splitted.size() > 1))
-        {
-            CCstatus.ImageRawGma = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMLENC") && (splitted.size() > 1))
-        {
-            CCstatus.ImageLenc = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMHMIRROR") && (splitted.size() > 1))
-        {
-            CCstatus.ImageHmirror = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMVFLIP") && (splitted.size() > 1))
-        {
-            CCstatus.ImageVflip = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMDCW") && (splitted.size() > 1))
-        {
-            CCstatus.ImageDcw = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMDENOISE") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMRAWGMA")
             {
-                int _ImageDenoiseLevel = std::stoi(splitted[1]);
-                if (CCstatus.CamSensor_id == OV2640_PID)
+                CCstatus.ImageRawGma = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMLENC")
+            {
+                CCstatus.ImageLenc = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMHMIRROR")
+            {
+                CCstatus.ImageHmirror = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMVFLIP")
+            {
+                CCstatus.ImageVflip = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMDCW")
+            {
+                CCstatus.ImageDcw = alphanumericToInt(_value);
+            }
+
+            else if (_parameter == "CAMDENOISE")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageDenoiseLevel = 0;
-                }
-                else
-                {
-                    CCstatus.ImageDenoiseLevel = clipInt(_ImageDenoiseLevel, 8, 0);
+                    int _ImageDenoiseLevel = std::stoi(_value);
+                    if (Camera.CamSensorId == OV2640_PID)
+                    {
+                        CCstatus.ImageDenoiseLevel = 0;
+                    }
+                    else
+                    {
+                        CCstatus.ImageDenoiseLevel = clipInt(_ImageDenoiseLevel, 8, 0);
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMZOOM") && (splitted.size() > 1))
-        {
-            CCstatus.ImageZoomEnabled = alphanumericToBoolean(splitted[1]);
-        }
-
-        else if ((toUpper(splitted[0]) == "CAMZOOMOFFSETX") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMZOOM")
             {
-                int _ImageZoomOffsetX = std::stoi(splitted[1]);
-                if (CCstatus.CamSensor_id == OV2640_PID)
+                CCstatus.ImageZoomEnabled = alphanumericToBoolean(_value);
+            }
+
+            else if (_parameter == "CAMZOOMOFFSETX")
+            {
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 480, -480);
-                }
-                else if (CCstatus.CamSensor_id == OV3660_PID)
-                {
-                    CCstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 704, -704);
-                }
-                else if (CCstatus.CamSensor_id == OV5640_PID)
-                {
-                    CCstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 960, -960);
+                    int _ImageZoomOffsetX = std::stoi(_value);
+                    if (Camera.CamSensorId == OV2640_PID)
+                    {
+                        CCstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 480, -480);
+                    }
+                    else if (Camera.CamSensorId == OV3660_PID)
+                    {
+                        CCstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 704, -704);
+                    }
+                    else if (Camera.CamSensorId == OV5640_PID)
+                    {
+                        CCstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 960, -960);
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMZOOMOFFSETY") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMZOOMOFFSETY")
             {
-                int _ImageZoomOffsetY = std::stoi(splitted[1]);
-                if (CCstatus.CamSensor_id == OV2640_PID)
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 360, -360);
-                }
-                else if (CCstatus.CamSensor_id == OV3660_PID)
-                {
-                    CCstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 528, -528);
-                }
-                else if (CCstatus.CamSensor_id == OV5640_PID)
-                {
-                    CCstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 720, -720);
+                    int _ImageZoomOffsetY = std::stoi(_value);
+                    if (Camera.CamSensorId == OV2640_PID)
+                    {
+                        CCstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 360, -360);
+                    }
+                    else if (Camera.CamSensorId == OV3660_PID)
+                    {
+                        CCstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 528, -528);
+                    }
+                    else if (Camera.CamSensorId == OV5640_PID)
+                    {
+                        CCstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 720, -720);
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "CAMZOOMSIZE") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "CAMZOOMSIZE")
             {
-                int _ImageZoomSize = std::stoi(splitted[1]);
-                if (CCstatus.CamSensor_id == OV2640_PID)
+                if (isStringNumeric(_value))
                 {
-                    CCstatus.ImageZoomSize = clipInt(_ImageZoomSize, 29, 0);
-                }
-                else if (CCstatus.CamSensor_id == OV3660_PID)
-                {
-                    CCstatus.ImageZoomSize = clipInt(_ImageZoomSize, 43, 0);
-                }
-                else if (CCstatus.CamSensor_id == OV5640_PID)
-                {
-                    CCstatus.ImageZoomSize = clipInt(_ImageZoomSize, 59, 0);
+                    int _ImageZoomSize = std::stoi(_value);
+                    if (Camera.CamSensorId == OV2640_PID)
+                    {
+                        CCstatus.ImageZoomSize = clipInt(_ImageZoomSize, 29, 0);
+                    }
+                    else if (Camera.CamSensorId == OV3660_PID)
+                    {
+                        CCstatus.ImageZoomSize = clipInt(_ImageZoomSize, 43, 0);
+                    }
+                    else if (Camera.CamSensorId == OV5640_PID)
+                    {
+                        CCstatus.ImageZoomSize = clipInt(_ImageZoomSize, 59, 0);
+                    }
                 }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "LEDINTENSITY") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
+            else if (_parameter == "LEDINTENSITY")
             {
-                int ledintensity = std::stoi(splitted[1]);
-                CCstatus.ImageLedIntensity = Camera.SetLEDIntensity(ledintensity);
+                if (isStringNumeric(_value))
+                {
+                    int ledintensity = std::stoi(_value);
+                    if (ledintensity >= 0)
+                    {
+                        CCstatus.ImageLedIntensity = Camera.SetLEDIntensity(ledintensity);
+                    }
+                }
             }
-        }
 
-        else if ((toUpper(splitted[0]) == "DEMO") && (splitted.size() > 1))
-        {
-            CCstatus.DemoMode = alphanumericToBoolean(splitted[1]);
-            if (CCstatus.DemoMode == true)
+            else if (_parameter == "DEMO")
             {
-                Camera.useDemoMode();
+                Camera.DemoMode = alphanumericToBoolean(_value);
+                if (Camera.DemoMode == true)
+                {
+                    Camera.useDemoMode();
+                }
             }
         }
     }
 
-    Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-    Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
+    Camera.set_sensor_controll_config(&CCstatus); // CCstatus >>> Kamera
+    Camera.set_quality_zoom_size(&CCstatus);
+
+    Camera.changedCameraSettings = false;
+    Camera.CamTempImage = false;
 
     rawImage = new CImageBasis("rawImage");
     rawImage->CreateEmptyImage(CCstatus.ImageWidth, CCstatus.ImageHeight, 3);
@@ -532,56 +549,33 @@ ClassFlowTakeImage::ClassFlowTakeImage(std::vector<ClassFlow *> *lfc) : ClassFlo
 
 string ClassFlowTakeImage::getHTMLSingleStep(string host)
 {
-    string result;
-    result = "Raw Image: <br>\n<img src=\"" + host + "/img_tmp/raw.jpg\">\n";
+    std::string result = "Raw Image: <br>\n<img src=\"" + host + "/img_tmp/raw.jpg\">\n";
     return result;
 }
 
 // wird bei jeder Auswertrunde aufgerufen
 bool ClassFlowTakeImage::doFlow(string zwtime)
 {
-    psram_init_shared_memory_for_take_image_step();
-
-    string logPath = CreateLogFolder(zwtime);
-
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
-
-#ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
-#endif
-
-#ifdef WIFITURNOFF
-    esp_wifi_stop(); // to save power usage and
-#endif
-
-    // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
-    if (CFstatus.changedCameraSettings)
+    if (psram_init_shared_memory_for_take_image_step())
     {
-        Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
-        Camera.LedIntensity = CCstatus.ImageLedIntensity;
-        CFstatus.changedCameraSettings = false;
+        string logPath = CreateLogFolder(zwtime);
+
+        int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+        if (Camera.CamTempImage)
+        {
+            flash_duration = (int)(CFstatus.WaitBeforePicture * 1000);
+        }
+
+        takePictureWithFlash(flash_duration);
+        LogImage(logPath, "raw", NULL, NULL, zwtime, rawImage);
+        RemoveOldLogs();
+
+        psram_deinit_shared_memory_for_take_image_step();
     }
-
-    takePictureWithFlash(flash_duration);
-
-#ifdef WIFITURNOFF
-    esp_wifi_start();
-#endif
-
-#ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After takePictureWithFlash");
-#endif
-
-    LogImage(logPath, "raw", NULL, NULL, zwtime, rawImage);
-
-    RemoveOldLogs();
-
-#ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After RemoveOldLogs");
-#endif
-
-    psram_deinit_shared_memory_for_take_image_step();
+    else
+    {
+        return false;
+    }
 
     return true;
 }
@@ -589,6 +583,11 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
 {
     int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    if (Camera.CamTempImage)
+    {
+        flash_duration = (int)(CFstatus.WaitBeforePicture * 1000);
+    }
+
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
@@ -597,16 +596,22 @@ esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
 
 ImageData *ClassFlowTakeImage::SendRawImage(void)
 {
-    CImageBasis *zw = new CImageBasis("SendRawImage", rawImage);
-    ImageData *id;
+    CImageBasis *tempImageBasis = new CImageBasis("SendRawImage", rawImage);
+    ImageData *tempImageData;
+
     int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
-    Camera.CaptureToBasisImage(zw, flash_duration);
+    if (Camera.CamTempImage)
+    {
+        flash_duration = (int)(CFstatus.WaitBeforePicture * 1000);
+    }
+
+    Camera.CaptureToBasisImage(tempImageBasis, flash_duration);
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    id = zw->writeToMemoryAsJPG();
-    delete zw;
-    return id;
+    tempImageData = tempImageBasis->writeToMemoryAsJPG();
+    delete tempImageBasis;
+    return tempImageData;
 }
 
 time_t ClassFlowTakeImage::getTimeImageTaken(void)

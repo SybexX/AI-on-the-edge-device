@@ -142,6 +142,7 @@ function ParseConfig() {
     ParamAddValue(param, catname, "InitialRotate");
     ParamAddValue(param, catname, "SearchFieldX");
     ParamAddValue(param, catname, "SearchFieldY");
+    ParamAddValue(param, catname, "Antialiasing");
     ParamAddValue(param, catname, "AlignmentAlgo");
 
     var catname = "Digits";
