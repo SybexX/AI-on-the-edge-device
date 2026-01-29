@@ -275,6 +275,8 @@ esp_err_t CCamera::get_sensor_controll_config(camera_controll_config_temp_t *cam
         // Since there are always errors when reading out the parameters 
         // and therefore problems when initializing the camera with the wrong parameters, 
         // the parameters are checked and, if necessary, set with a default value.
+        // note: The read value is usually "uint8_t" (see: https://github.com/espressif/esp32-camera/blob/dba8da9898928d9808d57a0b0cdcde9f130ed8fe/driver/include/sensor.h#L174#L203)
+        //       However, the one to be set is usually "int" (see: https://github.com/espressif/esp32-camera/blob/dba8da9898928d9808d57a0b0cdcde9f130ed8fe/driver/include/sensor.h#L206#L253)
         CamSensorId = cam_sensor->id.PID;
         camConfig->CamXclkFreqMhz = get_value_or_default_int((int)(cam_sensor->xclk_freq_hz / 1000000), 20, 1, 16);
 
