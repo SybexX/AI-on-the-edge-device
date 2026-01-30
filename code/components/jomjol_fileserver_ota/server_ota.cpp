@@ -9,7 +9,6 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 
 #include <esp_task_wdt.h>
 
-
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -56,7 +55,6 @@ static bool ota_update_task(std::string fn);
 std::string _file_name_update;
 bool initial_setup = false;
 
-
 static void infinite_loop(void)
 {
     int i = 0;
@@ -66,7 +64,6 @@ static void infinite_loop(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
-
 
 void task_do_Update_ZIP(void *pvParameter)
 {
@@ -123,7 +120,6 @@ void task_do_Update_ZIP(void *pvParameter)
     }
 }
 
-
 void CheckUpdate()
 {
  	FILE *pfile;
@@ -155,7 +151,6 @@ void CheckUpdate()
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
-
 
 static bool ota_update_task(std::string fn)
 {
@@ -293,7 +288,6 @@ static bool ota_update_task(std::string fn)
     return true ;
 }
 
-
 static void print_sha256 (const uint8_t *image_hash, const char *label)
 {
     char hash_print[HASH_LEN * 2 + 1];
@@ -304,12 +298,10 @@ static void print_sha256 (const uint8_t *image_hash, const char *label)
     ESP_LOGI(TAG, "%s: %s", label, hash_print);
 }
 
-
 static bool diagnostic(void)
 {
     return true;
 }
-
 
 void CheckOTAUpdate(void)
 {
@@ -381,7 +373,6 @@ void CheckOTAUpdate(void)
         }
     }
 }
-
 
 esp_err_t handler_ota_update(httpd_req_t *req)
 {
@@ -462,7 +453,6 @@ esp_err_t handler_ota_update(httpd_req_t *req)
             return ESP_OK;
         }
 
-
         if ((filetype == "ZIP") || (filetype == "BIN"))
         {
            	FILE *pfile;
@@ -511,7 +501,6 @@ esp_err_t handler_ota_update(httpd_req_t *req)
         httpd_resp_sendstr_chunk(req, NULL);  
         return ESP_OK;        
     }
-
 
     if (_task.compare("unziphtml") == 0)
     {
@@ -584,7 +573,6 @@ esp_err_t handler_ota_update(httpd_req_t *req)
     return ESP_OK;
 }
 
-
 void hard_restart() 
 {
   esp_task_wdt_config_t twdt_config = {
@@ -597,7 +585,6 @@ void hard_restart()
   esp_task_wdt_add(NULL);
   while(true);
 }
-
 
 void task_reboot(void *DeleteMainFlow)
 {
@@ -613,6 +600,8 @@ void task_reboot(void *DeleteMainFlow)
         DeleteMainFlowTask();  // Kill autoflow task if executed in extra task, if not don't kill parent task
     }
 
+    Camera.set_camera_deep_sleep(false);
+    esp_camera_return_all();
     Camera.LightOnOff(false);
     StatusLEDOff();
 
@@ -620,8 +609,8 @@ void task_reboot(void *DeleteMainFlow)
     #ifdef ENABLE_MQTT
         MQTTdestroy_client(true);
     #endif //ENABLE_MQTT
+	
     gpio_handler_destroy();
-    esp_camera_deinit();
     WIFIDestroy();
 
     vTaskDelay(3000 / portTICK_PERIOD_MS);
@@ -634,12 +623,16 @@ void task_reboot(void *DeleteMainFlow)
     vTaskDelete(NULL); //Delete this task if it comes to this point
 }
 
-
 void doReboot()
 {
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Reboot triggered by Software (5s)");
     LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reboot in 5sec");
 
+    while (*flowctrl.getActStatus() == std::string("Take Image"))
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+	
     BaseType_t xReturned = xTaskCreate(&task_reboot, "task_reboot", configMINIMAL_STACK_SIZE * 4, (void*) true, 10, NULL);
     if( xReturned != pdPASS )
     {
@@ -649,14 +642,19 @@ void doReboot()
     vTaskDelay(10000 / portTICK_PERIOD_MS); // Prevent serving web client fetch response until system is shuting down
 }
 
-
 void doRebootOTA()
 {
     LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reboot in 5sec");
 
+    while (*flowctrl.getActStatus() == std::string("Take Image"))
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+	
+    Camera.set_camera_deep_sleep(false);
+    esp_camera_return_all();
     Camera.LightOnOff(false);
     StatusLEDOff();
-    esp_camera_deinit();
 
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     esp_restart();      // Reset type: CPU reset (Reset both CPUs)
@@ -664,7 +662,6 @@ void doRebootOTA()
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     hard_restart();     // Reset type: System reset (Triggered by watchdog), if esp_restart stalls (WDT needs to be activated)
 }
-
 
 esp_err_t handler_reboot(httpd_req_t *req)
 {
@@ -697,7 +694,6 @@ esp_err_t handler_reboot(httpd_req_t *req)
     return ESP_OK;
 }
 
-
 void register_server_ota_sdcard_uri(httpd_handle_t server)
 {
     ESP_LOGI(TAG, "Registering URI handlers");
@@ -714,5 +710,4 @@ void register_server_ota_sdcard_uri(httpd_handle_t server)
     camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_reboot);
     camuri.user_ctx  = (void*) "Reboot";    
     httpd_register_uri_handler(server, &camuri);
-
 }
