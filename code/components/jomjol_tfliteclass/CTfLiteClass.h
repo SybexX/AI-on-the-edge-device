@@ -12,7 +12,6 @@
 
 #include "CImageBasis.h"
 
-
 class CTfLiteClass
 {
     protected:
@@ -26,28 +25,27 @@ class CTfLiteClass
 
         unsigned char *modelfile = NULL;
 
-
         float* input;
         int input_i;
         int im_height, im_width, im_channel;
 
         long GetFileSize(std::string filename);
         bool ReadFileToModel(std::string _fn);
-        void MakeStaticResolver();
+        bool MakeStaticResolver(void);
 
     public:
         CTfLiteClass();
         ~CTfLiteClass();        
         bool LoadModel(std::string _fn);
-        bool MakeAllocate();
-        void GetInputTensorSize();
+        bool MakeAllocate(void);
+        void GetInputTensorSize(void);
         bool LoadInputImageBasis(CImageBasis *rs);
-        void Invoke();
+        void Invoke(void);
         int GetAnzOutPut(bool silent = true);        
         int GetOutClassification(int _von = -1, int _bis = -1);
 
         int GetClassFromImageBasis(CImageBasis *rs);
-        std::string GetStatusFlow();
+        std::string GetStatusFlow(void);
 
         float GetOutputValue(int nr);
         void GetInputDimension(bool silent);
