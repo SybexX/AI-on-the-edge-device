@@ -20,12 +20,13 @@ bool CTfLiteClass::MakeStaticResolver(void)
     return false;
   }
 
-  if (resolver.AddShape() != kTfLiteOk)
-  {
+  // causes memory problems
+  // if (resolver.AddShape() != kTfLiteOk)
+  // {
     // ESP_LOGE(TAG, "load AddShape() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddShape() failed");
-    return false;
-  }
+  //  LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddShape() failed");
+  //  return false;
+  //}
 
   if (resolver.AddReshape() != kTfLiteOk)
   {
