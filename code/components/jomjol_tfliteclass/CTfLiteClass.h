@@ -15,7 +15,7 @@
 class CTfLiteClass
 {
     protected:
-        tflite::MicroMutableOpResolver<10> resolver;  
+        tflite::MicroMutableOpResolver<11> resolver;  
         const tflite::Model* model;
         tflite::MicroInterpreter* interpreter;
         TfLiteTensor* output = nullptr;     
