@@ -725,7 +725,18 @@
             </td>
             <td>$TOOLTIP_Alignment_SearchFieldY</td>
         </tr>
-		
+
+        <tr class="expert">
+            <td class="indent1">
+                <class id="Alignment_SearchMaxAngle_text" style="color:black;">Search Max Angle</class>
+            </td>
+            <td>
+                <input required type="number" id="Alignment_SearchMaxAngle_value1" size="13" min="0" max="180"
+                    oninput="(!validity.rangeUnderflow||(value=0)) && (!validity.rangeUnderflow||(value=180)) && (!validity.stepMismatch||(value=parseInt(this.value)));">degree
+            </td>
+            <td>$TOOLTIP_Alignment_SearchMaxAngle</td>
+        </tr>
+
         <tr class="expert">
             <td class="indent1">
                 <label>
@@ -951,6 +962,18 @@
             <td>$TOOLTIP_PostProcessing_NUMBER.AnalogToDigitTransitionStart</td>
         </tr>
 
+        <tr class="expert">
+            <td class="indent2">
+                <input type="checkbox" id="PostProcessing_MaxFlowRate_enabled" value="1" onclick='InvertEnableItem("PostProcessing", "MaxFlowRate")' unchecked>
+                <label for=PostProcessing_MaxFlowRate_enabled><class id="PostProcessing_MaxFlowRate_text" style="color:black;">Maximum Flow Rate</class></label>
+            </td>
+            <td>
+                <input required type="number" id="PostProcessing_MaxFlowRate_value1" step="any" size="13" min="0.1" max="100000.0" value="4.0"
+                    oninput="(!validity.rangeUnderflow||(value=0.1)) && (!validity.rangeOverflow||(value=100000.0)) && (!validity.stepMismatch||(value=parseInt(this.value)));">
+            </td>
+            <td>$TOOLTIP_PostProcessing_NUMBER.MaxFlowRate</td>
+        </tr>
+
         <tr>
             <td class="indent2">
                 <input type="checkbox" id="PostProcessing_MaxRateValue_enabled" value="1"  onclick = 'InvertEnableItem("PostProcessing", "MaxRateValue")' unchecked >
@@ -1015,20 +1038,7 @@
             </td>
             <td>$TOOLTIP_PostProcessing_NUMBER.IgnoreLeadingNaN</td>
         </tr>	
-        <!-------------
-        <tr>
-            <td class="indent2">
-                <label><class id="PostProcessing_IgnoreAllNaN_text" style="color:black;">Ignore All NaNs</class></label>
-            </td>
-            <td>
-                <select id="PostProcessing_IgnoreAllNaN_value1">
-                    <option value="true">enabled (true)</option>
-                    <option value="false" selected>disabled (false)</option>
-                </select>
-            </td>
-            <td>$TOOLTIP_PostProcessing_NUMBER.IgnoreAllNaN</td>
-        </tr>		
-        ------------------>
+
         <tr class="expert">
             <td class="indent2">
                 <label><class id="PostProcessing_CheckDigitIncreaseConsistency_text" style="color:black;">Check Digit Increase Consistency</class></label>
@@ -2265,11 +2275,11 @@ function UpdateInputIndividual(sel) {
         ReadParameter(param, "PostProcessing", "DecimalShift", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "AnalogToDigitTransitionStart", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "ChangeRateThreshold", true, NUNBERSAkt);
+        ReadParameter(param, "PostProcessing", "MaxFlowRate", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
-        // ReadParameter(param, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
         ReadParameter(param, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
         ReadParameter(param, "InfluxDB", "Field", true, NUNBERSAkt);
@@ -2285,11 +2295,11 @@ function UpdateInputIndividual(sel) {
     WriteParameter(param, category, "PostProcessing", "DecimalShift", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "AnalogToDigitTransitionStart", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "ChangeRateThreshold", true, NUNBERSAkt);
+    WriteParameter(param, category, "PostProcessing", "MaxFlowRate", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
-    // WriteParameter(param, category, "PostProcessing", "IgnoreAllNaN", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
     WriteParameter(param, category, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
     WriteParameter(param, category, "InfluxDB", "Field", true, NUNBERSAkt);
@@ -2359,6 +2369,7 @@ function UpdateInput() {
 	
     WriteParameter(param, category, "Alignment", "SearchFieldX", false);		
     WriteParameter(param, category, "Alignment", "SearchFieldY", false);
+    WriteParameter(param, category, "Alignment", "SearchMaxAngle", false);
     WriteParameter(param, category, "Alignment", "Antialiasing", false);
     WriteParameter(param, category, "Alignment", "AlignmentAlgo", true);			
     WriteParameter(param, category, "Alignment", "InitialRotate", false);
@@ -2527,6 +2538,7 @@ function ReadParameterAll() {
 
     ReadParameter(param, "Alignment", "SearchFieldX", false);	
     ReadParameter(param, "Alignment", "SearchFieldY", false);
+	ReadParameter(param, "Alignment", "SearchMaxAngle", false);
     ReadParameter(param, "Alignment", "Antialiasing", false);
     ReadParameter(param, "Alignment", "AlignmentAlgo", true);
     ReadParameter(param, "Alignment", "InitialRotate", false);

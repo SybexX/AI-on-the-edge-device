@@ -13,93 +13,95 @@ static const char *TAG = "TFLITE";
 
 bool CTfLiteClass::MakeStaticResolver(void)
 {
-  if (resolver.AddFullyConnected() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddFullyConnected() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddFullyConnected() failed");
-    return false;
-  }
+    if (resolver.AddFullyConnected() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddFullyConnected() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddFullyConnected() failed");
+        return false;
+    }
 
-  if (resolver.AddShape() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddShape() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddShape() failed");
-    return false;
-  }
+    if (resolver.AddShape() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddShape() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddShape() failed");
+        return false;
+    }
 
-  if (resolver.AddReshape() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddReshape() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddReshape() failed");
-    return false;
-  }
+    if (resolver.AddReshape() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddReshape() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddReshape() failed");
+        return false;
+    }
 
-  if (resolver.AddSoftmax() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddSoftmax() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddSoftmax() failed");
-    return false;
-  }
+    if (resolver.AddSoftmax() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddSoftmax() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddSoftmax() failed");
+        return false;
+    }
 
-  if (resolver.AddConv2D() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddConv2D() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddConv2D() failed");
-    return false;
-  }
+    if (resolver.AddConv2D() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddConv2D() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddConv2D() failed");
+        return false;
+    }
 
-  if (resolver.AddMaxPool2D() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddMaxPool2D() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddMaxPool2D() failed");
-    return false;
-  }
+    if (resolver.AddMaxPool2D() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddMaxPool2D() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddMaxPool2D() failed");
+        return false;
+    }
 
-  if (resolver.AddQuantize() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddQuantize() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddQuantize() failed");
-    return false;
-  }
+    if (resolver.AddQuantize() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddQuantize() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddQuantize() failed");
+        return false;
+    }
 
-  if (resolver.AddMul() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddMul() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddMul() failed");
-    return false;
-  }
+    if (resolver.AddMul() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddMul() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddMul() failed");
+        return false;
+    }
 
-  if (resolver.AddAdd() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddAdd() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddAdd() failed");
-    return false;
-  }
+    if (resolver.AddAdd() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddAdd() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddAdd() failed");
+        return false;
+    }
 
-  if (resolver.AddLeakyRelu() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddLeakyRelu() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddLeakyRelu() failed");
-    return false;
-  }
+    if (resolver.AddLeakyRelu() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddLeakyRelu() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddLeakyRelu() failed");
+        return false;
+    }
 
-  if (resolver.AddDequantize() != kTfLiteOk)
-  {
-    // ESP_LOGE(TAG, "load AddDequantize() failed");
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddDequantize() failed");
-    return false;
-  }
+    if (resolver.AddDequantize() != kTfLiteOk)
+    {
+        // ESP_LOGE(TAG, "load AddDequantize() failed");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "load AddDequantize() failed");
+        return false;
+    }
 
-  return true;
+    return true;
 }
 
 float CTfLiteClass::GetOutputValue(int nr)
 {
-    TfLiteTensor* output2 = this->interpreter->output(0);
+    TfLiteTensor *output2 = this->interpreter->output(0);
 
     int numeroutput = output2->dims->data[1];
-    if ((nr+1) > numeroutput)
-      return -1000;
+    if ((nr + 1) > numeroutput)
+    {
+        return -1000;
+    }
 
     return output2->data.f[nr];
 }
@@ -107,7 +109,9 @@ float CTfLiteClass::GetOutputValue(int nr)
 int CTfLiteClass::GetClassFromImageBasis(CImageBasis *rs)
 {
     if (!LoadInputImageBasis(rs))
-      return -1000;
+    {
+        return -1000;
+    }
 
     Invoke();
 
@@ -116,203 +120,285 @@ int CTfLiteClass::GetClassFromImageBasis(CImageBasis *rs)
 
 int CTfLiteClass::GetOutClassification(int _von, int _bis)
 {
-  TfLiteTensor* output2 = interpreter->output(0);
+    TfLiteTensor *output2 = interpreter->output(0);
 
-  float zw_max;
-  float zw;
-  int zw_class;
+    float zw_max;
+    float zw;
+    int zw_class;
 
-  if (output2 == NULL)
-    return -1;
-
-  int numeroutput = output2->dims->data[1];
-  //ESP_LOGD(TAG, "number output neurons: %d", numeroutput);
-
-  if (_bis == -1)
-    _bis = numeroutput -1;
-
-  if (_von == -1)
-    _von = 0;
-
-  if (_bis >= numeroutput)
-  {
-    ESP_LOGD(TAG, "NUMBER OF OUTPUT NEURONS does not match required classification!");
-    return -1;
-  }
-
-  zw_max = output2->data.f[_von];
-  zw_class = _von;
-  for (int i = _von + 1; i <= _bis; ++i)
-  {
-    zw = output2->data.f[i];
-    if (zw > zw_max)
+    if (output2 == NULL)
     {
-        zw_max = zw;
-        zw_class = i;
+        return -1;
     }
-  }
-  return (zw_class - _von);
+
+    int numeroutput = output2->dims->data[1];
+    // ESP_LOGD(TAG, "number output neurons: %d", numeroutput);
+
+    if (_bis == -1)
+    {
+        _bis = numeroutput - 1;
+    }
+
+    if (_von == -1)
+    {
+        _von = 0;
+    }
+
+    if (_bis >= numeroutput)
+    {
+        ESP_LOGD(TAG, "NUMBER OF OUTPUT NEURONS does not match required classification!");
+        return -1;
+    }
+
+    zw_max = output2->data.f[_von];
+    zw_class = _von;
+
+    for (int i = _von + 1; i <= _bis; ++i)
+    {
+        zw = output2->data.f[i];
+        if (zw > zw_max)
+        {
+            zw_max = zw;
+            zw_class = i;
+        }
+    }
+
+    return (zw_class - _von);
 }
 
 void CTfLiteClass::GetInputDimension(bool silent = false)
 {
-  TfLiteTensor* input2 = this->interpreter->input(0);
+    TfLiteTensor *input2 = this->interpreter->input(0);
 
-  int numdim = input2->dims->size;
-  if (!silent)  ESP_LOGD(TAG, "NumDimension: %d", numdim);
+    int numdim = input2->dims->size;
+    if (!silent)
+    {
+        ESP_LOGD(TAG, "NumDimension: %d", numdim);
+    }
 
-  int sizeofdim;
-  for (int j = 0; j < numdim; ++j)
-  {
-    sizeofdim = input2->dims->data[j];
-    if (!silent) ESP_LOGD(TAG, "SizeOfDimension %d: %d", j, sizeofdim);
-    if (j == 1) im_height = sizeofdim;
-    if (j == 2) im_width = sizeofdim;
-    if (j == 3) im_channel = sizeofdim;
-  }
+    int sizeofdim;
+    for (int j = 0; j < numdim; ++j)
+    {
+        sizeofdim = input2->dims->data[j];
+        if (!silent)
+        {
+            ESP_LOGD(TAG, "SizeOfDimension %d: %d", j, sizeofdim);
+        }
+
+        if (j == 1)
+        {
+            im_height = sizeofdim;
+        }
+        else if (j == 2)
+        {
+            im_width = sizeofdim;
+        }
+        else if (j == 3)
+        {
+            im_channel = sizeofdim;
+        }
+    }
 }
 
 int CTfLiteClass::ReadInputDimenstion(int _dim)
 {
-  if (_dim == 0)
-    return im_width;
-  if (_dim == 1)
-    return im_height;
-  if (_dim == 2)
-    return im_channel;
+    if (_dim == 0)
+    {
+        return im_width;
+    }
 
-  return -1;
+    if (_dim == 1)
+    {
+        return im_height;
+    }
+
+    if (_dim == 2)
+    {
+        return im_channel;
+    }
+
+    return -1;
 }
 
 int CTfLiteClass::GetAnzOutPut(bool silent)
 {
-  TfLiteTensor* output2 = this->interpreter->output(0);
+    TfLiteTensor *output2 = this->interpreter->output(0);
 
-  int numdim = output2->dims->size;
-  if (!silent) ESP_LOGD(TAG, "NumDimension: %d", numdim);
+    int numdim = output2->dims->size;
+    if (!silent)
+    {
+        ESP_LOGD(TAG, "NumDimension: %d", numdim);
+    }
 
-  int sizeofdim;
-  for (int j = 0; j < numdim; ++j)
-  {
-    sizeofdim = output2->dims->data[j];
-    if (!silent) ESP_LOGD(TAG, "SizeOfDimension %d: %d", j, sizeofdim);
-  }
+    int sizeofdim;
+    for (int j = 0; j < numdim; ++j)
+    {
+        sizeofdim = output2->dims->data[j];
+        if (!silent)
+        {
+            ESP_LOGD(TAG, "SizeOfDimension %d: %d", j, sizeofdim);
+        }
+    }
 
-  float fo;
+    float fo;
 
-  // Process the inference results.
-  int numeroutput = output2->dims->data[1];
-  for (int i = 0; i < numeroutput; ++i)
-  {
-   fo = output2->data.f[i];
-    if (!silent) ESP_LOGD(TAG, "Result %d: %f", i, fo);
-  }
-  return numeroutput;
+    // Process the inference results.
+    int numeroutput = output2->dims->data[1];
+    for (int i = 0; i < numeroutput; ++i)
+    {
+        fo = output2->data.f[i];
+        if (!silent)
+        {
+            ESP_LOGD(TAG, "Result %d: %f", i, fo);
+        }
+    }
+
+    return numeroutput;
 }
 
 void CTfLiteClass::Invoke()
 {
     if (interpreter != nullptr)
-      interpreter->Invoke();
+    {
+        interpreter->Invoke();
+    }
 }
 
 bool CTfLiteClass::LoadInputImageBasis(CImageBasis *rs)
 {
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - Start");
-    #endif
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - Start");
+#endif
 
     unsigned int w = rs->width;
     unsigned int h = rs->height;
     unsigned char red, green, blue;
-//    ESP_LOGD(TAG, "Image: %s size: %d x %d\n", _fn.c_str(), w, h);
 
     input_i = 0;
-    float* input_data_ptr = (interpreter->input(0))->data.f;
+    float *input_data_ptr = (interpreter->input(0))->data.f;
 
     for (int y = 0; y < h; ++y)
+    {
         for (int x = 0; x < w; ++x)
-            {
-                red = rs->GetPixelColor(x, y, 0);
-                green = rs->GetPixelColor(x, y, 1);
-                blue = rs->GetPixelColor(x, y, 2);
-                *(input_data_ptr) = (float) red;
-                input_data_ptr++;
-                *(input_data_ptr) = (float) green;
-                input_data_ptr++;
-                *(input_data_ptr) = (float) blue;
-                input_data_ptr++;
-            }
+        {
+            red = rs->GetPixelColor(x, y, 0);
+            green = rs->GetPixelColor(x, y, 1);
+            blue = rs->GetPixelColor(x, y, 2);
 
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - done");
-    #endif
+            *(input_data_ptr) = (float)red;
+            input_data_ptr++;
+            *(input_data_ptr) = (float)green;
+            input_data_ptr++;
+            *(input_data_ptr) = (float)blue;
+            input_data_ptr++;
+        }
+    }
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - done");
+#endif
 
     return true;
 }
 
 bool CTfLiteClass::MakeAllocate()
 {
-  if (!MakeStaticResolver())
-  {
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::MakeAllocate - resolver could not be loaded!");
-    return false;
-  }
+    if (!MakeStaticResolver())
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::MakeAllocate - resolver could not be loaded!");
+        return false;
+    }
 
-  if (!model)
-  {
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::MakeAllocate - no model loaded!");
-    return false;
-  }
+    if (!model)
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::MakeAllocate - no model loaded!");
+        return false;
+    }
 
-  if (model->version() != TFLITE_SCHEMA_VERSION)
-  {
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "The selected model does not match the tflite schema version!");
-    return false;
-  }
+    if (model->version() != TFLITE_SCHEMA_VERSION)
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "The selected model does not match the tflite schema version!");
+        return false;
+    }
 
-  if (!tensor_arena)
-  {
-    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::MakeAllocate - tensor_arena not allocate");
-    return false;
-  }
-  
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTLiteClass::Alloc start");
-    #endif
+    if (!tensor_arena)
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::MakeAllocate - tensor_arena not allocate");
+        return false;
+    }
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTLiteClass::Alloc start");
+#endif
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::MakeAllocate");
-    this->interpreter = new tflite::MicroInterpreter(this->model, resolver, this->tensor_arena, this->kTensorArenaSize);
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Trying to load the model. If it crashes here, it ist most likely due to a corrupted model!");
 
-    if (this->interpreter) 
+    this->interpreter = new tflite::MicroInterpreter(this->model, resolver, this->tensor_arena, this->kTensorArenaSize);
+
+    if (this->interpreter)
     {
         TfLiteStatus allocate_status = this->interpreter->AllocateTensors();
-        if (allocate_status != kTfLiteOk) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed");
 
-            this->GetInputDimension();   
+        if (allocate_status != kTfLiteOk)
+        {
+            if (allocate_status == kTfLiteError)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to an error in the runtime (i.e. interpreter)!");
+            }
+            else if (allocate_status == kTfLiteDelegateError)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to an error from a TfLiteDelegate itself!");
+            }
+            else if (allocate_status == kTfLiteApplicationError)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to an error in applying a delegate due to incompatibility between runtime and delegate!");
+            }
+            else if (allocate_status == kTfLiteDelegateDataNotFound)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to serialized delegate data not being found!");
+            }
+            else if (allocate_status == kTfLiteDelegateDataWriteError)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to data-writing issues in delegate serialization!");
+            }
+            else if (allocate_status == kTfLiteDelegateDataReadError)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to data-reading issues in delegate serialization!");
+            }
+            else if (allocate_status == kTfLiteUnresolvedOps)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to issues when the TF Lite model has ops that cannot be resolved at runtime!");
+            }
+            else if (allocate_status == kTfLiteCancelled)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: Generally referring to invocation cancelled by the user!");
+            }
+            else if (allocate_status == kTfLiteOutputShapeNotKnown)
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed: This status is returned by Prepare when the output shape cannot be determined but the size of the output tensor is known!");
+            }
+
+            this->GetInputDimension();
             return false;
         }
     }
-    else 
+    else
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "new tflite::MicroInterpreter failed");
         LogFile.WriteHeapInfo("CTfLiteClass::MakeAllocate-new tflite::MicroInterpreter failed");
         return false;
     }
 
-
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTLiteClass::Alloc done");
-    #endif
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTLiteClass::Alloc done");
+#endif
 
     return true;
 }
 
 void CTfLiteClass::GetInputTensorSize()
 {
-#ifdef DEBUG_DETAIL_ON    
+#ifdef DEBUG_DETAIL_ON
     float *zw = this->input;
     int test = sizeof(zw);
     ESP_LOGD(TAG, "Input Tensor Dimension: %d", test);
@@ -321,24 +407,24 @@ void CTfLiteClass::GetInputTensorSize()
 
 long CTfLiteClass::GetFileSize(std::string filename)
 {
-  struct stat stat_buf;
-  long rc = -1;
+    struct stat stat_buf;
+    long rc = -1;
 
-  FILE *pFile = fopen(filename.c_str(), "rb"); // previously only "rb
+    FILE *pFile = fopen(filename.c_str(), "rb"); // previously only "rb
 
-  if (pFile != NULL)
-  {
-    rc = stat(filename.c_str(), &stat_buf);
-    fclose(pFile);
-  }
-  
-  return rc == 0 ? stat_buf.st_size : -1;
+    if (pFile != NULL)
+    {
+        rc = stat(filename.c_str(), &stat_buf);
+        fclose(pFile);
+    }
+
+    return rc == 0 ? stat_buf.st_size : -1;
 }
 
 bool CTfLiteClass::ReadFileToModel(std::string _fn)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::ReadFileToModel: " + _fn);
-    
+
     long size = GetFileSize(_fn);
 
     if (size == -1)
@@ -346,41 +432,42 @@ bool CTfLiteClass::ReadFileToModel(std::string _fn)
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Model file doesn't exist: " + _fn + "!");
         return false;
     }
-    else if(size > MAX_MODEL_SIZE) {
+    else if (size > MAX_MODEL_SIZE)
+    {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to load model '" + _fn + "'! It does not fit in the reserved shared memory in PSRAM!");
         return false;
     }
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Loading Model " + _fn + " /size: " + std::to_string(size) + " bytes...");
 
-#ifdef DEBUG_DETAIL_ON      
-        LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile start");
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile start");
 #endif
 
-    modelfile = (unsigned char*)psram_get_shared_model_memory();
-  
+    modelfile = (unsigned char *)psram_get_shared_model_memory();
+
     if (modelfile != NULL)
     {
         FILE *pFile = fopen(_fn.c_str(), "rb"); // previously only "rb
-    
+
         if (pFile != NULL)
         {
-          fread(modelfile, 1, size, pFile);
-          fclose(pFile);
+            fread(modelfile, 1, size, pFile);
+            fclose(pFile);
 
 #ifdef DEBUG_DETAIL_ON
-          LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile successful");
+            LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile successful");
 #endif
 
-          return true;
+            return true;
         }
         else
         {
-          LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::ReadFileToModel: Model does not exist");
-          return false;
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::ReadFileToModel: Model does not exist");
+            return false;
         }
-    }   
-    else 
+    }
+    else
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::ReadFileToModel: Can't allocate enough memory: " + std::to_string(size));
         LogFile.WriteHeapInfo("CTfLiteClass::ReadFileToModel");
@@ -393,15 +480,18 @@ bool CTfLiteClass::LoadModel(std::string _fn)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::LoadModel");
 
-    if (!ReadFileToModel(_fn.c_str())) {
-      return false;
+    if (!ReadFileToModel(_fn.c_str()))
+    {
+        return false;
     }
 
     model = tflite::GetModel(modelfile);
 
-    if(model == nullptr)     
-      return false;
-    
+    if (model == nullptr)
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -413,12 +503,11 @@ CTfLiteClass::CTfLiteClass()
     this->input = nullptr;
     this->output = nullptr;
     this->kTensorArenaSize = TENSOR_ARENA_SIZE;
-    this->tensor_arena = (uint8_t*)psram_get_shared_tensor_arena_memory();
+    this->tensor_arena = (uint8_t *)psram_get_shared_tensor_arena_memory();
 }
 
 CTfLiteClass::~CTfLiteClass()
 {
-  delete this->interpreter;
-
-  psram_free_shared_tensor_arena_and_model_memory();
-}        
+    delete this->interpreter;
+    psram_free_shared_tensor_arena_and_model_memory();
+}

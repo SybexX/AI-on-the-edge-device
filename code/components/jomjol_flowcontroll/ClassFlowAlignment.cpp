@@ -1,14 +1,17 @@
+#include "esp_log.h"
+
+#include "../../include/defines.h"
+
 #include "ClassFlowAlignment.h"
 #include "ClassFlowTakeImage.h"
 #include "ClassFlow.h"
 #include "MainFlowControl.h"
 
 #include "CRotateImage.h"
-#include "esp_log.h"
+#include "CFindTemplate.h"
 
 #include "ClassLogFile.h"
 #include "psram.h"
-#include "../../include/defines.h"
 
 static const char *TAG = "ALIGN";
 
@@ -18,7 +21,7 @@ void ClassFlowAlignment::SetInitialParameter(void)
 {
     initialrotate = 0;
     anz_ref = 0;
-    use_antialiasing = false;
+    Camera.ImageAntialiasing = false;
     initialflip = false;
     SaveAllFiles = false;
     namerawimage = "/sdcard/img_tmp/raw.jpg";
@@ -59,8 +62,9 @@ ClassFlowAlignment::ClassFlowAlignment(std::vector<ClassFlow *> *lfc)
 bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
 {
     std::vector<string> splitted;
-    int suchex = 40;
-    int suchey = 40;
+    int suchex = 20;
+    int suchey = 20;
+    int maxangle = 15;
     int alg_algo = 0; // default=0; 1 =HIGHACCURACY; 2= FAST; 3= OFF //add disable aligment algo |01.2023
 
     aktparamgraph = trim(aktparamgraph);
@@ -83,75 +87,89 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
     {
         splitted = ZerlegeZeile(aktparamgraph);
 
-        if ((toUpper(splitted[0]) == "FLIPIMAGESIZE") && (splitted.size() > 1))
+        if (splitted.size() > 1)
         {
-            initialflip = alphanumericToBoolean(splitted[1]);
-        }
-        else if (((toUpper(splitted[0]) == "initialrotate") || (toUpper(splitted[0]) == "INITIALROTATE")) && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
-            {
-                this->initialrotate = std::stod(splitted[1]);
-            }
-        }
-        else if ((toUpper(splitted[0]) == "SEARCHFIELDX") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
-            {
-                suchex = std::stod(splitted[1]);
-            }
-        }
-        else if ((toUpper(splitted[0]) == "SEARCHFIELDY") && (splitted.size() > 1))
-        {
-            if (isStringNumeric(splitted[1]))
-            {
-                suchey = std::stod(splitted[1]);
-            }
-        }
-        else if ((toUpper(splitted[0]) == "ANTIALIASING") && (splitted.size() > 1))
-        {
-            use_antialiasing = alphanumericToBoolean(splitted[1]);
-        }
-        else if ((splitted.size() == 3) && (anz_ref < 2))
-        {
-            if ((isStringNumeric(splitted[1])) && (isStringNumeric(splitted[2])))
-            {
-                References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
-                References[anz_ref].target_x = std::stod(splitted[1]);
-                References[anz_ref].target_y = std::stod(splitted[2]);
-                anz_ref++;
-            }
-            else
-            {
-                References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
-                References[anz_ref].target_x = 10;
-                References[anz_ref].target_y = 10;
-                anz_ref++;
-            }
-        }
+            std::string _param = toUpper(splitted[0]);
 
-        else if ((toUpper(splitted[0]) == "SAVEALLFILES") && (splitted.size() > 1))
-        {
-            SaveAllFiles = alphanumericToBoolean(splitted[1]);
-        }
-        else if ((toUpper(splitted[0]) == "ALIGNMENTALGO") && (splitted.size() > 1))
-        {
+            if (_param == "FLIPIMAGESIZE")
+            {
+                initialflip = alphanumericToBoolean(splitted[1]);
+            }
+            else if (_param == "INITIALROTATE")
+            {
+                if (isStringNumeric(splitted[1]))
+                {
+                    this->initialrotate = std::stod(splitted[1]);
+                }
+            }
+            else if (_param == "SEARCHFIELDX")
+            {
+                if (isStringNumeric(splitted[1]))
+                {
+                    suchex = clipInt(std::stoi(splitted[1]), 320, 0);
+                }
+            }
+            else if (_param == "SEARCHFIELDY")
+            {
+                if (isStringNumeric(splitted[1]))
+                {
+                    suchey = clipInt(std::stoi(splitted[1]), 240, 0);
+                }
+            }
+            else if (_param == "SEARCHMAXANGLE")
+            {
+                if (isStringNumeric(splitted[1]))
+                {
+                    maxangle = clipInt(std::stoi(splitted[1]), 180, 0);
+                }
+            }
+            else if (_param == "ANTIALIASING")
+            {
+                Camera.ImageAntialiasing = alphanumericToBoolean(splitted[1]);
+            }
+
+            else if (_param == "SAVEALLFILES")
+            {
+                SaveAllFiles = alphanumericToBoolean(splitted[1]);
+            }
+
+            else if (_param == "ALIGNMENTALGO")
+            {
 #ifdef DEBUG_DETAIL_ON
-            std::string zw2 = "Alignment mode selected: " + splitted[1];
-            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, zw2);
+                std::string zw2 = "Alignment mode selected: " + splitted[1];
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, zw2);
 #endif
-            if (toUpper(splitted[1]) == "HIGHACCURACY")
-            {
-                alg_algo = 1;
+                if (toUpper(splitted[1]) == "HIGHACCURACY")
+                {
+                    alg_algo = 1;
+                }
+                else if (toUpper(splitted[1]) == "FAST")
+                {
+                    alg_algo = 2;
+                }
+                else if (toUpper(splitted[1]) == "OFF")
+                {
+                    // no align algo if set to 3 = off => no draw ref //add disable aligment algo |01.2023
+                    alg_algo = 3;
+                }
             }
-            if (toUpper(splitted[1]) == "FAST")
+
+            else if ((splitted.size() == 3) && (anz_ref < 2))
             {
-                alg_algo = 2;
-            }
-            if (toUpper(splitted[1]) == "OFF")
-            {
-                // no align algo if set to 3 = off => no draw ref //add disable aligment algo |01.2023
-                alg_algo = 3;
+                if ((isStringNumeric(splitted[1])) && (isStringNumeric(splitted[2])))
+                {
+                    References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
+                    References[anz_ref].target_x = std::stod(splitted[1]);
+                    References[anz_ref].target_y = std::stod(splitted[2]);
+                    anz_ref++;
+                }
+                else
+                {
+                    References[anz_ref].image_file = FormatFileName("/sdcard" + splitted[0]);
+                    References[anz_ref].target_x = 10;
+                    References[anz_ref].target_y = 10;
+                    anz_ref++;
+                }
             }
         }
     }
@@ -245,7 +263,7 @@ bool ClassFlowAlignment::doFlow(string time)
 
     if ((initialrotate != 0) || initialflip)
     {
-        if (use_antialiasing)
+        if (Camera.ImageAntialiasing)
         {
             rt.RotateAntiAliasing(initialrotate);
         }
@@ -263,11 +281,27 @@ bool ClassFlowAlignment::doFlow(string time)
     // no align algo if set to 3 = off //add disable aligment algo |01.2023
     if (References[0].alignment_algo != 3)
     {
-        if (!AlignAndCutImage->Align(&References[0], &References[1]))
+        int res = AlignAndCutImage->Align(&References[0], &References[1]);
+        if (res >= Alignment_OK)
         {
-            SaveReferenceAlignmentValues();
+            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Alignment OK");
+            if (res == Fast_Alignment_OK)
+            {
+                SaveReferenceAlignmentValues();
+            }
+            flowctrl.AlignmentOk = true;
         }
-    } // no align
+        else
+        {
+            // Alignment failed
+            LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Alignment failed");
+            flowctrl.AlignmentOk = false;
+        }
+    }
+    else
+    {
+        flowctrl.AlignmentOk = true;
+    }
 
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
     if (AlgROI)

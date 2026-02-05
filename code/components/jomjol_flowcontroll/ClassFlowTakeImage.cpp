@@ -136,6 +136,15 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
                 }
             }
 
+            else if (_parameter == "CAMXCLKFREQMHZ")
+            {
+                if (isStringNumeric(_value))
+                {
+                    int _CamXclkFreqMhz = std::stoi(_value);
+                    CCstatus.CamXclkFreqMhz = clipInt(_CamXclkFreqMhz, 20, 1);
+                }
+            }
+
             else if (_parameter == "CAMGAINCEILING")
             {
                 if (isStringNumeric(_value))

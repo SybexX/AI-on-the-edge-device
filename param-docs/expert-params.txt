@@ -27,10 +27,12 @@ CamZoomOffsetY
 demo
 SearchFieldX
 SearchFieldY
+SearchMaxAngle
 AlignmentAlgo
 CNNGoodThreshold
 PreValueAgeStartup
 ErrorMessage
+MaxFlowRate
 IO0
 IO1
 IO3

@@ -1,15 +1,16 @@
-#include "../../include/defines.h"
-#include "ClassFlowCNNGeneral.h"
-
 #include <math.h>
 #include <iomanip>
 #include <sys/types.h>
-#include <sstream> // std::stringstream
+#include <sstream>
 
+#include "../../include/defines.h"
 #include "Helper.h"
 
+#include "ClassFlowCNNGeneral.h"
+#include "MainFlowControl.h"
 #include "CTfLiteClass.h"
 #include "ClassLogFile.h"
+
 #include "esp_log.h"
 
 static const char *TAG = "CNN";
@@ -23,9 +24,10 @@ static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in 
 
 ClassFlowCNNGeneral::ClassFlowCNNGeneral(ClassFlowAlignment *_flowalign, t_CNNType _cnntype) : ClassFlowImage(NULL, TAG)
 {
-    cnnmodelfile = "";
-    modelxsize = 1;
-    modelysize = 1;
+    cnn_model_file = "";
+    model_x_size = 1;
+    model_y_size = 1;
+
     CNNGoodThreshold = 0.0;
     ListFlowControll = NULL;
     previousElement = NULL;
@@ -35,6 +37,30 @@ ClassFlowCNNGeneral::ClassFlowCNNGeneral(ClassFlowAlignment *_flowalign, t_CNNTy
     CNNType = AutoDetect;
     flowpostalignment = _flowalign;
     imagesRetention = 5;
+}
+
+std::vector<double> ClassFlowCNNGeneral::getMeterValues(int _number = 0)
+{
+    std::vector<double> meterValues;
+
+    if (GENERAL[_number]->ROI.size() == 0)
+    {
+        return meterValues;
+    }
+
+    for (int _roi = 0; _roi < GENERAL[_number]->ROI.size(); ++_roi)
+    {
+        if (CNNType == Digit)
+        {
+            meterValues.push_back(GENERAL[_number]->ROI[_roi]->result_klasse);
+        }
+        else
+        {
+            meterValues.push_back(GENERAL[_number]->ROI[_roi]->result_float);
+        }
+    }
+
+    return meterValues;
 }
 
 std::string ClassFlowCNNGeneral::getReadout(int _analog = 0, bool _extendedResolution, int prev, float _before_narrow_Analog, float AnalogToDigitTransitionStart)
@@ -386,7 +412,7 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE *pfile, std::string &aktparamgraph)
 
             else if (_param == "MODEL")
             {
-                cnnmodelfile = splitted[1];
+                cnn_model_file = splitted[1];
             }
 
             else if (_param == "CNNGOODTHRESHOLD")
@@ -409,24 +435,24 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE *pfile, std::string &aktparamgraph)
 
                 if (isStringNumeric(splitted[1]) && isStringNumeric(splitted[2]) && isStringNumeric(splitted[3]) && isStringNumeric(splitted[4]))
                 {
-                    new_roi->posx = std::stoi(splitted[1]);
-                    new_roi->posy = std::stoi(splitted[2]);
-                    new_roi->deltax = std::stoi(splitted[3]);
-                    new_roi->deltay = std::stoi(splitted[4]);
+                    new_roi->pos_x = std::stoi(splitted[1]);
+                    new_roi->pos_y = std::stoi(splitted[2]);
+                    new_roi->delta_x = std::stoi(splitted[3]);
+                    new_roi->delta_y = std::stoi(splitted[4]);
                 }
                 else
                 {
-                    new_roi->posx = 0;
-                    new_roi->posy = 0;
-                    new_roi->deltax = 30;
-                    new_roi->deltay = 30;
+                    new_roi->pos_x = 0;
+                    new_roi->pos_y = 0;
+                    new_roi->delta_x = 30;
+                    new_roi->delta_y = 30;
                 }
 
-                new_roi->CCW = false;
+                new_roi->ccw = false;
 
                 if (splitted.size() >= 6)
                 {
-                    new_roi->CCW = alphanumericToBoolean(splitted[5]);
+                    new_roi->ccw = alphanumericToBoolean(splitted[5]);
                 }
 
                 new_roi->result_float = -1;
@@ -447,8 +473,8 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE *pfile, std::string &aktparamgraph)
     {
         for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i)
         {
-            GENERAL[_ana]->ROI[i]->image = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name, modelxsize, modelysize, modelchannel);
-            GENERAL[_ana]->ROI[i]->image_org = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name + " original", GENERAL[_ana]->ROI[i]->deltax, GENERAL[_ana]->ROI[i]->deltay, 3);
+            GENERAL[_ana]->ROI[i]->image = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name, model_x_size, model_y_size, model_channel);
+            GENERAL[_ana]->ROI[i]->image_org = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name + " original", GENERAL[_ana]->ROI[i]->delta_x, GENERAL[_ana]->ROI[i]->delta_y, 3);
         }
     }
 
@@ -512,7 +538,7 @@ general *ClassFlowCNNGeneral::GetGENERAL(std::string _name, bool _create = true)
 
     _ret->ROI.push_back(neuroi);
 
-    ESP_LOGD(TAG, "GetGENERAL - GENERAL %s - roi %s - CCW: %d", _analog.c_str(), _roi.c_str(), neuroi->CCW);
+    ESP_LOGD(TAG, "GetGENERAL - GENERAL %s - roi %s - CCW: %d", _analog.c_str(), _roi.c_str(), neuroi->ccw);
 
     return _ret;
 }
@@ -546,6 +572,7 @@ bool ClassFlowCNNGeneral::doFlow(std::string time)
 #ifdef HEAP_TRACING_CLASS_FLOW_CNN_GENERAL_DO_ALING_AND_CUT
     // register a buffer to record the memory trace
     ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, NUM_RECORDS));
+    
     // start tracing
     ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
 #endif
@@ -574,7 +601,7 @@ bool ClassFlowCNNGeneral::doFlow(std::string time)
     return true;
 }
 
-bool ClassFlowCNNGeneral::doAlignAndCut(std::string time)
+bool ClassFlowCNNGeneral::doAlignAndCut(std::string time_value)
 {
     if (disabled)
     {
@@ -583,35 +610,35 @@ bool ClassFlowCNNGeneral::doAlignAndCut(std::string time)
 
     CAlignAndCutImage *caic = flowpostalignment->GetAlignAndCutImage();
 
-    for (int _ana = 0; _ana < GENERAL.size(); ++_ana)
+    for (int _number = 0; _number < GENERAL.size(); ++_number)
     {
-        for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i)
+        for (int _roi = 0; _roi < GENERAL[_number]->ROI.size(); ++_roi)
         {
-            ESP_LOGD(TAG, "General %d - Align&Cut", i);
+            ESP_LOGD(TAG, "General %d - Align&Cut", _roi);
 
-            caic->CutAndSave(GENERAL[_ana]->ROI[i]->posx, GENERAL[_ana]->ROI[i]->posy, GENERAL[_ana]->ROI[i]->deltax, GENERAL[_ana]->ROI[i]->deltay, GENERAL[_ana]->ROI[i]->image_org);
-            if (SaveAllFiles)
+            caic->CutAndSave(GENERAL[_number]->ROI[_roi]->pos_x, GENERAL[_number]->ROI[_roi]->pos_y, GENERAL[_number]->ROI[_roi]->delta_x, GENERAL[_number]->ROI[_roi]->delta_y, GENERAL[_number]->ROI[_roi]->image_org);
+            if (Camera.SaveAllFiles)
             {
-                if (GENERAL[_ana]->name == "default")
+                if (GENERAL[_number]->name == "default")
                 {
-                    GENERAL[_ana]->ROI[i]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    GENERAL[_number]->ROI[_roi]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_number]->ROI[_roi]->name + ".jpg"));
                 }
                 else
                 {
-                    GENERAL[_ana]->ROI[i]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    GENERAL[_number]->ROI[_roi]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name + ".jpg"));
                 }
             }
 
-            GENERAL[_ana]->ROI[i]->image_org->Resize(modelxsize, modelysize, GENERAL[_ana]->ROI[i]->image);
-            if (SaveAllFiles)
+            GENERAL[_number]->ROI[_roi]->image_org->Resize(model_x_size, model_y_size, GENERAL[_number]->ROI[_roi]->image);
+            if (Camera.SaveAllFiles)
             {
-                if (GENERAL[_ana]->name == "default")
+                if (GENERAL[_number]->name == "default")
                 {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    GENERAL[_number]->ROI[_roi]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_number]->ROI[_roi]->name + ".jpg"));
                 }
                 else
                 {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    GENERAL[_number]->ROI[_roi]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name + ".jpg"));
                 }
             }
         }
@@ -634,10 +661,10 @@ void ClassFlowCNNGeneral::DrawROI(CImageBasis *temp_image)
             {
                 for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i)
                 {
-                    temp_image->drawRect(GENERAL[_ana]->ROI[i]->posx, GENERAL[_ana]->ROI[i]->posy, GENERAL[_ana]->ROI[i]->deltax, GENERAL[_ana]->ROI[i]->deltay, r, g, b, 1);
-                    temp_image->drawEllipse((int)(GENERAL[_ana]->ROI[i]->posx + GENERAL[_ana]->ROI[i]->deltax / 2), (int)(GENERAL[_ana]->ROI[i]->posy + GENERAL[_ana]->ROI[i]->deltay / 2), (int)(GENERAL[_ana]->ROI[i]->deltax / 2), (int)(GENERAL[_ana]->ROI[i]->deltay / 2), r, g, b, 2);
-                    temp_image->drawLine((int)(GENERAL[_ana]->ROI[i]->posx + GENERAL[_ana]->ROI[i]->deltax / 2), (int)GENERAL[_ana]->ROI[i]->posy, (int)(GENERAL[_ana]->ROI[i]->posx + GENERAL[_ana]->ROI[i]->deltax / 2), (int)(GENERAL[_ana]->ROI[i]->posy + GENERAL[_ana]->ROI[i]->deltay), r, g, b, 2);
-                    temp_image->drawLine((int)GENERAL[_ana]->ROI[i]->posx, (int)(GENERAL[_ana]->ROI[i]->posy + GENERAL[_ana]->ROI[i]->deltay / 2), (int)GENERAL[_ana]->ROI[i]->posx + GENERAL[_ana]->ROI[i]->deltax, (int)(GENERAL[_ana]->ROI[i]->posy + GENERAL[_ana]->ROI[i]->deltay / 2), r, g, b, 2);
+                    temp_image->drawRect(GENERAL[_ana]->ROI[i]->pos_x, GENERAL[_ana]->ROI[i]->pos_y, GENERAL[_ana]->ROI[i]->delta_x, GENERAL[_ana]->ROI[i]->delta_y, r, g, b, 1);
+                    temp_image->drawEllipse((int)(GENERAL[_ana]->ROI[i]->pos_x + GENERAL[_ana]->ROI[i]->delta_x / 2), (int)(GENERAL[_ana]->ROI[i]->pos_y + GENERAL[_ana]->ROI[i]->delta_y / 2), (int)(GENERAL[_ana]->ROI[i]->delta_x / 2), (int)(GENERAL[_ana]->ROI[i]->delta_y / 2), r, g, b, 2);
+                    temp_image->drawLine((int)(GENERAL[_ana]->ROI[i]->pos_x + GENERAL[_ana]->ROI[i]->delta_x / 2), (int)GENERAL[_ana]->ROI[i]->pos_y, (int)(GENERAL[_ana]->ROI[i]->pos_x + GENERAL[_ana]->ROI[i]->delta_x / 2), (int)(GENERAL[_ana]->ROI[i]->pos_y + GENERAL[_ana]->ROI[i]->delta_y), r, g, b, 2);
+                    temp_image->drawLine((int)GENERAL[_ana]->ROI[i]->pos_x, (int)(GENERAL[_ana]->ROI[i]->pos_y + GENERAL[_ana]->ROI[i]->delta_y / 2), (int)GENERAL[_ana]->ROI[i]->pos_x + GENERAL[_ana]->ROI[i]->delta_x, (int)(GENERAL[_ana]->ROI[i]->pos_y + GENERAL[_ana]->ROI[i]->delta_y / 2), r, g, b, 2);
                 }
             }
         }
@@ -647,7 +674,7 @@ void ClassFlowCNNGeneral::DrawROI(CImageBasis *temp_image)
             {
                 for (int i = 0; i < GENERAL[_dig]->ROI.size(); ++i)
                 {
-                    temp_image->drawRect(GENERAL[_dig]->ROI[i]->posx, GENERAL[_dig]->ROI[i]->posy, GENERAL[_dig]->ROI[i]->deltax, GENERAL[_dig]->ROI[i]->deltay, 0, 0, (255 - _dig * 100), 2);
+                    temp_image->drawRect(GENERAL[_dig]->ROI[i]->pos_x, GENERAL[_dig]->ROI[i]->pos_y, GENERAL[_dig]->ROI[i]->delta_x, GENERAL[_dig]->ROI[i]->delta_y, 0, 0, (255 - _dig * 100), 2);
                 }
             }
         }
@@ -662,13 +689,12 @@ bool ClassFlowCNNGeneral::getNetworkParameter()
     }
 
     CTfLiteClass *tflite = new CTfLiteClass;
-    std::string temp_cnn = "/sdcard" + cnnmodelfile;
+    std::string temp_cnn = "/sdcard" + cnn_model_file;
     temp_cnn = FormatFileName(temp_cnn);
-    ESP_LOGD(TAG, "%s", temp_cnn.c_str());
 
     if (!tflite->LoadModel(temp_cnn))
     {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can't load tflite model " + cnnmodelfile + " -> Init aborted!");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can't load tflite model " + cnn_model_file + " -> Init aborted!");
         LogFile.WriteHeapInfo("getNetworkParameter-LoadModel");
         delete tflite;
         return false;
@@ -685,9 +711,10 @@ bool ClassFlowCNNGeneral::getNetworkParameter()
     if (CNNType == AutoDetect)
     {
         tflite->GetInputDimension(false);
-        modelxsize = tflite->ReadInputDimenstion(0);
-        modelysize = tflite->ReadInputDimenstion(1);
-        modelchannel = tflite->ReadInputDimenstion(2);
+
+        model_x_size = tflite->ReadInputDimenstion(0);
+        model_y_size = tflite->ReadInputDimenstion(1);
+        model_channel = tflite->ReadInputDimenstion(2);
 
         int anz_output_dimensions = tflite->GetAnzOutPut();
         switch (anz_output_dimensions)
@@ -704,17 +731,8 @@ bool ClassFlowCNNGeneral::getNetworkParameter()
             CNNType = Digit;
             ESP_LOGD(TAG, "TFlite-Type set to Digit");
             break;
-            /*            case 20:
-                            CNNType = DigitHyprid10;
-                            ESP_LOGD(TAG, "TFlite-Type set to DigitHyprid10");
-                            break;
-            */
-            //            case 22:
-            //                CNNType = DigitHyprid;
-            //                ESP_LOGD(TAG, "TFlite-Type set to DigitHyprid");
-            //                break;
         case 100:
-            if (modelxsize == 32 && modelysize == 32)
+            if (model_x_size == 32 && model_y_size == 32)
             {
                 CNNType = Analogue100;
                 ESP_LOGD(TAG, "TFlite-Type set to Analogue100");
@@ -734,23 +752,22 @@ bool ClassFlowCNNGeneral::getNetworkParameter()
     return true;
 }
 
-bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time)
+// wird von "bool ClassFlowCNNGeneral::doFlow(std::string time_value)" aufgerufen
+bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time_value)
 {
     if (disabled)
     {
-        return true;
+        return false;
     }
 
-    std::string logPath = CreateLogFolder(time);
+    std::string cnn_model = "/sdcard" + cnn_model_file;
+    cnn_model = FormatFileName(cnn_model);
 
     CTfLiteClass *tflite = new CTfLiteClass;
-    std::string temp_cnn = "/sdcard" + cnnmodelfile;
-    temp_cnn = FormatFileName(temp_cnn);
-    ESP_LOGD(TAG, "%s", temp_cnn.c_str());
 
-    if (!tflite->LoadModel(temp_cnn))
+    if (!tflite->LoadModel(cnn_model))
     {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can't load tflite model " + cnnmodelfile + " -> Exec aborted this round!");
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can't load tflite model " + cnn_model_file + " -> Exec aborted this round!");
         LogFile.WriteHeapInfo("doNeuralNetwork-LoadModel");
         delete tflite;
         return false;
@@ -764,176 +781,367 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time)
         return false;
     }
 
+    std::string logPath = CreateLogFolder(time_value);
+
+    std::vector<NumberPost *> numbers = flowctrl.getNumbers();
+
+    time_t _imagetime; // in seconds
+    time(&_imagetime);
+    localtime(&_imagetime);
+#if (defined ESP_LOG_DEBUG_ENABLE)
+    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "doNeuralNetwork, _imagetime: " + std::to_string(_imagetime));
+#endif
     // For each NUMBER
-    for (int n = 0; n < GENERAL.size(); ++n)
+    for (int _number = 0; _number < GENERAL.size(); ++_number)
     {
-        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Processing Number '" + GENERAL[n]->name + "'");
-        // For each ROI
-        for (int roi = 0; roi < GENERAL[n]->ROI.size(); ++roi)
+#if (defined ESP_LOG_DEBUG_ENABLE)
+        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Processing Number '" + GENERAL[_number]->name + "'");
+#endif
+        int start_roi = 0;
+
+        if ((numbers[_number]->useMaxFlowRate) && (numbers[_number]->PreValueOkay) && (numbers[_number]->timeStampLastValue == numbers[_number]->timeStampLastPreValue))
         {
-            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "ROI #" + std::to_string(roi) + " - TfLite");
-            // ESP_LOGD(TAG, "General %d - TfLite", i);
+            int _AnzahlDigit = numbers[_number]->AnzahlDigit;
+            int _AnzahlAnalog = numbers[_number]->AnzahlAnalog;
+
+            float _MaxFlowRate = (numbers[_number]->MaxFlowRate / 60); // in unit/minutes
+
+            float _LastPreValueTimeDifference = (float)((difftime(_imagetime, numbers[_number]->timeStampLastPreValue)) / 60); // in minutes
+
+            std::string _PreValue_old = RundeOutput(abs(numbers[_number]->PreValue), numbers[_number]->Nachkomma);
+            std::string _PreValue_new1 = RundeOutput(abs(numbers[_number]->PreValue + (_MaxFlowRate * _LastPreValueTimeDifference)), numbers[_number]->Nachkomma);
+            std::string _PreValue_new2 = RundeOutput(abs(numbers[_number]->PreValue - (_MaxFlowRate * _LastPreValueTimeDifference)), numbers[_number]->Nachkomma);
+
+            // make all numbers the same length
+            size_t max_len = std::max(_PreValue_old.length(), _PreValue_new1.length());
+            max_len = std::max(max_len, _PreValue_new2.length());
+
+            while (_PreValue_old.length() < max_len)
+            {
+                _PreValue_old = "0" + _PreValue_old;
+            }
+
+            while (_PreValue_new1.length() < max_len)
+            {
+                _PreValue_new1 = "0" + _PreValue_new1;
+            }
+
+            while (_PreValue_new2.length() < max_len)
+            {
+                _PreValue_new2 = "0" + _PreValue_new2;
+            }
+
+            ////////////////////////////////////////////////////
+            // (+) Find out which Numbers should not change
+            int _DecimalPoint1 = 0;
+            int _NumbersNotChanged1 = 0;
+            while (((int)_PreValue_old.length() > _NumbersNotChanged1) && (_PreValue_old[_NumbersNotChanged1] == _PreValue_new1[_NumbersNotChanged1]))
+            {
+                if (_PreValue_old[_NumbersNotChanged1] == '.')
+                {
+                    _DecimalPoint1 = 1;
+                }
+                _NumbersNotChanged1++;
+            }
+            _NumbersNotChanged1 = _NumbersNotChanged1 - _DecimalPoint1;
+
+            if ((_AnzahlDigit + _AnzahlAnalog) > (int)_PreValue_old.length())
+            {
+                _NumbersNotChanged1 = _NumbersNotChanged1 + ((_AnzahlDigit + _AnzahlAnalog) - (int)_PreValue_old.length());
+            }
+#if (defined ESP_LOG_DEBUG_ENABLE)
+            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "(+) Number of ROIs that should not change: " + std::to_string(_NumbersNotChanged1));
+#endif
+
+            ////////////////////////////////////////////////////
+            // (-) Find out which Numbers should not change
+            int _NumbersNotChanged2 = _NumbersNotChanged1;
+            if (numbers[_number]->AllowNegativeRates)
+            {
+                int _DecimalPoint2 = 0;
+                while (((int)_PreValue_old.length() > _NumbersNotChanged2) && (_PreValue_old[_NumbersNotChanged2] == _PreValue_new2[_NumbersNotChanged2]))
+                {
+                    if (_PreValue_old[_NumbersNotChanged2] == '.')
+                    {
+                        _DecimalPoint2 = 1;
+                    }
+                    _NumbersNotChanged2++;
+                }
+                _NumbersNotChanged2 = _NumbersNotChanged2 - _DecimalPoint2;
+
+                if ((_AnzahlDigit + _AnzahlAnalog) > (int)_PreValue_old.length())
+                {
+                    _NumbersNotChanged2 = _NumbersNotChanged2 + ((_AnzahlDigit + _AnzahlAnalog) - (int)_PreValue_old.length());
+                }
+#if (defined ESP_LOG_DEBUG_ENABLE)
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "(-) Number of ROIs that should not change: " + std::to_string(_NumbersNotChanged2));
+#endif
+            }
+
+            ////////////////////////////////////////////////////
+            int start_digit_new = 0;
+            int start_analog_new = 0;
+            int _NumbersNotChanged = std::min(_NumbersNotChanged1, _NumbersNotChanged2);
+
+            if (_NumbersNotChanged <= _AnzahlDigit)
+            {
+                // The change already takes place at the digit ROIs
+                start_digit_new = (_AnzahlDigit - _NumbersNotChanged);
+                start_digit_new = (_AnzahlDigit - start_digit_new);
+            }
+            else
+            {
+                // The change only takes place at the analog ROIs
+                start_digit_new = _AnzahlDigit;
+                start_analog_new = (_AnzahlAnalog - (_NumbersNotChanged - _AnzahlDigit));
+                start_analog_new = (_AnzahlAnalog - start_analog_new);
+            }
+
+#if (defined ESP_LOG_DEBUG_ENABLE)
+            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "From the " + std::to_string(start_digit_new) + " th digit ROI is evaluated");
+            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "From the " + std::to_string(start_analog_new) + " th analog ROI is evaluated");
+#endif
+
+            ////////////////////////////////////////////////////
+            if (CNNType == Digit || CNNType == Digit100 || CNNType == DoubleHyprid10)
+            {
+                start_roi = start_digit_new;
+            }
+            else if (CNNType == Analogue || CNNType == Analogue100)
+            {
+                start_roi = start_analog_new;
+            }
+        }
+
+        // For each ROI
+        for (int _roi = 0; _roi < GENERAL[_number]->ROI.size(); ++_roi)
+        {
+            LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "ROI #" + std::to_string(_roi) + " - TfLite");
 
             switch (CNNType)
             {
             case Analogue:
-                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: Analogue");
-                {
-                    tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);
-                    tflite->Invoke();
-                    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "After Invoke");
-
-                    float f1 = tflite->GetOutputValue(0);
-                    float f2 = tflite->GetOutputValue(1);
-                    float result = fmod(atan2(f1, f2) / (M_PI * 2) + 2, 1);
-
-                    if (GENERAL[n]->ROI[roi]->CCW)
-                    {
-                        GENERAL[n]->ROI[roi]->result_float = 10 - (result * 10);
-                    }
-                    else
-                    {
-                        GENERAL[n]->ROI[roi]->result_float = result * 10;
-                    }
-
-                    GENERAL[n]->ROI[roi]->isReject = false;
-
-                    ESP_LOGD(TAG, "General result (Analog)%i - CCW: %d -  %f", roi, GENERAL[n]->ROI[roi]->CCW, GENERAL[n]->ROI[roi]->result_float);
-
-                    if (isLogImage)
-                    {
-                        std::string _imagename = GENERAL[n]->name + "_" + GENERAL[n]->ROI[roi]->name;
-                        if (isLogImageSelect)
-                        {
-                            if (LogImageSelect.find(GENERAL[n]->ROI[roi]->name) != std::string::npos)
-                            {
-                                LogImage(logPath, _imagename, &GENERAL[n]->ROI[roi]->result_float, NULL, time, GENERAL[n]->ROI[roi]->image_org);
-                            }
-                        }
-                    }
-                }
-                break;
-
-            case Digit:
-                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: Digit");
-                {
-                    GENERAL[n]->ROI[roi]->result_klasse = 0;
-                    GENERAL[n]->ROI[roi]->result_klasse = tflite->GetClassFromImageBasis(GENERAL[n]->ROI[roi]->image);
-
-                    GENERAL[n]->ROI[roi]->isReject = false;
-
-                    ESP_LOGD(TAG, "General result (Digit)%i: %d", roi, GENERAL[n]->ROI[roi]->result_klasse);
-
-                    if (isLogImage)
-                    {
-                        std::string _imagename = GENERAL[n]->name + "_" + GENERAL[n]->ROI[roi]->name;
-                        if (isLogImageSelect)
-                        {
-                            if (LogImageSelect.find(GENERAL[n]->ROI[roi]->name) != std::string::npos)
-                            {
-                                LogImage(logPath, _imagename, NULL, &GENERAL[n]->ROI[roi]->result_klasse, time, GENERAL[n]->ROI[roi]->image_org);
-                            }
-                        }
-                    }
-                }
-                break;
-
-            case DoubleHyprid10:
             {
-                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: DoubleHyprid10");
-                tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: Analogue");
+
+                tflite->LoadInputImageBasis(GENERAL[_number]->ROI[_roi]->image);
+
                 tflite->Invoke();
-                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "After Invoke");
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Analogue - After Invoke");
 
-                int _num = tflite->GetOutClassification(0, 9);
-                int _numplus = (_num + 1) % 10;
-                int _numminus = (_num - 1 + 10) % 10;
+                float _value1 = tflite->GetOutputValue(0);
+                float _value2 = tflite->GetOutputValue(1);
 
-                float _val = tflite->GetOutputValue(_num);
-                float _valplus = tflite->GetOutputValue(_numplus);
-                float _valminus = tflite->GetOutputValue(_numminus);
+                float _result = fmod((atan2(_value1, _value2) / (M_PI * 2.0f) + 2.0f), 1.0f);
 
-                float result = _num;
-                float _fit = 0;
-
-                if (_valplus > _valminus)
+                if (GENERAL[_number]->ROI[_roi]->ccw)
                 {
-                    result = result + _valplus / (_valplus + _val);
-                    _fit = _val + _valplus;
+                    _result = 10.0f - (_result * 10.0f);
                 }
                 else
                 {
-                    result = result - _valminus / (_val + _valminus);
-                    _fit = _val + _valminus;
+                    _result = _result * 10.0f;
                 }
 
-                std::string temp_string = "_num (p, m): " + to_string(_num) + " " + to_string(_numplus) + " " + to_string(_numminus);
-                temp_string = temp_string + " _val (p, m): " + to_string(_val) + " " + to_string(_valplus) + " " + to_string(_valminus);
-                temp_string = temp_string + " result: " + to_string(result) + " _fit: " + to_string(_fit);
-                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, temp_string);
+                _result = floor(_result * 100.0f) / 100.0f;
 
-                float _result_save_file = result;
-
-                if (_fit < CNNGoodThreshold)
+                if (_roi >= start_roi)
                 {
-                    GENERAL[n]->ROI[roi]->isReject = true;
-                    result = -1;
-                    _result_save_file += 100; // In case fit is not sufficient, the result should still be saved with "-10x.y".
-                    std::string temp_string = "Value Rejected due to Threshold (Fit: " + to_string(_fit) + ", Threshold: " + to_string(CNNGoodThreshold) + ")";
-                    LogFile.WriteToFile(ESP_LOG_WARN, TAG, temp_string);
+                    GENERAL[_number]->ROI[_roi]->result_float = _result;
+                }
+
+                GENERAL[_number]->ROI[_roi]->raw_result_float = _result;
+
+                if ((_result < 0.0f) || (_result >= 10.0f))
+                {
+                    GENERAL[_number]->ROI[_roi]->isReject = true;
                 }
                 else
                 {
-                    GENERAL[n]->ROI[roi]->isReject = false;
+                    GENERAL[_number]->ROI[_roi]->isReject = false;
                 }
 
-                GENERAL[n]->ROI[roi]->result_float = result;
-
-                ESP_LOGD(TAG, "Result General(Analog)%i: %f", roi, GENERAL[n]->ROI[roi]->result_float);
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "General result (Analog) - roi_" + std::to_string(_roi) + ": " + std::to_string(GENERAL[_number]->ROI[_roi]->raw_result_float));
 
                 if (isLogImage)
                 {
-                    std::string _imagename = GENERAL[n]->name + "_" + GENERAL[n]->ROI[roi]->name;
+                    std::string _image_name = GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name;
+
                     if (isLogImageSelect)
                     {
-                        if (LogImageSelect.find(GENERAL[n]->ROI[roi]->name) != std::string::npos)
+                        if (LogImageSelect.find(GENERAL[_number]->ROI[_roi]->name) != std::string::npos)
                         {
-                            LogImage(logPath, _imagename, &_result_save_file, NULL, time, GENERAL[n]->ROI[roi]->image_org);
+                            LogImage(logPath, _image_name, &GENERAL[_number]->ROI[_roi]->raw_result_float, NULL, time_value, GENERAL[_number]->ROI[_roi]->image_org);
                         }
                     }
                 }
             }
             break;
+
+            case Digit:
+            {
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: Digit");
+
+                int _result = tflite->GetClassFromImageBasis(GENERAL[_number]->ROI[_roi]->image);
+
+                if (_roi >= start_roi)
+                {
+                    GENERAL[_number]->ROI[_roi]->result_klasse = _result;
+                }
+
+                GENERAL[_number]->ROI[_roi]->raw_result_klasse = _result;
+
+                if ((_result < 0) || (_result >= 10))
+                {
+                    // _result = -1;
+                    GENERAL[_number]->ROI[_roi]->isReject = true;
+                }
+                else
+                {
+                    GENERAL[_number]->ROI[_roi]->isReject = false;
+                }
+
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "General result (Digit) - roi_" + std::to_string(_roi) + ": " + std::to_string(GENERAL[_number]->ROI[_roi]->raw_result_klasse));
+
+                if (isLogImage)
+                {
+                    std::string _image_name = GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name;
+
+                    if (isLogImageSelect)
+                    {
+                        if (LogImageSelect.find(GENERAL[_number]->ROI[_roi]->name) != std::string::npos)
+                        {
+                            LogImage(logPath, _image_name, NULL, &GENERAL[_number]->ROI[_roi]->raw_result_klasse, time_value, GENERAL[_number]->ROI[_roi]->image_org);
+                        }
+                    }
+                }
+            }
+            break;
+
+            case DoubleHyprid10:
+            {
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: DoubleHyprid10");
+
+                tflite->LoadInputImageBasis(GENERAL[_number]->ROI[_roi]->image);
+
+                tflite->Invoke();
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "DoubleHyprid10 - After Invoke");
+
+                int _num = tflite->GetOutClassification(0, 9);
+                int _numplus = (_num + 1) % 10;
+                int _numminus = (_num - 1 + 10) % 10;
+
+                float _value = tflite->GetOutputValue(_num);
+                float _valueplus = tflite->GetOutputValue(_numplus);
+                float _valueminus = tflite->GetOutputValue(_numminus);
+
+                float _result = (float)_num - _valueminus / (_value + _valueminus);
+                float _fit = _value + _valueminus;
+
+                if (_valueplus > _valueminus)
+                {
+                    _result = (float)_num + _valueplus / (_valueplus + _value);
+                    _fit = _value + _valueplus;
+                }
+
+                std::string temp_bufer = "DoubleHyprid10 - _num (plus, minus): " + std::to_string(_num) + " (" + std::to_string(_numplus) + ", " + std::to_string(_numminus) + ")";
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, temp_bufer);
+
+                temp_bufer = "DoubleHyprid10 - _val (plus, minus): " + std::to_string(_value) + " (" + std::to_string(_valueplus) + ", " + std::to_string(_valueminus) + ")";
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, temp_bufer);
+
+                temp_bufer = "DoubleHyprid10 - _result: " + std::to_string(_result) + ", _fit: " + std::to_string(_fit);
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, temp_bufer);
+
+                if (GENERAL[_number]->ROI[_roi]->ccw)
+                {
+                }
+
+                _result = floor(_result * 100.0f) / 100.0f;
+
+                if (_roi >= start_roi)
+                {
+                    GENERAL[_number]->ROI[_roi]->result_float = _result;
+                }
+
+                GENERAL[_number]->ROI[_roi]->raw_result_float = _result;
+
+                if (_fit < CNNGoodThreshold || (_result < 0.0f) || (_result >= 10.0f))
+                {
+                    // _result = -1.0f;
+                    GENERAL[_number]->ROI[_roi]->isReject = true;
+                }
+                else
+                {
+                    GENERAL[_number]->ROI[_roi]->isReject = false;
+                }
+
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Result General(DoubleHyprid10) - roi_" + std::to_string(_roi) + ": raw = " + std::to_string(GENERAL[_number]->ROI[_roi]->raw_result_float) + ", value = " + std::to_string(GENERAL[_number]->ROI[_roi]->result_float));
+
+                if (isLogImage)
+                {
+                    std::string _image_name = GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name;
+
+                    if (isLogImageSelect)
+                    {
+                        if (LogImageSelect.find(GENERAL[_number]->ROI[_roi]->name) != std::string::npos)
+                        {
+                            LogImage(logPath, _image_name, &GENERAL[_number]->ROI[_roi]->raw_result_float, NULL, time_value, GENERAL[_number]->ROI[_roi]->image_org);
+                        }
+                    }
+                }
+            }
+            break;
+
             case Digit100:
             case Analogue100:
             {
                 LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: Digit100 or Analogue100");
-                tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);
+
+                tflite->LoadInputImageBasis(GENERAL[_number]->ROI[_roi]->image);
                 tflite->Invoke();
 
                 int _num = tflite->GetOutClassification();
+                float _result = 0.0f;
 
-                if (GENERAL[n]->ROI[roi]->CCW)
+                if (GENERAL[_number]->ROI[_roi]->ccw)
                 {
-                    GENERAL[n]->ROI[roi]->result_float = 10 - ((float)_num / 10);
+                    _result = 10.0f - ((float)_num / 10.0f);
                 }
                 else
                 {
-                    GENERAL[n]->ROI[roi]->result_float = (float)_num / 10;
+                    _result = (float)_num / 10.0f;
                 }
 
-                GENERAL[n]->ROI[roi]->isReject = false;
+                _result = floor(_result * 100.0f) / 100.0f;
 
-                ESP_LOGD(TAG, "Result General(Analog)%i - CCW: %d -  %f", roi, GENERAL[n]->ROI[roi]->CCW, GENERAL[n]->ROI[roi]->result_float);
+                if (_roi >= start_roi)
+                {
+                    GENERAL[_number]->ROI[_roi]->result_float = _result;
+                }
+
+                GENERAL[_number]->ROI[_roi]->raw_result_float = _result;
+
+                if ((_result < 0.0f) || (_result >= 10.0f))
+                {
+                    GENERAL[_number]->ROI[_roi]->isReject = true;
+                }
+                else
+                {
+                    GENERAL[_number]->ROI[_roi]->isReject = false;
+                }
+
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Result General(Digit100 or Analogue100) - roi_" + std::to_string(_roi) + ": " + std::to_string(GENERAL[_number]->ROI[_roi]->raw_result_float));
 
                 if (isLogImage)
                 {
-                    std::string _imagename = GENERAL[n]->name + "_" + GENERAL[n]->ROI[roi]->name;
+                    std::string _image_name = GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name;
+
                     if (isLogImageSelect)
                     {
-                        if (LogImageSelect.find(GENERAL[n]->ROI[roi]->name) != std::string::npos)
+                        if (LogImageSelect.find(GENERAL[_number]->ROI[_roi]->name) != std::string::npos)
                         {
-                            LogImage(logPath, _imagename, &GENERAL[n]->ROI[roi]->result_float, NULL, time, GENERAL[n]->ROI[roi]->image_org);
+                            LogImage(logPath, _image_name, &GENERAL[_number]->ROI[_roi]->raw_result_float, NULL, time_value, GENERAL[_number]->ROI[_roi]->image_org);
                         }
                     }
                 }
@@ -941,13 +1149,15 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time)
             break;
 
             default:
-                break;
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CNN Type: unknown");
+            }
+            break;
             }
         }
     }
 
     delete tflite;
-
     return true;
 }
 
@@ -961,52 +1171,52 @@ bool ClassFlowCNNGeneral::isExtendedResolution(int _number)
     return true;
 }
 
-std::vector<HTMLInfo *> ClassFlowCNNGeneral::GetHTMLInfo()
+std::vector<HTMLInfo *> ClassFlowCNNGeneral::GetHTMLInfo(void)
 {
     std::vector<HTMLInfo *> result;
 
-    for (int _ana = 0; _ana < GENERAL.size(); ++_ana)
+    for (int _number = 0; _number < GENERAL.size(); ++_number)
     {
-        for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i)
+        for (int _roi = 0; _roi < GENERAL[_number]->ROI.size(); ++_roi)
         {
-            ESP_LOGD(TAG, "Image: %d", (int)GENERAL[_ana]->ROI[i]->image);
-            if (GENERAL[_ana]->ROI[i]->image)
+            ESP_LOGD(TAG, "Image: %d", (int)GENERAL[_number]->ROI[_roi]->image);
+            if (GENERAL[_number]->ROI[_roi]->image)
             {
-                if (GENERAL[_ana]->name == "default")
+                if (GENERAL[_number]->name == "default")
                 {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    GENERAL[_number]->ROI[_roi]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_number]->ROI[_roi]->name + ".jpg"));
                 }
                 else
                 {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    GENERAL[_number]->ROI[_roi]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name + ".jpg"));
                 }
             }
 
-            HTMLInfo *temp_html_info = new HTMLInfo;
-            if (GENERAL[_ana]->name == "default")
+            HTMLInfo *temp_info = new HTMLInfo;
+            if (GENERAL[_number]->name == "default")
             {
-                temp_html_info->filename = GENERAL[_ana]->ROI[i]->name + ".jpg";
-                temp_html_info->filename_org = GENERAL[_ana]->ROI[i]->name + ".jpg";
+                temp_info->filename = GENERAL[_number]->ROI[_roi]->name + ".jpg";
+                temp_info->filename_org = GENERAL[_number]->ROI[_roi]->name + ".jpg";
             }
             else
             {
-                temp_html_info->filename = GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg";
-                temp_html_info->filename_org = GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg";
+                temp_info->filename = GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name + ".jpg";
+                temp_info->filename_org = GENERAL[_number]->name + "_" + GENERAL[_number]->ROI[_roi]->name + ".jpg";
             }
 
             if (CNNType == Digit)
             {
-                temp_html_info->val = GENERAL[_ana]->ROI[i]->result_klasse;
+                temp_info->val = (float)GENERAL[_number]->ROI[_roi]->raw_result_klasse;
             }
             else
             {
-                temp_html_info->val = GENERAL[_ana]->ROI[i]->result_float;
+                temp_info->val = GENERAL[_number]->ROI[_roi]->raw_result_float;
             }
 
-            temp_html_info->image = GENERAL[_ana]->ROI[i]->image;
-            temp_html_info->image_org = GENERAL[_ana]->ROI[i]->image_org;
+            temp_info->image = GENERAL[_number]->ROI[_roi]->image;
+            temp_info->image_org = GENERAL[_number]->ROI[_roi]->image_org;
 
-            result.push_back(temp_html_info);
+            result.push_back(temp_info);
         }
     }
 
@@ -1059,52 +1269,53 @@ void ClassFlowCNNGeneral::UpdateNameNumbers(std::vector<std::string> *_name_numb
     }
 }
 
-std::string ClassFlowCNNGeneral::getReadoutRawString(int _analog)
+std::string ClassFlowCNNGeneral::getReadoutRawString(int _number)
 {
     std::string temp_string = "";
 
-    if (_analog >= GENERAL.size() || GENERAL[_analog] == NULL || GENERAL[_analog]->ROI.size() == 0)
+    if (_number >= GENERAL.size() || GENERAL[_number] == NULL || GENERAL[_number]->ROI.size() == 0)
     {
         return temp_string;
     }
 
-    for (int i = 0; i < GENERAL[_analog]->ROI.size(); ++i)
+    for (int _roi = 0; _roi < GENERAL[_number]->ROI.size(); ++_roi)
     {
         if (CNNType == Analogue || CNNType == Analogue100)
         {
-            if ((GENERAL[_analog]->ROI[i]->result_float < 0) || (GENERAL[_analog]->ROI[i]->result_float >= 10))
+            if ((GENERAL[_number]->ROI[_roi]->raw_result_float < 0.0f) || (GENERAL[_number]->ROI[_roi]->raw_result_float >= 10.0f))
             {
                 temp_string = temp_string + ",N";
             }
             else
             {
-                temp_string = temp_string + "," + RundeOutput(GENERAL[_analog]->ROI[i]->result_float, 1);
+                temp_string = temp_string + "," + RundeOutput(GENERAL[_number]->ROI[_roi]->raw_result_float, 1);
             }
         }
 
         else if (CNNType == Digit)
         {
-            if ((GENERAL[_analog]->ROI[i]->result_klasse < 0) || (GENERAL[_analog]->ROI[i]->result_klasse >= 10))
+            if ((GENERAL[_number]->ROI[_roi]->raw_result_klasse < 0) || (GENERAL[_number]->ROI[_roi]->raw_result_klasse >= 10))
             {
                 temp_string = temp_string + ",N";
             }
             else
             {
-                temp_string = temp_string + "," + RundeOutput(GENERAL[_analog]->ROI[i]->result_klasse, 0);
+                temp_string = temp_string + "," + RundeOutput(GENERAL[_number]->ROI[_roi]->raw_result_klasse, 0);
             }
         }
 
         else if ((CNNType == DoubleHyprid10) || (CNNType == Digit100))
         {
-            if ((GENERAL[_analog]->ROI[i]->result_float < 0) || (GENERAL[_analog]->ROI[i]->result_float >= 10))
+            if ((GENERAL[_number]->ROI[_roi]->raw_result_float < 0.0f) || (GENERAL[_number]->ROI[_roi]->raw_result_float >= 10.0f))
             {
                 temp_string = temp_string + ",N";
             }
             else
             {
-                temp_string = temp_string + "," + RundeOutput(GENERAL[_analog]->ROI[i]->result_float, 1);
+                temp_string = temp_string + "," + RundeOutput(GENERAL[_number]->ROI[_roi]->raw_result_float, 1);
             }
         }
     }
+
     return temp_string;
 }

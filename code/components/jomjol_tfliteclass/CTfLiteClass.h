@@ -14,42 +14,42 @@
 
 class CTfLiteClass
 {
-    protected:
-        tflite::MicroMutableOpResolver<11> resolver;  
-        const tflite::Model* model;
-        tflite::MicroInterpreter* interpreter;
-        TfLiteTensor* output = nullptr;     
+protected:
+    tflite::MicroMutableOpResolver<11> resolver;
+    const tflite::Model *model;
+    tflite::MicroInterpreter *interpreter;
+    TfLiteTensor *output = nullptr;
 
-        int kTensorArenaSize;
-        uint8_t *tensor_arena;
+    int kTensorArenaSize;
+    uint8_t *tensor_arena;
 
-        unsigned char *modelfile = NULL;
+    unsigned char *modelfile = NULL;
 
-        float* input;
-        int input_i;
-        int im_height, im_width, im_channel;
+    float *input;
+    int input_i;
+    int im_height, im_width, im_channel;
 
-        long GetFileSize(std::string filename);
-        bool ReadFileToModel(std::string _fn);
-        bool MakeStaticResolver(void);
+    long GetFileSize(std::string filename);
+    bool ReadFileToModel(std::string _fn);
+    bool MakeStaticResolver(void);
 
-    public:
-        CTfLiteClass();
-        ~CTfLiteClass();        
-        bool LoadModel(std::string _fn);
-        bool MakeAllocate(void);
-        void GetInputTensorSize(void);
-        bool LoadInputImageBasis(CImageBasis *rs);
-        void Invoke(void);
-        int GetAnzOutPut(bool silent = true);        
-        int GetOutClassification(int _von = -1, int _bis = -1);
+public:
+    CTfLiteClass();
+    ~CTfLiteClass();
+    bool LoadModel(std::string _fn);
+    bool MakeAllocate(void);
+    void GetInputTensorSize(void);
+    bool LoadInputImageBasis(CImageBasis *rs);
+    void Invoke(void);
+    int GetAnzOutPut(bool silent = true);
+    int GetOutClassification(int _von = -1, int _bis = -1);
 
-        int GetClassFromImageBasis(CImageBasis *rs);
-        std::string GetStatusFlow(void);
+    int GetClassFromImageBasis(CImageBasis *rs);
+    std::string GetStatusFlow(void);
 
-        float GetOutputValue(int nr);
-        void GetInputDimension(bool silent);
-        int ReadInputDimenstion(int _dim);
+    float GetOutputValue(int nr);
+    void GetInputDimension(bool silent);
+    int ReadInputDimenstion(int _dim);
 };
 
-#endif //CTFLITECLASS_H
+#endif // CTFLITECLASS_H

@@ -825,6 +825,16 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 }
             }
 
+            if (httpd_query_key_value(_query, "xclk", _valuechar, sizeof(_valuechar)) == ESP_OK)
+            {
+                std::string _xclk = std::string(_valuechar);
+                if (isStringNumeric(_xclk))
+                {
+                    int _xclk_ = std::stoi(_xclk);
+                    CFstatus.CamXclkFreqMhz = clipInt(_xclk_, 20, 1);
+                }
+            }
+
             if (httpd_query_key_value(_query, "aecgc", _valuechar, 30) == ESP_OK)
             {
                 std::string _aecgc = std::string(_valuechar);
