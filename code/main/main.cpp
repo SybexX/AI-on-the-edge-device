@@ -199,7 +199,8 @@ bool Init_NVS_SDCard()
             StatusLED(SDCARD_INIT, 1, true);
         }
         else if (ret == 263)
-        { // Error code: 0x107 --> usually: SD not found
+        { 
+            // Error code: 0x107 --> usually: SD not found
             ESP_LOGE(TAG, "SD card init failed. Check if SD card is properly inserted into SD card slot or try another card");
             StatusLED(SDCARD_INIT, 2, true);
         }
@@ -608,14 +609,11 @@ void migrateConfiguration(void)
     /* Process each line */
     for (int i = 0; i < configLines.size(); i++)
     {
-        // ESP_LOGI(TAG, "Line %d: %s", i, configLines[i].c_str());
-
         if (configLines[i].find("[") != std::string::npos)
         {
             // Start of new section
             section = configLines[i];
             replaceString(section, ";", "", false); // Remove possible semicolon (just for the string comparison)
-            // ESP_LOGI(TAG, "New section: %s", section.c_str());
         }
         else
         {
@@ -668,7 +666,6 @@ void migrateConfiguration(void)
                 }
                 else
                 {
-                    // ESP_LOGI(TAG, "splitted[1]: %s", splitted[1].c_str());
                     CamZoom_value = alphanumericToBoolean(splitted[1]);
                 }
                 CamZoom_found = true;

@@ -54,7 +54,6 @@ ClassFlowAlignment::ClassFlowAlignment(std::vector<ClassFlow *> *lfc)
     // the function take pictures does not exist --> must be created first ONLY FOR TEST PURPOSES
     if (!ImageBasis)
     {
-        ESP_LOGD(TAG, "CImageBasis had to be created");
         ImageBasis = new CImageBasis("ImageBasis", namerawimage);
     }
 }
@@ -389,9 +388,7 @@ bool ClassFlowAlignment::LoadReferenceAlignmentValues(void)
         return false;
     }
 
-    fgets(zw, 1024, pFile);
-    ESP_LOGD(TAG, "%s", zw);
-
+    fgets(zw, 1024, pFile); // erste Zeile ist nur das Datum
     fgets(zw, 1024, pFile);
     splitted = ZerlegeZeile(std::string(zw), " \t");
 
@@ -425,17 +422,6 @@ bool ClassFlowAlignment::LoadReferenceAlignmentValues(void)
     References[1].fastalg_avg = stof(splitted[5]);
 
     fclose(pFile);
-
-    /*#ifdef DEBUG_DETAIL_ON
-        std::string _zw = "\tLoadReferences[0]\tx,y:\t" + std::to_string(References[0].fastalg_x) + "\t" + std::to_string(References[0].fastalg_x);
-        _zw = _zw + "\tSAD, min, max, avg:\t" + std::to_string(References[0].fastalg_SAD) + "\t" + std::to_string(References[0].fastalg_min);
-        _zw = _zw + "\t" + std::to_string(References[0].fastalg_max) + "\t" + std::to_string(References[0].fastalg_avg);
-        LogFile.WriteToDedicatedFile("/sdcard/alignment.txt", _zw);
-        _zw = "\tLoadReferences[1]\tx,y:\t" + std::to_string(References[1].fastalg_x) + "\t" + std::to_string(References[1].fastalg_x);
-        _zw = _zw + "\tSAD, min, max, avg:\t" + std::to_string(References[1].fastalg_SAD) + "\t" + std::to_string(References[1].fastalg_min);
-        _zw = _zw + "\t" + std::to_string(References[1].fastalg_max) + "\t" + std::to_string(References[1].fastalg_avg);
-        LogFile.WriteToDedicatedFile("/sdcard/alignment.txt", _zw);
-    #endif*/
 
     return true;
 }

@@ -18,9 +18,6 @@
 
 #include <time.h>
 
-// #define DEBUG_DETAIL_ON
-// #define WIFITURNOFF
-
 static const char *TAG = "TAKEIMAGE";
 
 esp_err_t ClassFlowTakeImage::camera_capture(void)
@@ -44,8 +41,6 @@ void ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
         rawImage->width = CFstatus.ImageWidth;
         rawImage->height = CFstatus.ImageHeight;
     }
-
-    ESP_LOGD(TAG, "flash_duration: %d", flash_duration);
 
     Camera.CaptureToBasisImage(rawImage, flash_duration);
 

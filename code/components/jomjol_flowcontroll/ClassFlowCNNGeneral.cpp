@@ -15,6 +15,8 @@
 
 static const char *TAG = "CNN";
 
+// #define DEBUG_DETAIL_ON
+
 // #ifdef CONFIG_HEAP_TRACING_STANDALONE
 #ifdef HEAP_TRACING_CLASS_FLOW_CNN_GENERAL_DO_ALING_AND_CUT
 #include <esp_heap_trace.h>
@@ -376,7 +378,9 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE *pfile, std::string &aktparamgraph)
         disabled = true;
         while (getNextLine(pfile, &aktparamgraph) && !isNewParagraph(aktparamgraph))
             ;
+#ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "[Analog/Digit] is disabled!");
+#endif
         return true;
     }
 
@@ -538,7 +542,9 @@ general *ClassFlowCNNGeneral::GetGENERAL(std::string _name, bool _create = true)
 
     _ret->ROI.push_back(neuroi);
 
+#ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "GetGENERAL - GENERAL %s - roi %s - CCW: %d", _analog.c_str(), _roi.c_str(), neuroi->ccw);
+#endif
 
     return _ret;
 }
@@ -572,7 +578,7 @@ bool ClassFlowCNNGeneral::doFlow(std::string time)
 #ifdef HEAP_TRACING_CLASS_FLOW_CNN_GENERAL_DO_ALING_AND_CUT
     // register a buffer to record the memory trace
     ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, NUM_RECORDS));
-    
+
     // start tracing
     ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
 #endif
@@ -614,7 +620,9 @@ bool ClassFlowCNNGeneral::doAlignAndCut(std::string time_value)
     {
         for (int _roi = 0; _roi < GENERAL[_number]->ROI.size(); ++_roi)
         {
+#ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "General %d - Align&Cut", _roi);
+#endif
 
             caic->CutAndSave(GENERAL[_number]->ROI[_roi]->pos_x, GENERAL[_number]->ROI[_roi]->pos_y, GENERAL[_number]->ROI[_roi]->delta_x, GENERAL[_number]->ROI[_roi]->delta_y, GENERAL[_number]->ROI[_roi]->image_org);
             if (Camera.SaveAllFiles)
@@ -721,26 +729,36 @@ bool ClassFlowCNNGeneral::getNetworkParameter()
         {
         case 2:
             CNNType = Analogue;
+#ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "TFlite-Type set to Analogue");
+#endif
             break;
         case 10:
             CNNType = DoubleHyprid10;
+#ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "TFlite-Type set to DoubleHyprid10");
+#endif
             break;
         case 11:
             CNNType = Digit;
+#ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "TFlite-Type set to Digit");
+#endif
             break;
         case 100:
             if (model_x_size == 32 && model_y_size == 32)
             {
                 CNNType = Analogue100;
+#ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "TFlite-Type set to Analogue100");
+#endif
             }
             else
             {
                 CNNType = Digit100;
+#ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "TFlite-Type set to Digit");
+#endif
             }
             break;
         default:
@@ -788,13 +806,13 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time_value)
     time_t _imagetime; // in seconds
     time(&_imagetime);
     localtime(&_imagetime);
-#if (defined ESP_LOG_DEBUG_ENABLE)
+#ifdef DEBUG_DETAIL_ON
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "doNeuralNetwork, _imagetime: " + std::to_string(_imagetime));
 #endif
     // For each NUMBER
     for (int _number = 0; _number < GENERAL.size(); ++_number)
     {
-#if (defined ESP_LOG_DEBUG_ENABLE)
+#ifdef DEBUG_DETAIL_ON
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Processing Number '" + GENERAL[_number]->name + "'");
 #endif
         int start_roi = 0;
@@ -849,7 +867,7 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time_value)
             {
                 _NumbersNotChanged1 = _NumbersNotChanged1 + ((_AnzahlDigit + _AnzahlAnalog) - (int)_PreValue_old.length());
             }
-#if (defined ESP_LOG_DEBUG_ENABLE)
+#ifdef DEBUG_DETAIL_ON
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "(+) Number of ROIs that should not change: " + std::to_string(_NumbersNotChanged1));
 #endif
 
@@ -873,7 +891,7 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time_value)
                 {
                     _NumbersNotChanged2 = _NumbersNotChanged2 + ((_AnzahlDigit + _AnzahlAnalog) - (int)_PreValue_old.length());
                 }
-#if (defined ESP_LOG_DEBUG_ENABLE)
+#ifdef DEBUG_DETAIL_ON
                 LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "(-) Number of ROIs that should not change: " + std::to_string(_NumbersNotChanged2));
 #endif
             }
@@ -897,7 +915,7 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(std::string time_value)
                 start_analog_new = (_AnzahlAnalog - start_analog_new);
             }
 
-#if (defined ESP_LOG_DEBUG_ENABLE)
+#ifdef DEBUG_DETAIL_ON
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "From the " + std::to_string(start_digit_new) + " th digit ROI is evaluated");
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "From the " + std::to_string(start_analog_new) + " th analog ROI is evaluated");
 #endif
@@ -1179,7 +1197,9 @@ std::vector<HTMLInfo *> ClassFlowCNNGeneral::GetHTMLInfo(void)
     {
         for (int _roi = 0; _roi < GENERAL[_number]->ROI.size(); ++_roi)
         {
+#ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "Image: %d", (int)GENERAL[_number]->ROI[_roi]->image);
+#endif
             if (GENERAL[_number]->ROI[_roi]->image)
             {
                 if (GENERAL[_number]->name == "default")

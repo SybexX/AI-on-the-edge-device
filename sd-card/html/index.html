@@ -158,11 +158,16 @@
             <li><a href="https://jomjol.github.io/AI-on-the-edge-device-docs/" target="_blank">Help</a></li>
         </ul>
     </li>
+	
     <li id="ManualControl" style="display:none;"><a>Manual Control <i class="arrow down"></i></a> <!-- Workaround: Hide menu if no entry is available -->
         <ul class="submenu" style="width: 300px">
             <li><a href="#" onclick="flow_start()">Start Round</a></li>
             <li id="HASendDiscovery" style="width: 300px" style="display:none;"><a href="#" onclick="HA_send_discovery()">Resend Homeassistant Discovery</a></li>
         </ul>
+    </li>
+	
+    <li style="float: right; padding-right: 10px;">
+        <div style="font-size: 12px; color: white; padding-top: 20px;" id="system_date"></div>
     </li>
   </ul>
 </div>
@@ -194,17 +199,49 @@
  </div> -->
 
 <script type="text/javascript">
-    LoadHostname();
-    LoadFwVersion();
-    LoadWebUiVersion();
-    HA_send_discovery_visibility();
+        var param, category;
 
-    if (getCookie("page") == "" || getCookie("page") == "reboot_page.html?v=$COMMIT_HASH") {
-		document.cookie = "page=overview.html?v=$COMMIT_HASH" + "; path=/";
-    }
-    console.log("Loading page: " + getCookie("page"));
-    document.getElementById('maincontent').src = getCookie("page");
+        function init() {
+            LoadHostname();
+            LoadFwVersion();
+            LoadWebUiVersion();
+            HA_send_discovery_visibility();
 
+            if (getCookie("page") == "" || getCookie("page") == "reboot_page.html?v=$COMMIT_HASH") {
+		        document.cookie = "page=overview.html?v=$COMMIT_HASH" + "; path=/";
+            }
+            console.log("Loading page: " + getCookie("page"));
+            document.getElementById('maincontent').src = getCookie("page");
+		
+		    updateTime();
+	    }
+
+        function updateTime() {
+            var _system_date = new Date();
+
+            var _year = _system_date.getFullYear();
+            var _month = _system_date.getMonth() + 1;
+            var _day = _system_date.getDate();
+
+            var _hours = _system_date.getHours();
+            var _minutes = _system_date.getMinutes();
+            var _seconds = _system_date.getSeconds();
+
+            if (_month < 10) {_month = '0' + _month;}
+            if (_day < 10) {_day = '0' + _day;}
+
+            if (_hours < 10) {_hours = '0' + _hours;}
+            if (_minutes < 10) {_minutes = '0' + _minutes;}
+            if (_seconds < 10) {_seconds = '0' + _seconds;}
+
+            var day_in_week = _system_date.getDay();
+            var weekday = new Array("Sonntag", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
+
+            var _date = weekday[day_in_week] + ", " + _day + "." + _month + "." + _year + " " + _hours + ":" + _minutes + ":" + _seconds;
+            document.getElementById('system_date').innerHTML = _date;
+			
+            setTimeout(updateTime, 1);
+        }
     
     function flow_start() {
     var url = getDomainname() + '/flow_start'; 
@@ -268,7 +305,8 @@
 
         streamPopup.focus();
     }
+	
+	init();
 </script>
-
 </body>
 </html>

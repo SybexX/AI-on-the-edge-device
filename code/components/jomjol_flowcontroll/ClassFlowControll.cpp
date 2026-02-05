@@ -39,7 +39,9 @@ std::string ClassFlowControll::doSingleStep(std::string _stepname, std::string _
     std::string _classname = "";
     std::string result = "";
 
+#ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "Step %s start", _stepname.c_str());
+#endif
 
     if ((_stepname.compare("[TakeImage]") == 0) || (_stepname.compare(";[TakeImage]") == 0))
     {
@@ -100,7 +102,9 @@ std::string ClassFlowControll::doSingleStep(std::string _stepname, std::string _
         }
     }
 
+#ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "Step %s end", _stepname.c_str());
+#endif
 
     return result;
 }
@@ -160,7 +164,9 @@ std::vector<HTMLInfo *> ClassFlowControll::GetAllDigit()
 {
     if (flowdigit)
     {
+#ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "ClassFlowControll::GetAllDigit - flowdigit != NULL");
+#endif
         return flowdigit->GetHTMLInfo();
     }
 
@@ -352,10 +358,6 @@ void ClassFlowControll::InitFlow(std::string config)
     aktstatus = "Initialization";
     aktstatusWithTime = aktstatus;
 
-    // #ifdef ENABLE_MQTT
-    // MQTTPublish(mqttServer_getMainTopic() + "/" + "status", "Initialization", 1, false); // Right now, not possible -> MQTT Service is going to be started later
-    // #endif //ENABLE_MQTT
-
     string line;
     flowpostprocessing = NULL;
 
@@ -371,18 +373,17 @@ void ClassFlowControll::InitFlow(std::string config)
     if (pFile != NULL)
     {
         fgets(zw, 1024, pFile);
+#ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "%s", zw);
+#endif
         line = std::string(zw);
     }
 
     while ((line.size() > 0) && !(feof(pFile)))
     {
         cfc = CreateClassFlow(line);
-        // printf("Name: %s\n", cfc->name().c_str());
-
         if (cfc)
         {
-            ESP_LOGE(TAG, "Start ReadParameter (%s)", line.c_str());
             cfc->ReadParameter(pFile, line);
         }
         else
@@ -391,7 +392,9 @@ void ClassFlowControll::InitFlow(std::string config)
 
             if (fgets(zw, 1024, pFile) && !feof(pFile))
             {
+#ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "Read: %s", zw);
+#endif
                 line = std::string(zw);
             }
         }
@@ -554,7 +557,9 @@ string ClassFlowControll::getReadoutAll(int _type)
                 out = out + "\r\n";
             }
         }
-        // ESP_LOGD(TAG, "OUT: %s", out.c_str());
+#ifdef DEBUG_DETAIL_ON
+        ESP_LOGD(TAG, "OUT: %s", out.c_str());
+#endif
     }
 
     return out;
@@ -586,7 +591,9 @@ bool ClassFlowControll::UpdatePrevalue(std::string _newvalue, std::string _numbe
     char *p;
 
     _newvalue = trim(_newvalue);
-    // ESP_LOGD(TAG, "Input UpdatePreValue: %s", _newvalue.c_str());
+#ifdef DEBUG_DETAIL_ON
+    ESP_LOGD(TAG, "Input UpdatePreValue: %s", _newvalue.c_str());
+#endif
 
     if (_newvalue.substr(0, 8).compare("0.000000") == 0 || _newvalue.compare("0.0") == 0 || _newvalue.compare("0") == 0)
     {
@@ -740,13 +747,13 @@ bool ClassFlowControll::ReadParameter(FILE *pfile, string &aktparamgraph)
 int ClassFlowControll::CleanTempFolder()
 {
     const char *folderPath = "/sdcard/img_tmp";
-
+#ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "Clean up temporary folder to avoid damage of sdcard sectors: %s", folderPath);
+#endif
     DIR *dir = opendir(folderPath);
 
     if (!dir)
     {
-        ESP_LOGE(TAG, "Failed to stat dir: %s", folderPath);
         return -1;
     }
 
@@ -762,10 +769,6 @@ int ClassFlowControll::CleanTempFolder()
             {
                 deleted++;
             }
-            else
-            {
-                ESP_LOGE(TAG, "can't delete file: %s", path.c_str());
-            }
         }
         else if (entry->d_type == DT_DIR)
         {
@@ -774,7 +777,9 @@ int ClassFlowControll::CleanTempFolder()
     }
 
     closedir(dir);
+#ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "%d files deleted", deleted);
+#endif
 
     return 0;
 }
@@ -786,10 +791,9 @@ esp_err_t ClassFlowControll::SendRawJPG(httpd_req_t *req)
 
 esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
 {
-    ESP_LOGD(TAG, "ClassFlowControll::GetJPGStream %s", _fn.c_str());
-
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowControll::GetJPGStream - Start");
+    ESP_LOGD(TAG, "ClassFlowControll::GetJPGStream %s", _fn.c_str());
 #endif
 
     CImageBasis *_send = NULL;
@@ -815,65 +819,11 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
         {
             std::string filename = "/sdcard/html/Flowstate_initialization_delayed.jpg";
             result = send_file(req, filename);
-            /*
-            FILE* file = fopen("/sdcard/html/Flowstate_initialization_delayed.jpg", "rb");
-
-            if (!file) {
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File /sdcard/html/Flowstate_initialization_delayed.jpg not found");
-                return ESP_FAIL;
-            }
-
-            fseek(file, 0, SEEK_END);
-            long fileSize = ftell(file); // how long is the file ?
-            fseek(file, 0, SEEK_SET); // reset
-
-            unsigned char* fileBuffer = (unsigned char*) malloc(fileSize);
-
-            if (!fileBuffer) {
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: Not enough memory to create fileBuffer: " + std::to_string(fileSize));
-                fclose(file);
-                return ESP_FAIL;
-            }
-
-            fread(fileBuffer, fileSize, 1, file);
-            fclose(file);
-
-            httpd_resp_set_type(req, "image/jpeg");
-            result = httpd_resp_send(req, (const char *)fileBuffer, fileSize);
-            free(fileBuffer);
-            */
         }
         else if (aktstatus.find("Initialization") != -1)
         {
             std::string filename = "/sdcard/html/Flowstate_initialization.jpg";
             result = send_file(req, filename);
-            /*
-            FILE* file = fopen("/sdcard/html/Flowstate_initialization.jpg", "rb");
-
-            if (!file) {
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File /sdcard/html/Flowstate_initialization.jpg not found");
-                return ESP_FAIL;
-            }
-
-            fseek(file, 0, SEEK_END);
-            long fileSize = ftell(file); // how long is the file ?
-            fseek(file, 0, SEEK_SET); // reset
-
-            unsigned char* fileBuffer = (unsigned char*) malloc(fileSize);
-
-            if (!fileBuffer) {
-                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: Not enough memory to create fileBuffer: " + std::to_string(fileSize));
-                fclose(file);
-                return ESP_FAIL;
-            }
-
-            fread(fileBuffer, fileSize, 1, file);
-            fclose(file);
-
-            httpd_resp_set_type(req, "image/jpeg");
-            result = httpd_resp_send(req, (const char *)fileBuffer, fileSize);
-            free(fileBuffer);
-            */
         }
         else if (aktstatus.find("Take Image") != -1)
         {
@@ -881,31 +831,6 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
             {
                 std::string filename = "/sdcard/html/Flowstate_take_image.jpg";
                 result = send_file(req, filename);
-                /*
-                FILE* file = fopen("/sdcard/html/Flowstate_take_image.jpg", "rb");
-
-                if (!file) {
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File /sdcard/html/Flowstate_take_image.jpg not found");
-                    return ESP_FAIL;
-                }
-
-                fseek(file, 0, SEEK_END);
-                flowalignment->AlgROI->size = ftell(file); // how long is the file ?
-                fseek(file, 0, SEEK_SET); // reset
-
-                if (flowalignment->AlgROI->size > MAX_JPG_SIZE) {
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File /sdcard/html/Flowstate_take_image.jpg (" + std::to_string(flowalignment->AlgROI->size) +
-                                                            ") > allocated buffer (" + std::to_string(MAX_JPG_SIZE) + ")");
-                    fclose(file);
-                    return ESP_FAIL;
-                }
-
-                fread(flowalignment->AlgROI->data, flowalignment->AlgROI->size, 1, file);
-                fclose(file);
-
-                httpd_resp_set_type(req, "image/jpeg");
-                result = httpd_resp_send(req, (const char *)flowalignment->AlgROI->data, flowalignment->AlgROI->size);
-                */
             }
             else
             {
@@ -945,7 +870,9 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
 #else
         if (!flowalignment)
         {
+#ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "ClassFloDControll::GetJPGStream: FlowAlignment is not (yet) initialized. Interrupt serving!");
+#endif
             httpd_resp_send(req, NULL, 0);
             return ESP_FAIL;
         }
@@ -989,7 +916,9 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
         std::vector<HTMLInfo *> htmlinfo;
 
         htmlinfo = GetAllDigit();
+#ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "After getClassFlowControll::GetAllDigit");
+#endif
 
         for (int i = 0; i < htmlinfo.size(); ++i)
         {
@@ -1015,7 +944,9 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
         if (!_send)
         {
             htmlinfo = GetAllAnalog();
+#ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "After getClassFlowControll::GetAllAnalog");
+#endif
 
             for (int i = 0; i < htmlinfo.size(); ++i)
             {
@@ -1046,13 +977,17 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
 
     if (_send)
     {
+#ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Sending file: %s ...", _fn.c_str());
+#endif
         set_content_type_from_file(req, _fn.c_str());
         result = _send->SendJPGtoHTTP(req);
 
         /* Respond with an empty chunk to signal HTTP response completion */
         httpd_resp_send_chunk(req, NULL, 0);
+#ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "File sending complete");
+#endif
 
         if (_sendDelete)
         {
