@@ -1,14 +1,34 @@
 var config_gesamt = "";
-var config_split = [];
-var param = [];
-var category;
-var ref = new Array(2);
+var config_split = "";
+var config_param = [];
+var config_category = [];
+
+var namenumberslist = "";
+var datalist = "";
+var tflitelist = "";
+
 var NUMBERS = new Array(0);
 var REFERENCES = new Array(0);
 
+function loadConfig(_domainname) {
+    _domainname = getDomainname();
+	config_gesamt = "";
+	
+    var xhttp = new XMLHttpRequest();
+    
+	try {
+        url = _domainname + '/fileserver/config/config.ini';     
+        xhttp.open("GET", url, false);
+        xhttp.send();
+        config_gesamt = xhttp.responseText;
+    } catch (error) {}
+    
+	return true;
+}
+
 function getNUMBERSList() {
     _domainname = getDomainname(); 
-    var namenumberslist = "";
+    namenumberslist = "";
 
     var xhttp = new XMLHttpRequest();
 	
@@ -91,226 +111,222 @@ function ParseConfig() {
     config_split = config_gesamt.split("\n");
     var aktline = 0;
 
-    param = new Object();
-    category = new Object(); 
+    config_param = new Object();
+    config_category = new Object(); 
 
     var catname = "TakeImage";
-    category[catname] = new Object(); 
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "RawImagesLocation");
-    ParamAddValue(param, catname, "RawImagesRetention");
-    ParamAddValue(param, catname, "WaitBeforeTakingPicture");
-    ParamAddValue(param, catname, "CamGainceiling");		// Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)
-    ParamAddValue(param, catname, "CamQuality");    		// 0 - 63
-    ParamAddValue(param, catname, "CamBrightness"); 		// (-2 to 2) - set brightness
-    ParamAddValue(param, catname, "CamContrast");   		//-2 - 2
-    ParamAddValue(param, catname, "CamSaturation"); 		//-2 - 2
-    ParamAddValue(param, catname, "CamSharpness");  		//-2 - 2
-    ParamAddValue(param, catname, "CamAutoSharpness");  	// (1 or 0)	
-    ParamAddValue(param, catname, "CamSpecialEffect"); 	// 0 - 6
-    ParamAddValue(param, catname, "CamWbMode");        	// 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-    ParamAddValue(param, catname, "CamAwb");           	// white balance enable (0 or 1)
-    ParamAddValue(param, catname, "CamAwbGain");       	// Auto White Balance enable (0 or 1)
-    ParamAddValue(param, catname, "CamAec");           	// auto exposure off (1 or 0)
-    ParamAddValue(param, catname, "CamAec2");          	// automatic exposure sensor  (0 or 1)
-    ParamAddValue(param, catname, "CamAeLevel");       	// auto exposure levels (-2 to 2)
-    ParamAddValue(param, catname, "CamAecValue");      	// set exposure manually  (0-1200)
-    ParamAddValue(param, catname, "CamAgc");           	// auto gain off (1 or 0)
-    ParamAddValue(param, catname, "CamAgcGain");       	// set gain manually (0 - 30)
-    ParamAddValue(param, catname, "CamBpc");           	// black pixel correction
-    ParamAddValue(param, catname, "CamWpc");           	// white pixel correction
-    ParamAddValue(param, catname, "CamRawGma");        	// (1 or 0)
-    ParamAddValue(param, catname, "CamLenc");          	// lens correction (1 or 0)
-    ParamAddValue(param, catname, "CamHmirror");       	// (0 or 1) flip horizontally
-    ParamAddValue(param, catname, "CamVflip");         	// Invert image (0 or 1)
-    ParamAddValue(param, catname, "CamDcw");           	// downsize enable (1 or 0)
-    ParamAddValue(param, catname, "CamDenoise");        // The OV2640 does not support it, OV3660 and OV5640 (0 to 8)
-    ParamAddValue(param, catname, "CamZoom");
-    ParamAddValue(param, catname, "CamZoomOffsetX");
-    ParamAddValue(param, catname, "CamZoomOffsetY");
-    ParamAddValue(param, catname, "CamZoomSize");
-    ParamAddValue(param, catname, "LEDIntensity");
-    ParamAddValue(param, catname, "Demo");
+    config_category[catname] = new Object(); 
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "RawImagesLocation", 1, false, "/log/source");
+    ParamAddValue(config_param, catname, "RawImagesRetention", 1, false, "15");
+    ParamAddValue(config_param, catname, "SaveAllFiles", 1, false, "false");
+    ParamAddValue(config_param, catname, "WaitBeforeTakingPicture", 1, false, "2");
+    ParamAddValue(config_param, catname, "CamXclkFreqMhz", 1, false, "20");
+    ParamAddValue(config_param, catname, "CamGainceiling", 1, false, "x8");            // Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)
+    ParamAddValue(config_param, catname, "CamQuality", 1, false, "10");                // 0 - 63
+    ParamAddValue(config_param, catname, "CamBrightness", 1, false, "0");              // (-2 to 2) - set brightness
+    ParamAddValue(config_param, catname, "CamContrast", 1, false, "0");                //-2 - 2
+    ParamAddValue(config_param, catname, "CamSaturation", 1, false, "0");              //-2 - 2
+    ParamAddValue(config_param, catname, "CamSharpness", 1, false, "0");               //-2 - 2
+    ParamAddValue(config_param, catname, "CamAutoSharpness", 1, false, "false");       // (1 or 0)	
+    ParamAddValue(config_param, catname, "CamSpecialEffect", 1, false, "no_effect");   // 0 - 6
+    ParamAddValue(config_param, catname, "CamWbMode", 1, false, "auto");               // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    ParamAddValue(config_param, catname, "CamAwb", 1, false, "true");                  // white balance enable (0 or 1)
+    ParamAddValue(config_param, catname, "CamAwbGain", 1, false, "true");              // Auto White Balance enable (0 or 1)
+    ParamAddValue(config_param, catname, "CamAec", 1, false, "true");                  // auto exposure off (1 or 0)
+    ParamAddValue(config_param, catname, "CamAec2", 1, false, "true");                 // automatic exposure sensor  (0 or 1)
+    ParamAddValue(config_param, catname, "CamAeLevel", 1, false, "2");                 // auto exposure levels (-2 to 2)
+    ParamAddValue(config_param, catname, "CamAecValue", 1, false, "600");              // set exposure manually  (0-1200)
+    ParamAddValue(config_param, catname, "CamAgc", 1, false, "true");                  // auto gain off (1 or 0)
+    ParamAddValue(config_param, catname, "CamAgcGain", 1, false, "8");                 // set gain manually (0 - 30)
+    ParamAddValue(config_param, catname, "CamBpc", 1, false, "true");                  // black pixel correction
+    ParamAddValue(config_param, catname, "CamWpc", 1, false, "true");                  // white pixel correction
+    ParamAddValue(config_param, catname, "CamRawGma", 1, false, "true");               // (1 or 0)
+    ParamAddValue(config_param, catname, "CamLenc", 1, false, "true");                 // lens correction (1 or 0)
+    ParamAddValue(config_param, catname, "CamHmirror", 1, false, "false");             // (0 or 1) flip horizontally
+    ParamAddValue(config_param, catname, "CamVflip", 1, false, "false");               // Invert image (0 or 1)
+    ParamAddValue(config_param, catname, "CamDcw", 1, false, "true");                  // downsize enable (1 or 0)
+    ParamAddValue(config_param, catname, "CamDenoise", 1, false, "0");                 // The OV2640 does not support it, OV3660 and OV5640 (0 to 8)
+    ParamAddValue(config_param, catname, "CamZoom", 1, false, "false");
+    ParamAddValue(config_param, catname, "CamZoomSize", 1, false, "0");
+    ParamAddValue(config_param, catname, "CamZoomOffsetX", 1, false, "0");
+    ParamAddValue(config_param, catname, "CamZoomOffsetY", 1, false, "0");
+    ParamAddValue(config_param, catname, "LEDIntensity", 1, false, "50");
+    ParamAddValue(config_param, catname, "Demo", 1, false, "false");
 
     var catname = "Alignment";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "SearchFieldX", 1, false, "20");
-    ParamAddValue(param, catname, "SearchFieldY", 1, false, "20");
-    ParamAddValue(param, catname, "SearchMaxAngle", 1, false, "15");
-    ParamAddValue(param, catname, "Antialiasing", 1, false, "true");
-    ParamAddValue(param, catname, "AlignmentAlgo", 1, false, "default");
-    ParamAddValue(param, catname, "InitialRotate", 1, false, "0");
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "SearchFieldX", 1, false, "20");
+    ParamAddValue(config_param, catname, "SearchFieldY", 1, false, "20");
+    ParamAddValue(config_param, catname, "SearchMaxAngle", 1, false, "15");
+    ParamAddValue(config_param, catname, "Antialiasing", 1, false, "true");
+    ParamAddValue(config_param, catname, "AlignmentAlgo", 1, false, "default");
+    ParamAddValue(config_param, catname, "InitialRotate", 1, false, "0");
 
     var catname = "Digits";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Model");
-    ParamAddValue(param, catname, "CNNGoodThreshold", 1, false, "0.5");
-    ParamAddValue(param, catname, "ROIImagesLocation", 1, false, "/log/digit");
-    ParamAddValue(param, catname, "ROIImagesRetention", 1, false, "3");
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "Model");
+    ParamAddValue(config_param, catname, "CNNGoodThreshold", 1, false, "0.5");
+    ParamAddValue(config_param, catname, "ROIImagesLocation", 1, false, "/log/digit");
+    ParamAddValue(config_param, catname, "ROIImagesRetention", 1, false, "3");
 
     var catname = "Analog";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Model");
-    ParamAddValue(param, catname, "ROIImagesLocation", 1, false, "/log/analog");
-    ParamAddValue(param, catname, "ROIImagesRetention", 1, false, "3");
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "Model");
+    ParamAddValue(config_param, catname, "ROIImagesLocation", 1, false, "/log/analog");
+    ParamAddValue(config_param, catname, "ROIImagesRetention", 1, false, "3");
 
     var catname = "PostProcessing";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    // ParamAddValue(param, catname, "PreValueUse", 1, true, "true");
-    ParamAddValue(param, catname, "PreValueUse", 1, false, "true");
-    ParamAddValue(param, catname, "PreValueAgeStartup", 1, false, "720");
-    ParamAddValue(param, catname, "ErrorMessage");
-    ParamAddValue(param, catname, "AllowNegativeRates", 1, true, "false");
-    ParamAddValue(param, catname, "DecimalShift", 1, true, "0");
-    ParamAddValue(param, catname, "AnalogToDigitTransitionStart", 1, true, "9.2");
-    ParamAddValue(param, catname, "MaxFlowRate", 1, true, "4.0");
-    ParamAddValue(param, catname, "MaxRateValue", 1, true, "0.05");
-    ParamAddValue(param, catname, "MaxRateType", 1, true);
-    ParamAddValue(param, catname, "ChangeRateThreshold", 1, true, "2");
-    ParamAddValue(param, catname, "ExtendedResolution", 1, true, "false");
-    ParamAddValue(param, catname, "IgnoreLeadingNaN", 1, true, "false");
-    ParamAddValue(param, catname, "CheckDigitIncreaseConsistency", 1, true, "false");
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    // ParamAddValue(config_param, catname, "PreValueUse", 1, true, "true");
+    ParamAddValue(config_param, catname, "PreValueUse", 1, false, "true");
+    ParamAddValue(config_param, catname, "PreValueAgeStartup", 1, false, "720");
+    ParamAddValue(config_param, catname, "ErrorMessage");
+    ParamAddValue(config_param, catname, "AllowNegativeRates", 1, true, "false");
+    ParamAddValue(config_param, catname, "DecimalShift", 1, true, "0");
+    ParamAddValue(config_param, catname, "AnalogToDigitTransitionStart", 1, true, "9.2");
+    ParamAddValue(config_param, catname, "MaxFlowRate", 1, true, "4.0");
+    ParamAddValue(config_param, catname, "MaxRateValue", 1, true, "0.05");
+    ParamAddValue(config_param, catname, "MaxRateType", 1, true);
+    ParamAddValue(config_param, catname, "ChangeRateThreshold", 1, true, "2");
+    ParamAddValue(config_param, catname, "ExtendedResolution", 1, true, "false");
+    ParamAddValue(config_param, catname, "IgnoreLeadingNaN", 1, true, "false");
+    ParamAddValue(config_param, catname, "CheckDigitIncreaseConsistency", 1, true, "false");
 
     var catname = "MQTT";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Uri");
-    ParamAddValue(param, catname, "MainTopic", 1, false);
-    ParamAddValue(param, catname, "ClientID");
-    ParamAddValue(param, catname, "user");
-    ParamAddValue(param, catname, "password");
-    ParamAddValue(param, catname, "RetainMessages");
-    ParamAddValue(param, catname, "DomoticzTopicIn");
-    ParamAddValue(param, catname, "DomoticzIDX", 1, true);
-    ParamAddValue(param, catname, "HomeassistantDiscovery");
-    ParamAddValue(param, catname, "MeterType");
-    ParamAddValue(param, catname, "CACert");
-    ParamAddValue(param, catname, "ClientCert");
-    ParamAddValue(param, catname, "ClientKey");
-    ParamAddValue(param, catname, "ValidateServerCert");
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "Uri");
+    ParamAddValue(config_param, catname, "MainTopic", 1, false);
+    ParamAddValue(config_param, catname, "ClientID");
+    ParamAddValue(config_param, catname, "user");
+    ParamAddValue(config_param, catname, "password");
+    ParamAddValue(config_param, catname, "RetainMessages");
+    ParamAddValue(config_param, catname, "DomoticzTopicIn");
+    ParamAddValue(config_param, catname, "DomoticzIDX", 1, true);
+    ParamAddValue(config_param, catname, "HomeassistantDiscovery");
+    ParamAddValue(config_param, catname, "MeterType");
+    ParamAddValue(config_param, catname, "CACert");
+    ParamAddValue(config_param, catname, "ClientCert");
+    ParamAddValue(config_param, catname, "ClientKey");
+    ParamAddValue(config_param, catname, "ValidateServerCert");
 
     var catname = "InfluxDB";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Uri");
-    ParamAddValue(param, catname, "Database");
-//     ParamAddValue(param, catname, "Measurement");
-    ParamAddValue(param, catname, "user");
-    ParamAddValue(param, catname, "password");
-    ParamAddValue(param, catname, "Measurement", 1, true);
-    ParamAddValue(param, catname, "Field", 1, true);
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "Uri");
+    ParamAddValue(config_param, catname, "Database");
+    // ParamAddValue(config_param, catname, "Measurement");
+    ParamAddValue(config_param, catname, "user");
+    ParamAddValue(config_param, catname, "password");
+    ParamAddValue(config_param, catname, "Measurement", 1, true);
+    ParamAddValue(config_param, catname, "Field", 1, true);
 
     var catname = "InfluxDBv2";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Uri");
-    ParamAddValue(param, catname, "Bucket");
-//     ParamAddValue(param, catname, "Measurement");
-    ParamAddValue(param, catname, "Org");
-    ParamAddValue(param, catname, "Token");
-    ParamAddValue(param, catname, "Measurement", 1, true);
-    ParamAddValue(param, catname, "Field", 1, true);
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "Uri");
+    ParamAddValue(config_param, catname, "Bucket");
+    // ParamAddValue(config_param, catname, "Measurement");
+    ParamAddValue(config_param, catname, "Org");
+    ParamAddValue(config_param, catname, "Token");
+    ParamAddValue(config_param, catname, "Measurement", 1, true);
+    ParamAddValue(config_param, catname, "Field", 1, true);
 
     var catname = "Webhook";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Uri");
-    ParamAddValue(param, catname, "ApiKey");
-    ParamAddValue(param, catname, "UploadImg");
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "Uri");
+    ParamAddValue(config_param, catname, "ApiKey");
+    ParamAddValue(config_param, catname, "UploadImg");
 
     var catname = "GPIO";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "IO0", 6, false, "", [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO1", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO3", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO4", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO12", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "IO13", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
-    ParamAddValue(param, catname, "LEDType");
-    ParamAddValue(param, catname, "LEDNumbers");
-    ParamAddValue(param, catname, "LEDColor", 3);
-     // Default Values, um abwärtskompatiblität zu gewährleisten
-    param[catname]["LEDType"]["value1"] = "WS2812";
-    param[catname]["LEDNumbers"]["value1"] = "2";
-    param[catname]["LEDColor"]["value1"] = "50";
-    param[catname]["LEDColor"]["value2"] = "50";
-    param[catname]["LEDColor"]["value3"] = "50";
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "IO0", 6, false, "", [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    ParamAddValue(config_param, catname, "IO1", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    ParamAddValue(config_param, catname, "IO3", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    ParamAddValue(config_param, catname, "IO4", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    ParamAddValue(config_param, catname, "IO12", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    ParamAddValue(config_param, catname, "IO13", 6, false, "",  [null, null, /^[0-9]*$/, null, null, /^[a-zA-Z0-9_-]*$/]);
+    ParamAddValue(config_param, catname, "LEDType");
+    ParamAddValue(config_param, catname, "LEDNumbers");
+    ParamAddValue(config_param, catname, "LEDColor", 3);
 
     var catname = "AutoTimer";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    //ParamAddValue(param, catname, "AutoStart");
-    ParamAddValue(param, catname, "Interval");     
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    //ParamAddValue(config_param, catname, "AutoStart");
+    ParamAddValue(config_param, catname, "Interval");     
 
     var catname = "DataLogging";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "DataLogActive");
-    ParamAddValue(param, catname, "DataFilesRetention");     
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "DataLogActive");
+    ParamAddValue(config_param, catname, "DataFilesRetention");     
 
     var catname = "Debug";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "LogLevel");
-    ParamAddValue(param, catname, "LogfilesRetention");
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "LogLevel");
+    ParamAddValue(config_param, catname, "LogfilesRetention");
 
     var catname = "System";
-    category[catname] = new Object();
-    category[catname]["enabled"] = false;
-    category[catname]["found"] = false;
-    param[catname] = new Object();
-    ParamAddValue(param, catname, "Tooltip");	
-    ParamAddValue(param, catname, "TimeZone");
-    ParamAddValue(param, catname, "TimeServer");         
-    ParamAddValue(param, catname, "Hostname");   
-    ParamAddValue(param, catname, "RSSIThreshold");   
-    ParamAddValue(param, catname, "CPUFrequency");
-    ParamAddValue(param, catname, "SetupMode"); 
+    config_category[catname] = new Object();
+    config_category[catname]["enabled"] = false;
+    config_category[catname]["found"] = false;
+    config_param[catname] = new Object();
+    ParamAddValue(config_param, catname, "Tooltip");	
+    ParamAddValue(config_param, catname, "TimeZone");
+    ParamAddValue(config_param, catname, "TimeServer");         
+    ParamAddValue(config_param, catname, "Hostname");   
+    ParamAddValue(config_param, catname, "RSSIThreshold");   
+    ParamAddValue(config_param, catname, "CPUFrequency");
+    ParamAddValue(config_param, catname, "SetupMode"); 
      
     while (aktline < config_split.length){
-        for (var cat in category) {
-            zw = cat.toUpperCase();
-            zw1 = "[" + zw + "]";
-            zw2 = ";[" + zw + "]";
+        for (var cat in config_category) {
+            var cat_temp = cat.toUpperCase();
+            var cat_aktive = "[" + cat_temp + "]";
+            var cat_inaktive = ";[" + cat_temp + "]";
             
-            if ((config_split[aktline].trim().toUpperCase() == zw1) || (config_split[aktline].trim().toUpperCase() == zw2)) {
-                if (config_split[aktline].trim().toUpperCase() == zw1) {
-                    category[cat]["enabled"] = true;
+            if ((config_split[aktline].trim().toUpperCase() == cat_aktive) || (config_split[aktline].trim().toUpperCase() == cat_inaktive)) {
+                if (config_split[aktline].trim().toUpperCase() == cat_aktive) {
+                    config_category[cat]["enabled"] = true;
                 }
                 
-                category[cat]["found"] = true;
-                category[cat]["line"] = aktline;
+                config_category[cat]["found"] = true;
+                config_category[cat]["line"] = aktline;
                 aktline = ParseConfigParamAll(aktline, cat);
                 continue;
             }
@@ -318,54 +334,30 @@ function ParseConfig() {
         
         aktline++;
     }
-
-    // Make the downward compatiblity with DataLogging
-    if (category["DataLogging"]["found"] == false) {
-        category["DataLogging"]["found"] = true;
-        category["DataLogging"]["enabled"] = true;
-
-        param["DataLogging"]["DataLogActive"]["found"] = true;
-        param["DataLogging"]["DataLogActive"]["enabled"] = true;
-        param["DataLogging"]["DataLogActive"]["value1"] = "true";
-          
-        param["DataLogging"]["DataFilesRetention"]["found"] = true;
-        param["DataLogging"]["DataFilesRetention"]["enabled"] = true;
-        param["DataLogging"]["DataFilesRetention"]["value1"] = "3";
-    }
-
-    if (category["DataLogging"]["enabled"] == false) {
-        category["DataLogging"]["enabled"] = true
-    }
-
-    if (param["DataLogging"]["DataLogActive"]["enabled"] == false && param["DataLogging"]["DataLogActive"]["value1"] == "") {
-        param["DataLogging"]["DataLogActive"]["found"] = true;
-        param["DataLogging"]["DataLogActive"]["enabled"] = true;
-        param["DataLogging"]["DataLogActive"]["value1"] = "true";
-    }
-
-    if (param["DataLogging"]["DataFilesRetention"]["enabled"] == false && param["DataLogging"]["DataFilesRetention"]["value1"] == "") {
-        param["DataLogging"]["DataFilesRetention"]["found"] = true;
-        param["DataLogging"]["DataFilesRetention"]["enabled"] = true;
-        param["DataLogging"]["DataFilesRetention"]["value1"] = "3";
-    }
-
-    // Downward compatibility: Create RSSIThreshold if not available
-    if (param["System"]["RSSIThreshold"]["found"] == false) {
-        param["System"]["RSSIThreshold"]["found"] = true;
-        param["System"]["RSSIThreshold"]["enabled"] = false;
-        param["System"]["RSSIThreshold"]["value1"] = "0";
-    }
 }
 
-function ParamAddValue(param, _cat, _param, _anzParam = 1, _isNUMBER = false, _defaultValue = "", _checkRegExList = null) {
-    param[_cat][_param] = new Object(); 
-    param[_cat][_param]["found"] = false;
-    param[_cat][_param]["enabled"] = false;
-    param[_cat][_param]["line"] = -1; 
-    param[_cat][_param]["anzParam"] = _anzParam;
-    param[_cat][_param]["defaultValue"] = _defaultValue;
-    param[_cat][_param]["Numbers"] = _isNUMBER;
-    param[_cat][_param].checkRegExList = _checkRegExList;
+function ParamAddValue(_config_param, _config_category, _name, _anzParam = 1, _isNUMBER = false, _defaultValue = "", _checkRegExList = null) {
+    _config_param[_config_category][_name] = new Object(); 
+    _config_param[_config_category][_name]["found"] = false;
+    _config_param[_config_category][_name]["enabled"] = false;
+    _config_param[_config_category][_name]["line"] = -1; 
+    _config_param[_config_category][_name]["anzParam"] = _anzParam;
+    _config_param[_config_category][_name]["defaultValue"] = _defaultValue;
+    _config_param[_config_category][_name]["Numbers"] = _isNUMBER;
+    _config_param[_config_category][_name].checkRegExList = _checkRegExList;
+	
+    if (_isNUMBER) {
+        for (var _num in NUMBERS) {
+            for (var j = 1; j <= _config_param[_config_category][_name]["anzParam"]; ++j) {
+                NUMBERS[_num][_config_category][_name]["value"+j] = _defaultValue;
+            }
+        }
+    }
+    else {
+        for (var j = 1; j <= _config_param[_config_category][_name]["anzParam"]; ++j) {
+            _config_param[_config_category][_name]["value"+j] = _defaultValue;
+        }
+    }
 };
 
 function ParseConfigParamAll(_aktline, _catname) {
@@ -374,8 +366,8 @@ function ParseConfigParamAll(_aktline, _catname) {
     while ((_aktline < config_split.length) && !(config_split[_aktline][0] == "[") && !((config_split[_aktline][0] == ";") && (config_split[_aktline][1] == "["))) {
         var _input = config_split[_aktline];
         let [isCom, input] = isCommented(_input);
-        var linesplit = ZerlegeZeile(input);
-        ParamExtractValueAll(param, linesplit, _catname, _aktline, isCom);
+        var linesplit = split_line(input);
+        ParamExtractValueAll(config_param, linesplit, _catname, _aktline, isCom);
         
         if (!isCom && (linesplit.length >= 5) && (_catname == 'Digits')) {
             ExtractROIs(input, "digit");
@@ -425,25 +417,28 @@ function ParamExtractValueAll(_param, _linesplit, _catname, _aktline, _iscom) {
         
         if (_AktPara.toUpperCase() == paramname.toUpperCase()) {
             while (_linesplit.length <= _param[_catname][paramname]["anzParam"]) {
-                _linesplit.push("");
+                // line contains no value, so the default value is loaded
+                _linesplit.push(_param[_catname][paramname]["defaultValue"]);
             }
 
             _param[_catname][paramname]["found"] = true;
             _param[_catname][paramname]["enabled"] = !_iscom;
             _param[_catname][paramname]["line"] = _aktline;
             
-            if (_param[_catname][paramname]["Numbers"] == true) {        // möglicher Multiusage
-                abc = getNUMBERS(_linesplit[0]);
-                abc[_catname][paramname] = new Object;
-                abc[_catname][paramname]["found"] = true;
-                abc[_catname][paramname]["enabled"] = !_iscom;
+            if (_param[_catname][paramname]["Numbers"] == true) {
+                // möglicher Multiusage
+                var _numbers = getNUMBERS(_linesplit[0]);
+                _numbers[_catname][paramname] = new Object;
+                _numbers[_catname][paramname]["found"] = true;
+                _numbers[_catname][paramname]["enabled"] = !_iscom;
      
                 for (var j = 1; j <= _param[_catname][paramname]["anzParam"]; ++j) {
-                    abc[_catname][paramname]["value"+j] = _linesplit[j];
+                    _numbers[_catname][paramname]["value"+j] = _linesplit[j];
                 }
 				
-                if (abc["name"] == "default") {
-                    for (_num in NUMBERS) {        // wert mit Default belegen
+                if (_numbers["name"] == "default") {
+                    for (var _num in NUMBERS) {
+                        // Assign value to default
                         if (NUMBERS[_num][_catname][paramname]["found"] == false) {
                             NUMBERS[_num][_catname][paramname]["found"] = true;
                             NUMBERS[_num][_catname][paramname]["enabled"] = !_iscom;
@@ -456,11 +451,7 @@ function ParamExtractValueAll(_param, _linesplit, _catname, _aktline, _iscom) {
                     }
                 }
             }
-            else {
-                _param[_catname][paramname]["found"] = true;
-                _param[_catname][paramname]["enabled"] = !_iscom;
-                _param[_catname][paramname]["line"] = _aktline;
-                    
+            else {  
                 for (var j = 1; j <= _param[_catname][paramname]["anzParam"]; ++j) {
                     _param[_catname][paramname]["value"+j] = _linesplit[j];
                 }
@@ -470,184 +461,25 @@ function ParamExtractValueAll(_param, _linesplit, _catname, _aktline, _iscom) {
 }
 
 function getCamConfig() {			
-    ParseConfig();		
-
-    param["System"]["Tooltip"]["enabled"] = true;
-    param["Alignment"]["InitialRotate"]["enabled"] = true;
-			
-    param["TakeImage"]["WaitBeforeTakingPicture"]["enabled"] = true;
-    param["TakeImage"]["CamGainceiling"]["enabled"] = true;		// Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)
-    param["TakeImage"]["CamQuality"]["enabled"] = true;    		// 0 - 63
-    param["TakeImage"]["CamBrightness"]["enabled"] = true; 		// (-2 to 2) - set brightness
-    param["TakeImage"]["CamContrast"]["enabled"] = true;   		//-2 - 2
-    param["TakeImage"]["CamSaturation"]["enabled"] = true; 		//-2 - 2
-    param["TakeImage"]["CamSharpness"]["enabled"] = true;  		//-2 - 2
-    param["TakeImage"]["CamAutoSharpness"]["enabled"] = true;  	//(1 or 0)
-    param["TakeImage"]["CamSpecialEffect"]["enabled"] = true;	// 0 - 6
-    param["TakeImage"]["CamWbMode"]["enabled"] = true;        	// 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-    param["TakeImage"]["CamAwb"]["enabled"] = true;           	// white balance enable (0 or 1)
-    param["TakeImage"]["CamAwbGain"]["enabled"] = true;       	// Auto White Balance enable (0 or 1)
-    param["TakeImage"]["CamAec"]["enabled"] = true;           	// auto exposure off (1 or 0)
-    param["TakeImage"]["CamAec2"]["enabled"] = true;          	// automatic exposure sensor  (0 or 1)
-    param["TakeImage"]["CamAeLevel"]["enabled"] = true;       	// auto exposure levels (-2 to 2)
-    param["TakeImage"]["CamAecValue"]["enabled"] = true;      	// set exposure manually  (0-1200)
-    param["TakeImage"]["CamAgc"]["enabled"] = true;           	// auto gain off (1 or 0)
-    param["TakeImage"]["CamAgcGain"]["enabled"] = true;       	// set gain manually (0 - 30)
-    param["TakeImage"]["CamBpc"]["enabled"] = true;          	// black pixel correction
-    param["TakeImage"]["CamWpc"]["enabled"] = true;           	// white pixel correction
-    param["TakeImage"]["CamRawGma"]["enabled"] = true;        	// (1 or 0)
-    param["TakeImage"]["CamLenc"]["enabled"] = true;          	// lens correction (1 or 0)
-    param["TakeImage"]["CamHmirror"]["enabled"] = true;       	// (0 or 1) flip horizontally
-    param["TakeImage"]["CamVflip"]["enabled"] = true;         	// Invert image (0 or 1)
-    param["TakeImage"]["CamDcw"]["enabled"] = true;           	// downsize enable (1 or 0)
-    param["TakeImage"]["CamDenoise"]["enabled"] = true;       	// The OV2640 does not support it, OV3660 and OV5640 (0 to 8)
-    param["TakeImage"]["CamZoom"]["enabled"] = true;
-    param["TakeImage"]["CamZoomOffsetX"]["enabled"] = true;
-    param["TakeImage"]["CamZoomOffsetY"]["enabled"] = true;
-    param["TakeImage"]["CamZoomSize"]["enabled"] = true;
-    param["TakeImage"]["LEDIntensity"]["enabled"] = true;
-
-    if (!param["System"]["Tooltip"]["found"]) {
-        param["System"]["Tooltip"]["found"] = true;
-        param["System"]["Tooltip"].value1 = 'true';
-    }
-
-    if (!param["Alignment"]["InitialRotate"]["found"]) {
-        param["Alignment"]["InitialRotate"]["found"] = true;
-        param["Alignment"]["InitialRotate"].value1 = 'false';
-    }
-
-    if (!param["TakeImage"]["WaitBeforeTakingPicture"]["found"]) {
-        param["TakeImage"]["WaitBeforeTakingPicture"]["found"] = true;
-        param["TakeImage"]["WaitBeforeTakingPicture"].value1 = '5';
-    }
-    if (!param["TakeImage"]["CamGainceiling"]["found"]) {
-        param["TakeImage"]["CamGainceiling"]["found"] = true;
-        // param["TakeImage"]["CamGainceiling"].value1 = '2';
-        param["TakeImage"]["CamGainceiling"].value1 = 'x8';
-    }
-    if (!param["TakeImage"]["CamQuality"]["found"]) {
-        param["TakeImage"]["CamQuality"]["found"] = true;
-        param["TakeImage"]["CamQuality"].value1 = '10';
-    }
-    if (!param["TakeImage"]["CamBrightness"]["found"]) {
-        param["TakeImage"]["CamBrightness"]["found"] = true;
-        param["TakeImage"]["CamBrightness"].value1 = '0';
-    }
-    if (!param["TakeImage"]["CamContrast"]["found"]) {
-        param["TakeImage"]["CamContrast"]["found"] = true;
-        param["TakeImage"]["CamContrast"].value1 = '0';
-    }
-    if (!param["TakeImage"]["CamSaturation"]["found"]) {
-        param["TakeImage"]["CamSaturation"]["found"] = true;
-        param["TakeImage"]["CamSaturation"].value1 = '0';
-    }
-    if (!param["TakeImage"]["CamSharpness"]["found"]) {
-        param["TakeImage"]["CamSharpness"]["found"] = true;
-        param["TakeImage"]["CamSharpness"].value1 = '0';
-    }
-    if (!param["TakeImage"]["CamAutoSharpness"]["found"]) {
-        param["TakeImage"]["CamAutoSharpness"]["found"] = true;
-        param["TakeImage"]["CamAutoSharpness"].value1 = 'false';
-    }			
-    if (!param["TakeImage"]["CamSpecialEffect"]["found"]) {
-        param["TakeImage"]["CamSpecialEffect"]["found"] = true;
-        param["TakeImage"]["CamSpecialEffect"].value1 = 'no_effect';
-    }		
-    if (!param["TakeImage"]["CamWbMode"]["found"]) {
-        param["TakeImage"]["CamWbMode"]["found"] = true;
-        param["TakeImage"]["CamWbMode"].value1 = 'auto';
-    }			
-    if (!param["TakeImage"]["CamAwb"]["found"]) {
-        param["TakeImage"]["CamAwb"]["found"] = true;
-        param["TakeImage"]["CamAwb"].value1 = 'true';
-    }
-    if (!param["TakeImage"]["CamAwbGain"]["found"]) {
-        param["TakeImage"]["CamAwbGain"]["found"] = true;
-        param["TakeImage"]["CamAwbGain"].value1 = 'true';
-    }
-    if (!param["TakeImage"]["CamAec"]["found"]) {
-        param["TakeImage"]["CamAec"]["found"] = true;
-        param["TakeImage"]["CamAec"].value1 = 'true';
-    }
-    if (!param["TakeImage"]["CamAec2"]["found"]) {
-        param["TakeImage"]["CamAec2"]["found"] = true;
-        param["TakeImage"]["CamAec2"].value1 = 'true';
-    }
-    if (!param["TakeImage"]["CamAeLevel"]["found"]) {
-        param["TakeImage"]["CamAeLevel"]["found"] = true;
-        param["TakeImage"]["CamAeLevel"].value1 = '2';
-    }
-    if (!param["TakeImage"]["CamAecValue"]["found"]) {
-        param["TakeImage"]["CamAecValue"]["found"] = true;
-        param["TakeImage"]["CamAecValue"].value1 = '600';
-    }
-    if (!param["TakeImage"]["CamAgc"]["found"]) {
-        param["TakeImage"]["CamAgc"]["found"] = true;
-        param["TakeImage"]["CamAgc"].value1 = 'true';
-    }
-    if (!param["TakeImage"]["CamAgcGain"]["found"]) {
-        param["TakeImage"]["CamAgcGain"]["found"] = true;
-        param["TakeImage"]["CamAgcGain"].value1 = '8';
-    }
-    if (!param["TakeImage"]["CamBpc"]["found"]) {
-        param["TakeImage"]["CamBpc"]["found"] = true;
-        param["TakeImage"]["CamBpc"].value1 = 'true';
-    }
-    if (!param["TakeImage"]["CamWpc"]["found"]) {
-        param["TakeImage"]["CamWpc"]["found"] = true;
-        param["TakeImage"]["CamWpc"].value1 = 'true';
-    }		
-    if (!param["TakeImage"]["CamRawGma"]["found"]) {
-        param["TakeImage"]["CamRawGma"]["found"] = true;
-        param["TakeImage"]["CamRawGma"].value1 = 'true';
-    }		
-    if (!param["TakeImage"]["CamLenc"]["found"]) {
-        param["TakeImage"]["CamLenc"]["found"] = true;
-        param["TakeImage"]["CamLenc"].value1 = 'true';
-    }			
-    if (!param["TakeImage"]["CamHmirror"]["found"]) {
-        param["TakeImage"]["CamHmirror"]["found"] = true;
-        param["TakeImage"]["CamHmirror"].value1 = 'false';
-    }
-    if (!param["TakeImage"]["CamVflip"]["found"]) {
-        param["TakeImage"]["CamVflip"]["found"] = true;
-        param["TakeImage"]["CamVflip"].value1 = 'false';
-    }
-    if (!param["TakeImage"]["CamDcw"]["found"]) {
-        param["TakeImage"]["CamDcw"]["found"] = true;
-        param["TakeImage"]["CamDcw"].value1 = 'true';
-    }
-    if (!param["TakeImage"]["CamDenoise"]["found"]) {
-        param["TakeImage"]["CamDenoise"]["found"] = true;
-        param["TakeImage"]["CamDenoise"].value1 = '0';
-    }
-    if (!param["TakeImage"]["CamZoom"]["found"]) {
-        param["TakeImage"]["CamZoom"]["found"] = true;
-        param["TakeImage"]["CamZoom"].value1 = 'false';
-    }
-    if (!param["TakeImage"]["CamZoomOffsetX"]["found"]) {
-        param["TakeImage"]["CamZoomOffsetX"]["found"] = true;
-        param["TakeImage"]["CamZoomOffsetX"].value1 = '0';
-    }
-    if (!param["TakeImage"]["CamZoomOffsetY"]["found"]) {
-        param["TakeImage"]["CamZoomOffsetY"]["found"] = true;
-        param["TakeImage"]["CamZoomOffsetY"].value1 = '0';
-    }
-    if (!param["TakeImage"]["CamZoomSize"]["found"]) {
-        param["TakeImage"]["CamZoomSize"]["found"] = true;
-        param["TakeImage"]["CamZoomSize"].value1 = '0';
-    }
-    if (!param["TakeImage"]["LEDIntensity"]["found"]) {
-        param["TakeImage"]["LEDIntensity"]["found"] = true;
-        param["TakeImage"]["LEDIntensity"].value1 = '50';
-    }
-
-    return param;	
+	loadConfig();
+	ParseConfig();
+	
+    return config_param;	
 }
 
 function getConfigParameters() {
-    return param;
+	loadConfig();
+	ParseConfig();
+	
+    return config_param;
+}
+
+function getConfig() {
+    return config_gesamt;
+}
+
+function getConfigCategory() {
+    return config_category;
 }
 
 function WriteConfigININew() {
@@ -660,23 +492,23 @@ function WriteConfigININew() {
 
     config_split = new Array(0);
 
-    for (var cat in param) {
+    for (var cat in config_param) {
         text = "[" + cat + "]";
 		  
-        if (!category[cat]["enabled"]) {
+        if (!config_category[cat]["enabled"]) {
             text = ";" + text;
         }
         
         config_split.push(text);
 
-        for (var name in param[cat]) {
-            if (param[cat][name]["Numbers"]) {
+        for (var name in config_param[cat]) {
+            if (config_param[cat][name]["Numbers"]) {
                 for (_num in NUMBERS) {
                     text = NUMBERS[_num]["name"] + "." + name;
 
                     var text = text + " =" 
                          
-                    for (var j = 1; j <= param[cat][name]["anzParam"]; ++j) {
+                    for (var j = 1; j <= config_param[cat][name]["anzParam"]; ++j) {
                         if (!(typeof NUMBERS[_num][cat][name]["value"+j] == 'undefined')) {
                             text = text + " " + NUMBERS[_num][cat][name]["value"+j];
                         }
@@ -692,13 +524,13 @@ function WriteConfigININew() {
             else {
                 var text = name + " =" 
                     
-                for (var j = 1; j <= param[cat][name]["anzParam"]; ++j) {
-                    if (!(typeof param[cat][name]["value"+j] == 'undefined')) {
-                        text = text + " " + param[cat][name]["value"+j];
+                for (var j = 1; j <= config_param[cat][name]["anzParam"]; ++j) {
+                    if (!(typeof config_param[cat][name]["value"+j] == 'undefined')) {
+                        text = text + " " + config_param[cat][name]["value"+j];
                     }
                 }
 					
-                if (!param[cat][name]["enabled"]) {
+                if (!config_param[cat][name]["enabled"]) {
                     text = ";" + text;
                 }
 					
@@ -751,117 +583,27 @@ function WriteConfigININew() {
     }
 }
 
-function isCommented(input) {
-    let isComment = false;
-		  
-    if (input.charAt(0) == ';') {
-        isComment = true;
-        input = input.substr(1, input.length-1);
-    }
-		  
-    return [isComment, input];
-}    
-
 function SaveConfigToServer(_domainname){
-    // leere Zeilen am Ende löschen
-    var zw = config_split.length - 1;
+     // leere Zeilen am Ende löschen
+     var zw = config_split.length - 1;
 	 
-    while (config_split[zw] == "") {
-        config_split.pop();
-    }
+     while (config_split[zw] == "") {
+          config_split.pop();
+     }
 
-    var config_gesamt = "";
+     var config_gesamt = "";
 	 
-    for (var i = 0; i < config_split.length; ++i)
-    {
-        config_gesamt = config_gesamt + config_split[i] + "\n";
-    } 
+     for (var i = 0; i < config_split.length; ++i)
+     {
+          config_gesamt = config_gesamt + config_split[i] + "\n";
+     } 
 
-    FileDeleteOnServer("/config/config.ini", _domainname);
-    FileSendContent(config_gesamt, "/config/config.ini", _domainname);          
+     FileDeleteOnServer("/config/config.ini", _domainname);
+     FileSendContent(config_gesamt, "/config/config.ini", _domainname);          
 }
 
-function getConfig() {
-    return config_gesamt;
-}
-
-function getConfigCategory() {
-    return category;
-}
-
-function ExtractROIs(_aktline, _type){
-    var linesplit = ZerlegeZeile(_aktline);
-    abc = getNUMBERS(linesplit[0], _type);
-    abc["pos_ref"] = _aktline;
-    abc["x"] = linesplit[1];
-    abc["y"] = linesplit[2];
-    abc["dx"] = linesplit[3];
-    abc["dy"] = linesplit[4];
-    abc["ar"] = parseFloat(linesplit[3]) / parseFloat(linesplit[4]);
-    abc["CCW"] = "false";
-    
-    if (linesplit.length >= 6) {
-        abc["CCW"] = linesplit[5];
-	}
-}
-
-function getNUMBERS(_name, _type, _create = true) {
-    _pospunkt = _name.indexOf (".");
-    
-    if (_pospunkt > -1) {
-        _digit = _name.substring(0, _pospunkt);
-        _roi = _name.substring(_pospunkt+1);
-    }
-    else {
-        _digit = "default";
-        _roi = _name;
-    }
-
-    _ret = -1;
-
-    for (i = 0; i < NUMBERS.length; ++i) {
-        if (NUMBERS[i]["name"] == _digit) {
-            _ret = NUMBERS[i];
-        }
-    }
-
-    if (!_create) {         // nicht gefunden und soll auch nicht erzeugt werden, ggf. geht eine NULL zurück
-          return _ret;
-    }
-
-    if (_ret == -1) {
-        _ret = new Object();
-        _ret["name"] = _digit;
-        _ret['digit'] = new Array();
-        _ret['analog'] = new Array();
-
-        for (_cat in param) {
-            for (_param in param[_cat]) {
-                if (param[_cat][_param]["Numbers"] == true){
-                    if (typeof  _ret[_cat] == 'undefined') {
-                        _ret[_cat] = new Object();
-                    }
-					
-                    _ret[_cat][_param] = new Object();
-                    _ret[_cat][_param]["found"] = false;
-                    _ret[_cat][_param]["enabled"] = false;
-                    _ret[_cat][_param]["anzParam"] = param[_cat][_param]["anzParam"]; 
-                }
-            }
-        }
-
-        NUMBERS.push(_ret);
-    }
-
-    if (typeof _type == 'undefined') {            // muss schon existieren !!! - also erst nach Digits / Analog aufrufen
-        return _ret;
-    }
-
-    neuroi = new Object();
-    neuroi["name"] = _roi;
-    _ret[_type].push(neuroi);
-
-    return neuroi;
+function GetReferencesInfo(){
+    return REFERENCES;
 }
 
 function CopyReferenceToImgTmp(_domainname) {
@@ -876,10 +618,6 @@ function CopyReferenceToImgTmp(_domainname) {
         FileDeleteOnServer(_filenamenach, _domainname);
         FileCopyOnServer(_filenamevon, _filenamenach, _domainname);
     }
-}
-
-function GetReferencesInfo(){
-    return REFERENCES;
 }
 
 function UpdateConfigReferences(_domainname){
@@ -924,6 +662,132 @@ function getNUMBERInfo(){
      return NUMBERS;
 }
 
+function getNUMBERS(_name, _type, _create = true) {
+    _pospunkt = _name.indexOf (".");
+    
+    if (_pospunkt > -1) {
+        _digit = _name.substring(0, _pospunkt);
+        _roi = _name.substring(_pospunkt+1);
+    }
+    else {
+        _digit = "default";
+        _roi = _name;
+    }
+
+    _ret = -1;
+
+    for (i = 0; i < NUMBERS.length; ++i) {
+        if (NUMBERS[i]["name"] == _digit) {
+            _ret = NUMBERS[i];
+        }
+    }
+
+    if (!_create) {         // nicht gefunden und soll auch nicht erzeugt werden, ggf. geht eine NULL zurück
+          return _ret;
+    }
+
+    if (_ret == -1) {
+        _ret = new Object();
+        _ret["name"] = _digit;
+        _ret['digit'] = new Array();
+        _ret['analog'] = new Array();
+
+        for (_cat in config_param) {
+            for (_param in config_param[_cat]) {
+                if (config_param[_cat][_param]["Numbers"] == true){
+                    if (typeof  _ret[_cat] == 'undefined') {
+                        _ret[_cat] = new Object();
+                    }
+					
+                    _ret[_cat][_param] = new Object();
+                    _ret[_cat][_param]["found"] = false;
+                    _ret[_cat][_param]["enabled"] = false;
+                    _ret[_cat][_param]["anzParam"] = config_param[_cat][_param]["anzParam"]; 
+                }
+            }
+        }
+
+        NUMBERS.push(_ret);
+    }
+
+    if (typeof _type == 'undefined') {            // muss schon existieren !!! - also erst nach Digits / Analog aufrufen
+        return _ret;
+    }
+
+    neuroi = new Object();
+    neuroi["name"] = _roi;
+    _ret[_type].push(neuroi);
+
+    return neuroi;
+}
+
+function CreateNUMBER(_numbernew){
+    found = false;
+    
+    for (i = 0; i < NUMBERS.length; ++i) {
+        if (NUMBERS[i]["name"] == _numbernew) {
+            found = true;
+        }
+    }
+
+    if (found) {
+        return "Number sequence name is already existing, please choose another name";
+    }
+
+    _ret = new Object();
+    _ret["name"] = _numbernew;
+    _ret['digit'] = new Array();
+    _ret['analog'] = new Array();
+
+    for (_cat in config_param) {
+        for (_param in config_param[_cat]) {
+            if (config_param[_cat][_param]["Numbers"] == true) {
+                if (typeof (_ret[_cat]) === "undefined") {
+                    _ret[_cat] = new Object();
+                }
+					
+                _ret[_cat][_param] = new Object();
+					
+                if (config_param[_cat][_param]["defaultValue"] === "") {
+                    _ret[_cat][_param]["found"] = false;
+                    _ret[_cat][_param]["enabled"] = false;
+                }
+                else {
+                    _ret[_cat][_param]["found"] = true;
+                    _ret[_cat][_param]["enabled"] = true;
+                    _ret[_cat][_param]["value1"] = config_param[_cat][_param]["defaultValue"];
+
+                }
+					
+                _ret[_cat][_param]["anzParam"] = config_param[_cat][_param]["anzParam"]; 
+            }
+        }
+    }
+
+    NUMBERS.push(_ret);               
+    return "";
+}
+
+function DeleteNUMBER(_delete){
+    if (NUMBERS.length == 1) {
+        return "One number sequence is mandatory. Therefore this cannot be deleted"
+    }
+     
+    index = -1;
+	 
+    for (i = 0; i < NUMBERS.length; ++i) {
+        if (NUMBERS[i]["name"] == _delete) {
+            index = i;
+        }
+    }
+
+    if (index > -1) {
+        NUMBERS.splice(index, 1);
+    }
+
+    return "";
+}
+
 function RenameNUMBER(_alt, _neu){
     if ((_neu.indexOf(".") >= 0) || (_neu.indexOf(",") >= 0) || (_neu.indexOf(" ") >= 0) || (_neu.indexOf("\"") >= 0)) {
         return "Number sequence name must not contain , . \" or a space";
@@ -951,73 +815,6 @@ function RenameNUMBER(_alt, _neu){
     return "";
 }
 
-function DeleteNUMBER(_delete){
-    if (NUMBERS.length == 1) {
-        return "One number sequence is mandatory. Therefore this cannot be deleted"
-    }
-     
-    index = -1;
-	 
-    for (i = 0; i < NUMBERS.length; ++i) {
-        if (NUMBERS[i]["name"] == _delete) {
-            index = i;
-        }
-    }
-
-    if (index > -1) {
-        NUMBERS.splice(index, 1);
-    }
-
-    return "";
-}
-
-function CreateNUMBER(_numbernew){
-    found = false;
-    
-    for (i = 0; i < NUMBERS.length; ++i) {
-        if (NUMBERS[i]["name"] == _numbernew) {
-            found = true;
-        }
-    }
-
-    if (found) {
-        return "Number sequence name is already existing, please choose another name";
-    }
-
-    _ret = new Object();
-    _ret["name"] = _numbernew;
-    _ret['digit'] = new Array();
-    _ret['analog'] = new Array();
-
-    for (_cat in param) {
-        for (_param in param[_cat]) {
-            if (param[_cat][_param]["Numbers"] == true) {
-                if (typeof (_ret[_cat]) === "undefined") {
-                    _ret[_cat] = new Object();
-                }
-					
-                _ret[_cat][_param] = new Object();
-					
-                if (param[_cat][_param]["defaultValue"] === "") {
-                    _ret[_cat][_param]["found"] = false;
-                    _ret[_cat][_param]["enabled"] = false;
-                }
-                else {
-                    _ret[_cat][_param]["found"] = true;
-                    _ret[_cat][_param]["enabled"] = true;
-                    _ret[_cat][_param]["value1"] = param[_cat][_param]["defaultValue"];
-
-                }
-					
-                _ret[_cat][_param]["anzParam"] = param[_cat][_param]["anzParam"]; 
-            }
-        }
-    }
-
-    NUMBERS.push(_ret);               
-    return "";
-}
-
 function getROIInfo(_typeROI, _number){
     index = -1;
     
@@ -1033,6 +830,45 @@ function getROIInfo(_typeROI, _number){
     else {
         return "";
     }
+}
+
+function CreateROI(_number, _type, _pos, _roinew, _x, _y, _dx, _dy, _CCW){
+    _indexnumber = -1;
+    
+    for (j = 0; j < NUMBERS.length; ++j) {
+        if (NUMBERS[j]["name"] == _number) {
+            _indexnumber = j;
+        }
+    }
+
+    if (_indexnumber == -1) {
+        return "Number sequence not existing. ROI cannot be created"
+    }
+
+    found = false;
+    
+    for (i = 0; i < NUMBERS[_indexnumber][_type].length; ++i) {
+        if (NUMBERS[_indexnumber][_type][i]["name"] == _roinew) {
+            found = true;
+        }
+    }
+
+    if (found) {
+        return "ROI name is already existing, please choose another name";
+    }
+
+    _ret = new Object();
+    _ret["name"] = _roinew;
+    _ret["x"] = _x;
+    _ret["y"] = _y;
+    _ret["dx"] = _dx;
+    _ret["dy"] = _dy;
+    _ret["ar"] = _dx / _dy;
+    _ret["CCW"] = _CCW;
+
+    NUMBERS[_indexnumber][_type].splice(_pos+1, 0, _ret);
+
+    return "";
 }
 
 function RenameROI(_number, _type, _alt, _neu){
@@ -1073,61 +909,18 @@ function RenameROI(_number, _type, _alt, _neu){
     return "";
 }
 
-function DeleteNUMBER(_delte) {
-    if (NUMBERS.length == 1) {
-        return "The last number cannot be deleted"
-    }
-	
-    index = -1;
+function ExtractROIs(_aktline, _type){
+    var linesplit = split_line(_aktline);
+    abc = getNUMBERS(linesplit[0], _type);
+    abc["pos_ref"] = _aktline;
+    abc["x"] = linesplit[1];
+    abc["y"] = linesplit[2];
+    abc["dx"] = linesplit[3];
+    abc["dy"] = linesplit[4];
+    abc["ar"] = parseFloat(linesplit[3]) / parseFloat(linesplit[4]);
+    abc["CCW"] = "false";
     
-    for (i = 0; i < NUMBERS.length; ++i) {
-        if (NUMBERS[i]["name"] == _delte) {
-            index = i;
-        }
-    }
-
-    if (index > -1) {
-        NUMBERS.splice(index, 1);
-    }
-
-    return "";
-}
-
-function CreateROI(_number, _type, _pos, _roinew, _x, _y, _dx, _dy, _CCW){
-    _indexnumber = -1;
-    
-    for (j = 0; j < NUMBERS.length; ++j) {
-        if (NUMBERS[j]["name"] == _number) {
-            _indexnumber = j;
-        }
-    }
-
-    if (_indexnumber == -1) {
-        return "Number sequence not existing. ROI cannot be created"
-    }
-
-    found = false;
-    
-    for (i = 0; i < NUMBERS[_indexnumber][_type].length; ++i) {
-        if (NUMBERS[_indexnumber][_type][i]["name"] == _roinew) {
-            found = true;
-        }
-    }
-
-    if (found) {
-        return "ROI name is already existing, please choose another name";
-    }
-
-    _ret = new Object();
-    _ret["name"] = _roinew;
-    _ret["x"] = _x;
-    _ret["y"] = _y;
-    _ret["dx"] = _dx;
-    _ret["dy"] = _dy;
-    _ret["ar"] = _dx / _dy;
-    _ret["CCW"] = _CCW;
-
-    NUMBERS[_indexnumber][_type].splice(_pos+1, 0, _ret);
-
-    return "";
+    if (linesplit.length >= 6) {
+        abc["CCW"] = linesplit[5];
+	}
 }
