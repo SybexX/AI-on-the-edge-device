@@ -41,7 +41,7 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 #include "Helper.h"
 #include "statusled.h"
 #include "basic_auth.h"
-#include "../../include/defines.h"
+#include "defines.h"
 
 /*an ota data write buffer ready to write to the flash*/
 static char ota_write_data[SERVER_OTA_SCRATCH_BUFSIZE + 1] = {0};
@@ -77,7 +77,7 @@ void task_do_Update_ZIP(void *pvParameter)
 
     if (filetype == "ZIP")
     {
-        std::string in, outHtml, outHtmlTmp, outHtmlOld, outbin, zw, retfirmware;
+        std::string outHtml, outHtmlTmp, outHtmlOld, outbin, retfirmware;
 
         outHtml = "/sdcard/html";
         outHtmlTmp = "/sdcard/html_tmp";
@@ -134,14 +134,13 @@ void CheckUpdate()
         return;
     }
 
-    char zw[1024] = "";
-    fgets(zw, 1024, pfile);
-    _file_name_update = std::string(zw);
+    char temp_char[1024] = "";
+    fgets(temp_char, 1024, pfile);
+    _file_name_update = std::string(temp_char);
 
-    if (fgets(zw, 1024, pfile))
+    if (fgets(temp_char, 1024, pfile))
     {
-        std::string _szw = std::string(zw);
-        if (_szw == "init")
+        if (std::string(temp_char) == "init")
         {
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Inital Setup triggered");
         }
@@ -440,16 +439,9 @@ esp_err_t handler_ota_update(httpd_req_t *req)
 #endif
 
         delete_all_in_directory("/sdcard/firmware");
-        std::string zw = "firmware directory deleted - v2\n";
-
-#ifdef DEBUG_DETAIL_ON
-        ESP_LOGD(TAG, "%s", zw.c_str());
-#endif
-
-        printf("Ausgabe: %s\n", zw.c_str());
 
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-        httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
+        httpd_resp_sendstr_chunk(req, "firmware directory deleted - v2\n");
         /* Respond with an empty chunk to signal HTTP response completion */
         httpd_resp_send_chunk(req, NULL, 0);
 
@@ -465,8 +457,7 @@ esp_err_t handler_ota_update(httpd_req_t *req)
         std::string filetype = toUpper(getFileType(fn));
         if (filetype.length() == 0)
         {
-            std::string zw = "Update failed - no file specified (zip, bin, tfl, tlite)";
-            httpd_resp_sendstr_chunk(req, zw.c_str());
+            httpd_resp_sendstr_chunk(req, "Update failed - no file specified (zip, bin, tfl, tlite)");
             httpd_resp_sendstr_chunk(req, NULL);
             return ESP_OK;
         }
@@ -492,8 +483,7 @@ esp_err_t handler_ota_update(httpd_req_t *req)
             fwrite(fn.c_str(), fn.length(), 1, pfile);
             fclose(pfile);
 
-            std::string zw = "reboot\n";
-            httpd_resp_sendstr_chunk(req, zw.c_str());
+            httpd_resp_sendstr_chunk(req, "reboot\n");
             httpd_resp_sendstr_chunk(req, NULL);
 #ifdef DEBUG_DETAIL_ON
             ESP_LOGD(TAG, "Send reboot");
@@ -501,8 +491,7 @@ esp_err_t handler_ota_update(httpd_req_t *req)
             return ESP_OK;
         }
 
-        std::string zw = "Update failed - no valid file specified (zip, bin, tfl, tlite)!";
-        httpd_resp_sendstr_chunk(req, zw.c_str());
+        httpd_resp_sendstr_chunk(req, "Update failed - no valid file specified (zip, bin, tfl, tlite)!");
         httpd_resp_sendstr_chunk(req, NULL);
         return ESP_OK;
     }
@@ -512,16 +501,14 @@ esp_err_t handler_ota_update(httpd_req_t *req)
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Task unziphtml");
 #endif
-        std::string in, out, zw;
 
-        in = "/sdcard/firmware/html.zip";
-        out = "/sdcard/html";
+        std::string in = "/sdcard/firmware/html.zip";
+        std::string out = "/sdcard/html";
 
         delete_all_in_directory(out);
 
         unzip(in, out + "/");
-        zw = "Web Interface Update Successfull!\nNo reboot necessary";
-        httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
+        httpd_resp_sendstr_chunk(req, "Web Interface Update Successfull!\nNo reboot necessary");
         httpd_resp_sendstr_chunk(req, NULL);
         return ESP_OK;
     }
@@ -549,18 +536,13 @@ esp_err_t handler_ota_update(httpd_req_t *req)
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File does not exist: " + fn);
         }
         /* Respond with an empty chunk to signal HTTP response completion */
-        std::string zw = "file deleted\n";
-#ifdef DEBUG_DETAIL_ON
-        ESP_LOGD(TAG, "%s", zw.c_str());
-#endif
-        httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
+        httpd_resp_sendstr_chunk(req, "file deleted\n");
         httpd_resp_send_chunk(req, NULL, 0);
         return ESP_OK;
     }
 
-    string zw = "ota without parameter - should not be the case!";
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    httpd_resp_send(req, zw.c_str(), strlen(zw.c_str()));
+    httpd_resp_sendstr_chunk(req, "ota without parameter - should not be the case!");
     httpd_resp_send_chunk(req, NULL, 0);
 
     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ota without parameter - should not be the case!");
@@ -583,15 +565,16 @@ void hard_restart()
 
     esp_task_wdt_add(NULL);
     while (true)
-        ;
+    {
+    }
 }
 
 void task_reboot(void *DeleteMainFlow)
 {
     // write a reboot, to identify a reboot by purpouse
     FILE *pfile = fopen("/sdcard/reboot.txt", "w");
-    std::string _s_zw = "reboot";
-    fwrite(_s_zw.c_str(), strlen(_s_zw.c_str()), 1, pfile);
+    std::string temp_string = "reboot";
+    fwrite(temp_string.c_str(), strlen(temp_string.c_str()), 1, pfile);
     fclose(pfile);
 
     vTaskDelay(3000 / portTICK_PERIOD_MS);

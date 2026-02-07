@@ -132,18 +132,18 @@ void doInit(void)
 
 bool doflow(void)
 {
-    std::string zw_time = getCurrentTimeString(LOGFILE_TIME_FORMAT);
+    std::string temp_time = getCurrentTimeString(LOGFILE_TIME_FORMAT);
 
 #ifdef DEBUG_DETAIL_ON
-    ESP_LOGD(TAG, "doflow - start %s", zw_time.c_str());
+    ESP_LOGD(TAG, "doflow - start %s", temp_time.c_str());
 #endif
 
     flowisrunning = true;
-    flowctrl.doFlow(zw_time);
+    flowctrl.doFlow(temp_time);
     flowisrunning = false;
 
 #ifdef DEBUG_DETAIL_ON
-    ESP_LOGD(TAG, "doflow - end %s", zw_time.c_str());
+    ESP_LOGD(TAG, "doflow - end %s", temp_time.c_str());
 #endif
 
     return true;
@@ -156,27 +156,27 @@ esp_err_t handler_get_heap(httpd_req_t *req)
     ESP_LOGD(TAG, "handler_get_heap uri: %s", req->uri);
 #endif
 
-    std::string zw = "Heap info:<br>" + getESPHeapInfo();
+    std::string temp_string = "Heap info:<br>" + getESPHeapInfo();
 
 #ifdef TASK_ANALYSIS_ON
     char *pcTaskList = (char *)calloc_psram_heap(std::string(TAG) + "->pcTaskList", 1, sizeof(char) * 768, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
     if (pcTaskList)
     {
         vTaskList(pcTaskList);
-        zw = zw + "<br><br>Task info:<br><pre>Name | State | Prio | Lowest stacksize | Creation order | CPU (-1=NoAffinity)<br>" + std::string(pcTaskList) + "</pre>";
+        temp_string = temp_string + "<br><br>Task info:<br><pre>Name | State | Prio | Lowest stacksize | Creation order | CPU (-1=NoAffinity)<br>" + std::string(pcTaskList) + "</pre>";
         free_psram_heap(std::string(TAG) + "->pcTaskList", pcTaskList);
     }
     else
     {
-        zw = zw + "<br><br>Task info:<br>ERROR - Allocation of TaskList buffer in PSRAM failed";
+        temp_string = temp_string + "<br><br>Task info:<br>ERROR - Allocation of TaskList buffer in PSRAM failed";
     }
 #endif
 
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
-    if (zw.length() > 0)
+    if (temp_string.length() > 0)
     {
-        httpd_resp_send(req, zw.c_str(), zw.length());
+        httpd_resp_send(req, temp_string.c_str(), temp_string.length());
     }
     else
     {
@@ -314,10 +314,10 @@ esp_err_t handler_json(httpd_req_t *req)
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_set_type(req, "application/json");
 
-        std::string zw = flowctrl.getJSON();
-        if (zw.length() > 0)
+        std::string temp_string = flowctrl.getJSON();
+        if (temp_string.length() > 0)
         {
-            httpd_resp_send(req, zw.c_str(), zw.length());
+            httpd_resp_send(req, temp_string.c_str(), temp_string.length());
         }
         else
         {
@@ -401,7 +401,7 @@ esp_err_t handler_openmetrics(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t handler_wasserzaehler(httpd_req_t *req)
+esp_err_t handler_value(httpd_req_t *req)
 {
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("handler water counter - Start");
@@ -410,11 +410,14 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
 
     if (bTaskAutoFlowCreated)
     {
+        std::string *sys_status = flowctrl.getActStatus();
+
         bool _rawValue = false;
         bool _noerror = false;
         bool _all = false;
         std::string _type = "value";
-        std::string zw;
+        std::string temp_string = "";
+        std::string temp_txt = "";
 
         char _query[100];
         char _size[10];
@@ -479,52 +482,48 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
                 _intype = READOUT_TYPE_ERROR;
             }
 
-            zw = flowctrl.getReadoutAll(_intype);
+            temp_string = flowctrl.getReadoutAll(_intype);
 #ifdef DEBUG_DETAIL_ON
-            ESP_LOGD(TAG, "ZW: %s", zw.c_str());
+            ESP_LOGD(TAG, "temp_string: %s", temp_string.c_str());
 #endif
 
-            if (zw.length() > 0)
+            if (temp_string.length() > 0)
             {
-                httpd_resp_send(req, zw.c_str(), zw.length());
+                httpd_resp_send(req, temp_string.c_str(), temp_string.length());
             }
 
             return ESP_OK;
         }
 
-        std::string *status = flowctrl.getActStatus();
         std::string query = std::string(_query);
 
         if (query.find("full") != std::string::npos)
         {
-            std::string txt;
-            txt = "<body style=\"font-family: arial\">";
+            temp_txt = "<body style=\"font-family: arial\">";
 
-            if ((countRounds <= 1) && (*status != std::string("Flow finished")))
+            if ((countRounds <= 1) && (sys_status->c_str() != std::string("Flow finished")))
             {
                 // First round not completed yet
-                txt += "<h3>Please wait for the first round to complete!</h3><h3>Current state: " + *status + "</h3>\n";
+                temp_txt += "<h3>Please wait for the first round to complete!</h3><h3>Current state: " + *sys_status + "</h3>\n";
             }
             else
             {
-                txt += "<h3>Value</h3>";
+                temp_txt += "<h3>Value</h3>";
             }
 
-            httpd_resp_sendstr_chunk(req, txt.c_str());
+            httpd_resp_sendstr_chunk(req, temp_txt.c_str());
         }
 
-        zw = flowctrl.getReadout(_rawValue, _noerror, 0);
+        temp_string = flowctrl.getReadout(_rawValue, _noerror, 0);
 
-        if (zw.length() > 0)
+        if (temp_string.length() > 0)
         {
-            httpd_resp_sendstr_chunk(req, zw.c_str());
+            httpd_resp_sendstr_chunk(req, temp_string.c_str());
         }
 
         if (query.find("full") != std::string::npos)
         {
-            std::string txt, zw;
-
-            if ((countRounds <= 1) && (*status != std::string("Flow finished")))
+            if ((countRounds <= 1) && (sys_status->c_str() != std::string("Flow finished")))
             {
                 // First round not completed yet
                 // Nothing to do
@@ -532,9 +531,9 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
             else
             {
                 /* Digit ROIs */
-                txt = "<body style=\"font-family: arial\">";
-                txt += "<hr><h3>Recognized Digit ROIs (previous round)</h3>\n";
-                txt += "<table style=\"border-spacing: 5px\"><tr style=\"text-align: center; vertical-align: top;\">\n";
+                temp_txt = "<body style=\"font-family: arial\">";
+                temp_txt += "<hr><h3>Recognized Digit ROIs (previous round)</h3>\n";
+                temp_txt += "<table style=\"border-spacing: 5px\"><tr style=\"text-align: center; vertical-align: top;\">\n";
 
                 std::vector<HTMLInfo *> htmlinfodig;
                 htmlinfodig = flowctrl.GetAllDigit();
@@ -546,40 +545,40 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
                         // Numbers greater than 10 and less than 0 indicate NaN, since a Roi can only have values ​​from 0 to 9.
                         if ((htmlinfodig[i]->val >= 10) || (htmlinfodig[i]->val < 0))
                         {
-                            zw = "NaN";
+                            temp_string = "NaN";
                         }
                         else
                         {
-                            zw = std::to_string((int)htmlinfodig[i]->val);
+                            temp_string = std::to_string((int)htmlinfodig[i]->val);
                         }
 
-                        txt += "<td style=\"width: 100px\"><h4>" + zw + "</h4><p><img src=\"/img_tmp/" + htmlinfodig[i]->filename + "\"></p></td>\n";
+                        temp_txt += "<td style=\"width: 100px\"><h4>" + temp_string + "</h4><p><img src=\"/img_tmp/" + htmlinfodig[i]->filename + "\"></p></td>\n";
                     }
                     else
                     {
                         std::stringstream stream;
                         stream << std::fixed << std::setprecision(1) << htmlinfodig[i]->val;
-                        zw = stream.str();
+                        temp_string = stream.str();
 
                         // Numbers greater than 10 and less than 0 indicate NaN, since a Roi can only have values ​​from 0 to 9.
-                        if ((std::stod(zw) >= 10) || (std::stod(zw) < 0))
+                        if ((std::stod(temp_string) >= 10) || (std::stod(temp_string) < 0))
                         {
-                            zw = "NaN";
+                            temp_string = "NaN";
                         }
 
-                        txt += "<td style=\"width: 100px\"><h4>" + zw + "</h4><p><img src=\"/img_tmp/" + htmlinfodig[i]->filename + "\"></p></td>\n";
+                        temp_txt += "<td style=\"width: 100px\"><h4>" + temp_string + "</h4><p><img src=\"/img_tmp/" + htmlinfodig[i]->filename + "\"></p></td>\n";
                     }
                     delete htmlinfodig[i];
                 }
 
                 htmlinfodig.clear();
 
-                txt += "</tr></table>\n";
-                httpd_resp_sendstr_chunk(req, txt.c_str());
+                temp_txt += "</tr></table>\n";
+                httpd_resp_sendstr_chunk(req, temp_txt.c_str());
 
                 /* Analog ROIs */
-                txt = "<hr><h3>Recognized Analog ROIs (previous round)</h3>\n";
-                txt += "<table style=\"border-spacing: 5px\"><tr style=\"text-align: center; vertical-align: top;\">\n";
+                temp_txt = "<hr><h3>Recognized Analog ROIs (previous round)</h3>\n";
+                temp_txt += "<table style=\"border-spacing: 5px\"><tr style=\"text-align: center; vertical-align: top;\">\n";
 
                 std::vector<HTMLInfo *> htmlinfoana;
                 htmlinfoana = flowctrl.GetAllAnalog();
@@ -588,38 +587,36 @@ esp_err_t handler_wasserzaehler(httpd_req_t *req)
                 {
                     std::stringstream stream;
                     stream << std::fixed << std::setprecision(1) << htmlinfoana[i]->val;
-                    zw = stream.str();
+                    temp_string = stream.str();
 
                     // Numbers greater than 10 and less than 0 indicate NaN, since a Roi can only have values ​​from 0 to 9.
-                    if ((std::stod(zw) >= 10) || (std::stod(zw) < 0))
+                    if ((std::stod(temp_string) >= 10) || (std::stod(temp_string) < 0))
                     {
-                        zw = "NaN";
+                        temp_string = "NaN";
                     }
 
-                    txt += "<td style=\"width: 150px;\"><h4>" + zw + "</h4><p><img src=\"/img_tmp/" + htmlinfoana[i]->filename + "\"></p></td>\n";
+                    temp_txt += "<td style=\"width: 150px;\"><h4>" + temp_string + "</h4><p><img src=\"/img_tmp/" + htmlinfoana[i]->filename + "\"></p></td>\n";
                     delete htmlinfoana[i];
                 }
 
                 htmlinfoana.clear();
 
-                txt += "</tr>\n</table>\n";
-                httpd_resp_sendstr_chunk(req, txt.c_str());
+                temp_txt += "</tr>\n</table>\n";
+                httpd_resp_sendstr_chunk(req, temp_txt.c_str());
 
                 /* Full Image
                  * Only show it after the image got taken */
-                txt = "<hr><h3>Full Image (current round)</h3>\n";
+                temp_txt = "<hr><h3>Full Image (current round)</h3>\n";
 
-                if ((*status == std::string("Initialization")) ||
-                    (*status == std::string("Initialization (delayed)")) ||
-                    (*status == std::string("Take Image")))
+                if ((sys_status->c_str() == std::string("Initialization")) || (sys_status->c_str() == std::string("Initialization (delayed)")) || (sys_status->c_str() == std::string("Take Image")))
                 {
-                    txt += "<p>Current state: " + *status + "</p>\n";
+                    temp_txt += "<p>Current state: " + *sys_status + "</p>\n";
                 }
                 else
                 {
-                    txt += "<img src=\"/img_tmp/alg_roi.jpg\">\n";
+                    temp_txt += "<img src=\"/img_tmp/alg_roi.jpg\">\n";
                 }
-                httpd_resp_sendstr_chunk(req, txt.c_str());
+                httpd_resp_sendstr_chunk(req, temp_txt.c_str());
             }
         }
 
@@ -645,9 +642,12 @@ esp_err_t handler_editflow(httpd_req_t *req)
     LogFile.WriteHeapInfo("handler_editflow - Start");
 #endif
 
+    std::string *sys_status = flowctrl.getActStatus();
+
     char _query[512];
     char _valuechar[30];
-    std::string _task;
+    std::string _task = "";
+    std::string temp_string = "";
 
     if (httpd_req_get_url_query_str(req, _query, 512) == ESP_OK)
     {
@@ -683,7 +683,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
 
     if (_task.compare("copy") == 0)
     {
-        std::string in, out, zw;
+        std::string in, out;
 
         httpd_query_key_value(_query, "in", _valuechar, 30);
         in = std::string(_valuechar);
@@ -694,14 +694,14 @@ esp_err_t handler_editflow(httpd_req_t *req)
         out = "/sdcard" + out;
 
         CopyFile(in, out);
-        zw = "Copy Done";
+        std::string temp_string = "Copy Done";
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-        httpd_resp_send(req, zw.c_str(), zw.length());
+        httpd_resp_send(req, temp_string.c_str(), temp_string.length());
     }
 
     if (_task.compare("cutref") == 0)
     {
-        std::string in, out, zw;
+        std::string in, out;
         int x = 0, y = 0, dx = 20, dy = 20;
         bool enhance = false;
 
@@ -754,7 +754,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
 
         std::string out2 = out.substr(0, out.length() - 4) + "_org.jpg";
 
-        if ((flowctrl.SetupModeActive || (*flowctrl.getActStatus() == std::string("Flow finished"))) && psram_init_shared_memory_for_take_image_step())
+        if ((flowctrl.SetupModeActive || ((sys_status->c_str() != std::string("Take Image")) && (sys_status->c_str() != std::string("Aligning")))) && psram_init_shared_memory_for_take_image_step())
         {
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Taking image for Alignment Mark Update...");
 
@@ -773,28 +773,26 @@ esp_err_t handler_editflow(httpd_req_t *req)
             delete cim;
 
             psram_deinit_shared_memory_for_take_image_step();
-            zw = "CutImage Done";
+            temp_string = "CutImage Done";
         }
         else
         {
-            LogFile.WriteToFile(ESP_LOG_WARN, TAG, std::string("Taking image for Alignment Mark not possible while device") + " is busy with a round (Current State: '" + *flowctrl.getActStatus() + "')!");
-            zw = "Device Busy";
+            LogFile.WriteToFile(ESP_LOG_WARN, TAG, std::string("Taking image for Alignment Mark not possible while device") + " is busy with a round (Current State: '" + sys_status->c_str() + "')!");
+            temp_string = "Device Busy";
         }
 
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-        httpd_resp_send(req, zw.c_str(), zw.length());
+        httpd_resp_send(req, temp_string.c_str(), temp_string.length());
     }
 
     // wird beim Erstellen eines neuen Referenzbildes aufgerufen
-    std::string *sys_status = flowctrl.getActStatus();
-
-    if ((sys_status->c_str() != std::string("Take Image")) && (sys_status->c_str() != std::string("Aligning")))
+    if (sys_status->c_str() != std::string("Take Image"))
     {
         if ((_task.compare("test_take") == 0) || (_task.compare("cam_settings") == 0))
         {
             std::string _host = "";
 
-            // laden der aktuellen Kameraeinstellungen(CCstatus) in den Zwischenspeicher(CFstatus)
+            // loading the current camera settings (CCstatus) into the buffer memory (CFstatus)
             Camera.set_camera_config_from_to(&CCstatus, &CFstatus); // CCstatus >>> CFstatus
 
             if (httpd_query_key_value(_query, "host", _valuechar, 30) == ESP_OK)
@@ -1245,9 +1243,9 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 Camera.CamTempImage = false;
 
                 ESP_LOGD(TAG, "Cam Settings set");
-                std::string _zw = "CamSettingsSet";
+                temp_string = "CamSettingsSet";
                 httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-                httpd_resp_send(req, _zw.c_str(), _zw.length());
+                httpd_resp_send(req, temp_string.c_str(), temp_string.length());
             }
             else
             {
@@ -1273,16 +1271,16 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 _host = std::string(_valuechar);
             }
 
-            std::string zw = flowctrl.doSingleStep("[Alignment]", _host);
+            temp_string = flowctrl.doSingleStep("[Alignment]", _host);
             httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-            httpd_resp_send(req, zw.c_str(), zw.length());
+            httpd_resp_send(req, temp_string.c_str(), temp_string.length());
         }
     }
     else
     {
-        std::string _zw = "DeviceIsBusy";
+        temp_string = "DeviceIsBusy";
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-        httpd_resp_send(req, _zw.c_str(), _zw.length());
+        httpd_resp_send(req, temp_string.c_str(), temp_string.length());
     }
 
 #ifdef DEBUG_DETAIL_ON
@@ -1307,8 +1305,8 @@ esp_err_t handler_statusflow(httpd_req_t *req)
         ESP_LOGD(TAG, "handler_statusflow: %s", req->uri);
 #endif
 
-        string *zw = flowctrl.getActStatusWithTime();
-        resp_str = zw->c_str();
+        string *temp_string = flowctrl.getActStatusWithTime();
+        resp_str = temp_string->c_str();
 
         httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
     }
@@ -1527,9 +1525,6 @@ void task_autodoFlow(void *pvParameter)
     {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "We are in Setup Mode -> Not starting Auto Flow!");
         autostartIsEnabled = false;
-        // 15.7.0 Setup Wizard cannot take a Reference Picture #2953
-        // std::string zw_time = getCurrentTimeString(LOGFILE_TIME_FORMAT);
-        // flowctrl.doFlowTakeImageOnly(zw_time);
     }
 
     if (autostartIsEnabled)
@@ -1546,8 +1541,8 @@ void task_autodoFlow(void *pvParameter)
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "----------------------------------------------------------------"); // Clear separation between runs
         time_t roundStartTime = getUpTime();
 
-        std::string _zw = "Round #" + std::to_string(++countRounds) + " started";
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, _zw);
+        std::string temp_string = "Round #" + std::to_string(++countRounds) + " started";
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, temp_string);
 
         fr_start = esp_timer_get_time();
 
@@ -1707,18 +1702,18 @@ void register_server_main_flow_task_uri(httpd_handle_t server)
 
     // Legacy API => New: "/value"
     camuri.uri = "/value.html";
-    camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_wasserzaehler);
+    camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_value);
     camuri.user_ctx = (void *)"Value";
     httpd_register_uri_handler(server, &camuri);
 
     camuri.uri = "/value";
-    camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_wasserzaehler);
+    camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_value);
     camuri.user_ctx = (void *)"Value";
     httpd_register_uri_handler(server, &camuri);
 
     // Legacy API => New: "/value"
     camuri.uri = "/wasserzaehler.html";
-    camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_wasserzaehler);
+    camuri.handler = APPLY_BASIC_AUTH_FILTER(handler_value);
     camuri.user_ctx = (void *)"Wasserzaehler";
     httpd_register_uri_handler(server, &camuri);
 
