@@ -388,7 +388,7 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE *pfile, std::string &aktparamgraph)
 
     while (getNextLine(pfile, &aktparamgraph) && !isNewParagraph(aktparamgraph))
     {
-        splitted = ZerlegeZeile(aktparamgraph);
+        splitted = split_line(aktparamgraph);
 
         if (splitted.size() > 1)
         {

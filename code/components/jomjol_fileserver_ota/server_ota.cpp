@@ -29,7 +29,7 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 
 #include "MainFlowControl.h"
 #include "server_file.h"
-#include "server_GPIO.h"
+#include "server_GpioHandler.h"
 #ifdef ENABLE_MQTT
 #include "interface_mqtt.h"
 #endif // ENABLE_MQTT

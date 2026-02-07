@@ -262,7 +262,7 @@ bool publishSystemData(int qos) {
     sprintf(tmp_char, "%d", get_WIFI_RSSI());
     allSendsSuccessed |= MQTTPublish(maintopic + "/" + "wifiRSSI", std::string(tmp_char), qos, retainFlag);
 
-    sprintf(tmp_char, "%d", (int)temperatureRead());
+    sprintf(tmp_char, "%d", (int)read_tempsensor());
     allSendsSuccessed |= MQTTPublish(maintopic + "/" + "CPUtemp", std::string(tmp_char), qos, retainFlag);
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Successfully published all System MQTT topics");

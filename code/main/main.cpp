@@ -24,7 +24,7 @@
 
 #include "connect_wlan.h"
 #include "read_wlanini.h"
-
+#include "server_GpioHandler.h"
 #include "server_main.h"
 #include "MainFlowControl.h"
 #include "server_file.h"
@@ -199,7 +199,7 @@ bool Init_NVS_SDCard()
             StatusLED(SDCARD_INIT, 1, true);
         }
         else if (ret == 263)
-        { 
+        {
             // Error code: 0x107 --> usually: SD not found
             ESP_LOGE(TAG, "SD card init failed. Check if SD card is properly inserted into SD card slot or try another card");
             StatusLED(SDCARD_INIT, 2, true);
@@ -266,15 +266,18 @@ extern "C" void app_main(void)
     if (iSDCardStatus < 0)
     {
         if (iSDCardStatus <= -1 && iSDCardStatus >= -2)
-        { // write error
+        { 
+            // write error
             StatusLED(SDCARD_CHECK, 1, true);
         }
         else if (iSDCardStatus <= -3 && iSDCardStatus >= -5)
-        { // read error
+        { 
+            // read error
             StatusLED(SDCARD_CHECK, 2, true);
         }
         else if (iSDCardStatus == -6)
-        { // delete error
+        { 
+            // delete error
             StatusLED(SDCARD_CHECK, 3, true);
         }
         setSystemStatusFlag(SYSTEM_STATUS_SDCARD_CHECK_BAD); // reduced web interface going to be loaded
@@ -303,27 +306,31 @@ extern "C" void app_main(void)
         StatusLED(PSRAM_INIT, 1, true);
     }
     else
-    {                                             // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
+    {                                             
+        // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
         size_t psram_size = esp_psram_get_size(); // size_t psram_size = esp_psram_get_size(); // comming in IDF 5.0
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size / 1024 / 1024) + "MB / " + std::to_string(psram_size / 1024 / 1024 * 8) + "MBit)");
 
         // Check PSRAM size
         // ********************************************
         if (psram_size < (4 * 1024 * 1024))
-        { // PSRAM is below 4 MBytes (32Mbit)
+        { 
+            // PSRAM is below 4 MBytes (32Mbit)
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM size >= 4MB (32Mbit) is mandatory to run this application");
             setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
             StatusLED(PSRAM_INIT, 2, true);
         }
         else
-        { // PSRAM size OK --> continue to check heap size
+        { 
+            // PSRAM size OK --> continue to check heap size
             size_t _hsize = getESPHeapSize();
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Total heap: " + std::to_string(_hsize) + " byte");
 
             // Check heap memory
             // ********************************************
             if (_hsize < 4000000)
-            { // Check available Heap memory for a bit less than 4 MB (a test on a good device showed 4187558 bytes to be available)
+            { 
+                // Check available Heap memory for a bit less than 4 MB (a test on a good device showed 4187558 bytes to be available)
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Total heap >= 4000000 byte is mandatory to run this application");
                 setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
                 StatusLED(PSRAM_INIT, 3, true);
@@ -353,7 +360,8 @@ extern "C" void app_main(void)
                     // Check camera init
                     // ********************************************
                     if (camStatus != ESP_OK)
-                    { // Camera init failed, retry to init
+                    { 
+                        // Camera init failed, retry to init
                         char camStatusHex[33];
                         sprintf(camStatusHex, "0x%02x", camStatus);
                         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Camera init failed (" + std::string(camStatusHex) + "), retrying...");
@@ -367,7 +375,8 @@ extern "C" void app_main(void)
                         vTaskDelay(xDelay);
 
                         if (camStatus != ESP_OK)
-                        { // Camera init failed again
+                        { 
+                            // Camera init failed again
                             sprintf(camStatusHex, "0x%02x", camStatus);
                             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Check camera module and/or proper electrical connection");
                             setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
@@ -402,6 +411,11 @@ extern "C" void app_main(void)
     // ********************************************
     setCpuFrequency();
 
+#ifdef CONFIG_SOC_TEMP_SENSOR_SUPPORTED
+    ESP_LOGI(TAG, "init Tempsensor");
+    init_tempsensor();
+#endif
+
 // Start SoftAP for initial remote setup
 // Note: Start AP if no wlan.ini and/or config.ini available, e.g. SD card empty; function does not exit anymore until reboot
 // ********************************************
@@ -419,11 +433,11 @@ extern "C" void app_main(void)
 
     // Check version information
     // ********************************************
-    std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) +
-                                  ", Web UI: " + getHTMLversion();
+    std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) + ", Web UI: " + getHTMLversion();
 
     if (std::string(GIT_TAG) != "")
-    { // We are on a tag, add it as prefix
+    { 
+        // We are on a tag, add it as prefix
         versionFormated = "Tag: '" + std::string(GIT_TAG) + "', " + versionFormated;
     }
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, versionFormated);
@@ -432,7 +446,8 @@ extern "C" void app_main(void)
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, std::string("Failed to read file html/version.txt to parse Web UI version"));
 
     if (getHTMLcommit().substr(0, 7) != std::string(GIT_REV).substr(0, 7))
-    { // Compare the first 7 characters of both hashes
+    { 
+        // Compare the first 7 characters of both hashes
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Web UI version (" + getHTMLcommit() + ") does not match firmware version (" + std::string(GIT_REV) + ")");
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Recommendation: Repeat installation using AI-on-the-edge-device__update__*.zip");
     }
@@ -441,7 +456,8 @@ extern "C" void app_main(void)
     // ********************************************
     CheckIsPlannedReboot();
     if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC))
-    { // If system reboot was not triggered by user and reboot was caused by execption
+    { 
+        // If system reboot was not triggered by user and reboot was caused by execption
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reset reason: " + getResetReason());
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Device was rebooted due to a software exception! Log level is set to DEBUG until the next reboot. "
                                                "Flow init is delayed by 5 minutes to check the logs or do an OTA update");
@@ -478,12 +494,14 @@ extern "C" void app_main(void)
         init_basic_auth();
     }
     else if (iWLANStatus == -1)
-    { // wlan.ini not available, potentially empty or content not readable
+    { 
+        // wlan.ini not available, potentially empty or content not readable
         StatusLED(WLAN_INIT, 1, true);
         return; // No way to continue without reading the wlan.ini
     }
     else if (iWLANStatus == -2)
-    { // SSID or password not configured
+    { 
+        // SSID or password not configured
         StatusLED(WLAN_INIT, 2, true);
         return; // No way to continue with empty SSID or password!
     }
@@ -555,25 +573,23 @@ extern "C" void app_main(void)
     ESP_LOGD(TAG, "Before reg server main");
     register_server_main_uri(server, "/sdcard");
 
-    // Only for testing purpose
-    // setSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD);
-    // setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
-
     // Check main init + start TFlite task
     // ********************************************
     if (getSystemStatus() == 0)
-    { // No error flag is set
+    { 
+        // No error flag is set
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initialization completed successfully");
         InitializeFlowTask();
     }
-    else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || // Non critical errors occured, we try to continue...
-             isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD))
+    else if (isSetSystemStatusFlag(SYSTEM_STATUS_CAM_FB_BAD) || isSetSystemStatusFlag(SYSTEM_STATUS_NTP_BAD))
     {
+        // Non critical errors occured, we try to continue...
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Initialization completed with non-critical errors!");
         InitializeFlowTask();
     }
     else
-    { // Any other error is critical and makes running the flow impossible. Init is going to abort.
+    { 
+        // Any other error is critical and makes running the flow impossible. Init is going to abort.
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Initialization failed. Flow task start aborted. Loading reduced web interface...");
     }
 }
@@ -617,7 +633,7 @@ void migrateConfiguration(void)
         }
         else
         {
-            splitted = ZerlegeZeile(configLines[i]);
+            splitted = split_line(configLines[i]);
         }
 
         /* Migrate parameters as needed
@@ -1060,7 +1076,7 @@ bool setCpuFrequency(void)
     while (configFile.getNextLine(&line, disabledLine, eof) &&
            !configFile.isNewParagraph(line))
     {
-        splitted = ZerlegeZeile(line);
+        splitted = split_line(line);
 
         if (toUpper(splitted[0]) == "CPUFREQUENCY")
         {
@@ -1084,7 +1100,7 @@ bool setCpuFrequency(void)
 
     if (cpuFrequency == "160")
     { // 160 is the default
-        // No change needed
+      // No change needed
     }
     else if (cpuFrequency == "240")
     {

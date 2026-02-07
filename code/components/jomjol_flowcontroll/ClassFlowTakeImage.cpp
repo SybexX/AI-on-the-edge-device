@@ -86,7 +86,7 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
 
     while (getNextLine(pfile, &aktparamgraph) && !isNewParagraph(aktparamgraph))
     {
-        splitted = ZerlegeZeile(aktparamgraph);
+        splitted = split_line(aktparamgraph);
 
         if (splitted.size() > 1)
         {

@@ -3,6 +3,8 @@
 #ifndef CLASSCONTROLLCAMERA_H
 #define CLASSCONTROLLCAMERA_H
 
+#include "defines.h"
+
 #include <string>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -10,10 +12,9 @@
 #include "freertos/event_groups.h"
 
 #include "esp_camera.h"
-#include <string>
 #include <esp_http_server.h>
+
 #include "CImageBasis.h"
-#include "../../include/defines.h"
 
 typedef struct
 {

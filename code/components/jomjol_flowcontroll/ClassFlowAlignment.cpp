@@ -84,7 +84,7 @@ bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
 
     while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph))
     {
-        splitted = ZerlegeZeile(aktparamgraph);
+        splitted = split_line(aktparamgraph);
 
         if (splitted.size() > 1)
         {
@@ -390,7 +390,7 @@ bool ClassFlowAlignment::LoadReferenceAlignmentValues(void)
 
     fgets(zw, 1024, pFile); // erste Zeile ist nur das Datum
     fgets(zw, 1024, pFile);
-    splitted = ZerlegeZeile(std::string(zw), " \t");
+    splitted = split_line(std::string(zw), " \t");
 
     if (splitted.size() < 6)
     {
@@ -406,7 +406,7 @@ bool ClassFlowAlignment::LoadReferenceAlignmentValues(void)
     References[0].fastalg_avg = stof(splitted[5]);
 
     fgets(zw, 1024, pFile);
-    splitted = ZerlegeZeile(std::string(zw));
+    splitted = split_line(std::string(zw));
 
     if (splitted.size() < 6)
     {

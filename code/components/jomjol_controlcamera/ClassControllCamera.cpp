@@ -11,9 +11,9 @@
 #include "CImageBasis.h"
 
 #include "server_ota.h"
-#include "server_GPIO.h"
+#include "server_GpioHandler.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 #include <esp_event.h>
 #include <esp_log.h>
@@ -272,8 +272,8 @@ esp_err_t CCamera::get_sensor_controll_config(camera_controll_config_temp_t *cam
     // sensor_t *cam_sensor = esp_camera_sensor_get();
     if (cam_sensor != NULL)
     {
-        // Since there are always errors when reading out the parameters 
-        // and therefore problems when initializing the camera with the wrong parameters, 
+        // Since there are always errors when reading out the parameters
+        // and therefore problems when initializing the camera with the wrong parameters,
         // the parameters are checked and, if necessary, set with a default value.
         // note: The read value is usually "uint8_t" (see: https://github.com/espressif/esp32-camera/blob/dba8da9898928d9808d57a0b0cdcde9f130ed8fe/driver/include/sensor.h#L174#L203)
         //       However, the one to be set is usually "int" (see: https://github.com/espressif/esp32-camera/blob/dba8da9898928d9808d57a0b0cdcde9f130ed8fe/driver/include/sensor.h#L206#L253)
@@ -1206,7 +1206,7 @@ esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
 
 void CCamera::LightOnOff(bool status)
 {
-    GpioHandler *gpioHandler = gpio_handler_get();
+    ConfigGpioHandler *gpioHandler = gpio_handler_get();
 
     if ((gpioHandler != NULL) && (gpioHandler->isEnabled()))
     {

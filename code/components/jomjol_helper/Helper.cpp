@@ -50,6 +50,56 @@ bool SDCardIsMMC;
 
 // #define DEBUG_DETAIL_ON
 
+#if CONFIG_SOC_TEMP_SENSOR_SUPPORTED
+// The ESP32-S2/C3/S3/C2 has a built-in temperature sensor.
+// The temperature sensor module contains an 8-bit Sigma-Delta ADC and a temperature offset DAC.
+// https://github.com/espressif/esp-idf/blob/master/examples/peripherals/temperature_sensor/
+temperature_sensor_handle_t temp_handle = NULL;
+temperature_sensor_config_t temp_sensor = {
+	.range_min = -10,
+	.range_max = 80,
+	.clk_src = TEMPERATURE_SENSOR_CLK_SRC_DEFAULT,
+};
+
+void init_tempsensor(void)
+{
+	ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor, &temp_handle));
+
+	xTaskCreate(
+		[](void *pvParameters)
+		{
+			while (1)
+			{
+				// Get converted sensor data
+				float tsens_out;
+
+				// Enable temperature sensor
+				ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
+				ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_handle, &tsens_out));
+				temp_sens_value = tsens_out;
+				// Disable the temperature sensor if it is not needed and save the power
+				ESP_ERROR_CHECK(temperature_sensor_disable(temp_handle));
+
+				vTaskDelay(pdMS_TO_TICKS(5000));
+			}
+		},
+		"tempsensor_task", 2048, NULL, 5, NULL);
+}
+
+float read_tempsensor(void)
+{
+	return temp_sens_value;
+}
+#elif CONFIG_IDF_TARGET_ESP32
+extern "C" uint8_t temprature_sens_read(void);
+float read_tempsensor(void)
+{
+	// convert Fahrenheit to Celsius (F-32) * (5/9) = degree Celsius
+	temp_sens_value = (temprature_sens_read() - 32) / 1.8;
+	return temp_sens_value;
+}
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 string getESPHeapInfo()
 {
@@ -106,7 +156,9 @@ string getSDCardPartitionSize()
 	f_getfree("0:", (DWORD *)&fre_clust, &fs);
 	tot_sect = ((fs->n_fatent - 2) * fs->csize) / 1024 / (1024 / SDCardCsd.sector_size); // corrected by SD Card sector size (usually 512 bytes) and convert to MB
 
-	// ESP_LOGD(TAG, "%d MB total drive space (Sector size [bytes]: %d)", (int)tot_sect, (int)fs->ssize);
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "%d MB total drive space (Sector size [bytes]: %d)", (int)tot_sect, (int)fs->ssize);
+#endif
 
 	return std::to_string(tot_sect);
 }
@@ -120,7 +172,9 @@ string getSDCardFreePartitionSpace()
 	f_getfree("0:", (DWORD *)&fre_clust, &fs);
 	fre_sect = (fre_clust * fs->csize) / 1024 / (1024 / SDCardCsd.sector_size); // corrected by SD Card sector size (usually 512 bytes) and convert to MB
 
-	// ESP_LOGD(TAG, "%d MB free drive space (Sector size [bytes]: %d)", (int)fre_sect, (int)fs->ssize);
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "%d MB free drive space (Sector size [bytes]: %d)", (int)fre_sect, (int)fs->ssize);
+#endif
 
 	return std::to_string(fre_sect);
 }
@@ -134,7 +188,9 @@ string getSDCardPartitionAllocationSize()
 	f_getfree("0:", (DWORD *)&fre_clust, &fs);
 	allocation_size = fs->ssize;
 
-	// ESP_LOGD(TAG, "SD Card Partition Allocation Size: %d bytes", allocation_size);
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "SD Card Partition Allocation Size: %d bytes", allocation_size);
+#endif
 
 	return std::to_string(allocation_size);
 }
@@ -149,32 +205,36 @@ void SaveSDCardInfo(sdmmc_card_t *card)
 string getSDCardManufacturer()
 {
 	string SDCardManufacturer = SDCardParseManufacturerIDs(SDCardCid.mfg_id);
-	// ESP_LOGD(TAG, "SD Card Manufacturer: %s", SDCardManufacturer.c_str());
-
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "SD Card Manufacturer: %s", SDCardManufacturer.c_str());
+#endif
 	return (SDCardManufacturer + " (ID: " + std::to_string(SDCardCid.mfg_id) + ")");
 }
 
 string getSDCardName()
 {
 	char *SDCardName = SDCardCid.name;
-	// ESP_LOGD(TAG, "SD Card Name: %s", SDCardName);
-
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "SD Card Name: %s", SDCardName);
+#endif
 	return std::string(SDCardName);
 }
 
 string getSDCardCapacity()
 {
 	int SDCardCapacity = SDCardCsd.capacity / (1024 / SDCardCsd.sector_size) / 1024; // total sectors * sector size  --> Byte to MB (1024*1024)
-	// ESP_LOGD(TAG, "SD Card Capacity: %s", std::to_string(SDCardCapacity).c_str());
-
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "SD Card Capacity: %s", std::to_string(SDCardCapacity).c_str());
+#endif
 	return std::to_string(SDCardCapacity);
 }
 
 string getSDCardSectorSize()
 {
 	int SDCardSectorSize = SDCardCsd.sector_size;
-	// ESP_LOGD(TAG, "SD Card Sector Size: %s bytes", std::to_string(SDCardSectorSize).c_str());
-
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "SD Card Sector Size: %s bytes", std::to_string(SDCardSectorSize).c_str());
+#endif
 	return std::to_string(SDCardSectorSize);
 }
 
@@ -443,7 +503,9 @@ bool DeleteFile(string filename)
 	// Sourcefile does not exist otherwise there is a mistake in copying!
 	if (!fpSourceFile)
 	{
+#ifdef DEBUG_DETAIL_ON
 		ESP_LOGD(TAG, "DeleteFile: File %s existiert nicht!", filename.c_str());
+#endif
 		return false;
 	}
 
@@ -460,7 +522,9 @@ bool CopyFile(string input, string output)
 
 	if (toUpper(input).compare(WLAN_CONFIG_FILE) == 0)
 	{
+#ifdef DEBUG_DETAIL_ON
 		ESP_LOGD(TAG, "wlan.ini kann nicht kopiert werden!");
+#endif
 		return false;
 	}
 
@@ -470,7 +534,9 @@ bool CopyFile(string input, string output)
 	// Sourcefile existiert nicht sonst gibt es einen Fehler beim Kopierversuch!
 	if (!fpSourceFile)
 	{
+#ifdef DEBUG_DETAIL_ON
 		ESP_LOGD(TAG, "File %s existiert nicht!", input.c_str());
+#endif
 		return false;
 	}
 
@@ -488,7 +554,10 @@ bool CopyFile(string input, string output)
 	// Close The Files
 	fclose(fpSourceFile);
 	fclose(fpTargetFile);
+
+#ifdef DEBUG_DETAIL_ON
 	ESP_LOGD(TAG, "File copied: %s to %s", input.c_str(), output.c_str());
+#endif
 
 	return true;
 }
@@ -502,10 +571,11 @@ string getFileFullFileName(string filename)
 		return "";
 	}
 
-	//	ESP_LOGD(TAG, "Last position: %d", lastpos);
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "Last position: %d", lastpos);
+#endif
 
 	string zw = filename.substr(lastpos + 1, filename.size() - lastpos);
-
 	return zw;
 }
 
@@ -523,7 +593,9 @@ string getDirectory(string filename)
 		return "";
 	}
 
-	//	ESP_LOGD(TAG, "Directory: %d", lastpos);
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "Directory: %d", lastpos);
+#endif
 
 	string zw = filename.substr(0, lastpos - 1);
 	return zw;
@@ -648,13 +720,6 @@ string toLower(string in)
 	return in;
 }
 
-// CPU Temp
-extern "C" uint8_t temprature_sens_read();
-float temperatureRead()
-{
-	return (temprature_sens_read() - 32) / 1.8;
-}
-
 time_t addDays(time_t startTime, int days)
 {
 	struct tm *tm = localtime(&startTime);
@@ -664,7 +729,9 @@ time_t addDays(time_t startTime, int days)
 
 int removeFolder(const char *folderPath, const char *logTag)
 {
-	// ESP_LOGD(logTag, "Delete content in path %s", folderPath);
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(logTag, "Delete content in path %s", folderPath);
+#endif
 
 	DIR *dir = opendir(folderPath);
 
@@ -683,7 +750,10 @@ int removeFolder(const char *folderPath, const char *logTag)
 
 		if (entry->d_type == DT_REG)
 		{
-			// ESP_LOGD(logTag, "Delete file %s", path.c_str());
+#ifdef DEBUG_DETAIL_ON
+			ESP_LOGD(logTag, "Delete file %s", path.c_str());
+#endif
+
 			if (unlink(path.c_str()) == 0)
 			{
 				deleted++;
@@ -706,12 +776,14 @@ int removeFolder(const char *folderPath, const char *logTag)
 		ESP_LOGE(logTag, "can't delete folder: %s", folderPath);
 	}
 
+#ifdef DEBUG_DETAIL_ON
 	ESP_LOGD(logTag, "%d files in folder %s deleted.", deleted, folderPath);
+#endif
 
 	return deleted;
 }
 
-std::vector<string> HelperZerlegeZeile(std::string input, std::string _delimiter = "")
+std::vector<string> split_line_helper(std::string input, std::string _delimiter = "")
 {
 	std::vector<string> Output;
 	std::string delimiter = " =,";
@@ -721,10 +793,10 @@ std::vector<string> HelperZerlegeZeile(std::string input, std::string _delimiter
 		delimiter = _delimiter;
 	}
 
-	return ZerlegeZeile(input, delimiter);
+	return split_line(input, delimiter);
 }
 
-std::vector<string> ZerlegeZeile(std::string input, std::string delimiter)
+std::vector<string> split_line(std::string input, std::string delimiter)
 {
 	std::vector<string> Output;
 	/* The input can have multiple formats:
@@ -1054,7 +1126,10 @@ string RundeOutput(double _in, int _anzNachkomma)
 {
 	std::stringstream stream;
 	int _zw = _in;
-	//    ESP_LOGD(TAG, "AnzNachkomma: %d", _anzNachkomma);
+
+#ifdef DEBUG_DETAIL_ON
+	ESP_LOGD(TAG, "AnzNachkomma: %d", _anzNachkomma);
+#endif
 
 	if (_anzNachkomma > 0)
 	{
@@ -1104,8 +1179,6 @@ int getSystemStatus(void)
 
 bool isSetSystemStatusFlag(SystemStatusFlag_t flag)
 {
-	// ESP_LOGE(TAG, "Flag (0x%08X) is set (0x%08X): %d", flag, systemStatus , ((systemStatus & flag) == flag));
-
 	if ((systemStatus & flag) == flag)
 	{
 		return true;

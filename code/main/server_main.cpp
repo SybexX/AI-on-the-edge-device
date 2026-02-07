@@ -374,7 +374,7 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
 esp_err_t sysinfo_handler(httpd_req_t *req)
 {
     std::string zw;
-    std::string cputemp = std::to_string((int)temperatureRead());
+    std::string cputemp = std::to_string((int)read_tempsensor());
     std::string gitversion = libfive_git_version();
     std::string buildtime = build_time();
     std::string gitbranch = libfive_git_branch();

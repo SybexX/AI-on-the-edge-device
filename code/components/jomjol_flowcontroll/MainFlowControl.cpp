@@ -20,7 +20,7 @@
 #include "ClassFlowControll.h"
 
 #include "ClassLogFile.h"
-#include "server_GPIO.h"
+#include "server_GpioHandler.h"
 
 #include "server_file.h"
 
@@ -371,7 +371,7 @@ esp_err_t handler_openmetrics(httpd_req_t *req)
         string response = createSequenceMetrics(metricNamePrefix, flowctrl.getNumbers());
 
         // CPU Temperature
-        response += createMetric(metricNamePrefix + "_cpu_temperature_celsius", "current cpu temperature in celsius", "gauge", std::to_string((int)temperatureRead()));
+        response += createMetric(metricNamePrefix + "_cpu_temperature_celsius", "current cpu temperature in celsius", "gauge", std::to_string((int)read_tempsensor()));
 
         // WiFi signal strength
         response += createMetric(metricNamePrefix + "_rssi_dbm", "current WiFi signal strength in dBm", "gauge", std::to_string(get_WIFI_RSSI()));
@@ -1332,7 +1332,7 @@ esp_err_t handler_cputemp(httpd_req_t *req)
 #endif
 
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    httpd_resp_send(req, std::to_string((int)temperatureRead()).c_str(), HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send(req, std::to_string((int)read_tempsensor()).c_str(), HTTPD_RESP_USE_STRLEN);
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("handler_cputemp - End");
@@ -1575,7 +1575,7 @@ void task_autodoFlow(void *pvParameter)
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Round #" + std::to_string(countRounds) + " completed (" + std::to_string(getUpTime() - roundStartTime) + " seconds)");
 
         // CPU Temp -> Logfile
-        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CPU Temperature: " + std::to_string((int)temperatureRead()) + "°C");
+        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CPU Temperature: " + std::to_string((int)read_tempsensor()) + "°C");
 
         // WIFI Signal Strength (RSSI) -> Logfile
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "WIFI Signal (RSSI): " + std::to_string(get_WIFI_RSSI()) + "dBm");

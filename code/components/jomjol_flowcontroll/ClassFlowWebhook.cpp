@@ -96,7 +96,7 @@ bool ClassFlowWebhook::ReadParameter(FILE *pfile, string &aktparamgraph)
 
     while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph))
     {
-        splitted = ZerlegeZeile(aktparamgraph);
+        splitted = split_line(aktparamgraph);
 
         if (splitted.size() > 1)
         {

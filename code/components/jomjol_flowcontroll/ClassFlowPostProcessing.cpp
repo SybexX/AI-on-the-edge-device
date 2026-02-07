@@ -204,7 +204,7 @@ bool ClassFlowPostProcessing::LoadPreValue(void)
         return false;
     }
 
-    splitted = HelperZerlegeZeile(zwtime, "\t");
+    splitted = split_line_helper(zwtime, "\t");
 
     //  Conversion to the new format
     if (splitted.size() > 1)
@@ -262,7 +262,7 @@ bool ClassFlowPostProcessing::LoadPreValue(void)
 #ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "Read line Prevalue.ini: %s", zw);
 #endif
-                splitted = HelperZerlegeZeile(trim(std::string(zw)), "\t");
+                splitted = split_line_helper(trim(std::string(zw)), "\t");
 
                 if (splitted.size() > 1)
                 {
@@ -667,7 +667,7 @@ bool ClassFlowPostProcessing::ReadParameter(FILE *pfile, string &aktparamgraph)
 
     while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph))
     {
-        splitted = ZerlegeZeile(aktparamgraph);
+        splitted = split_line(aktparamgraph);
         std::string _param = GetParameterName(splitted[0]);
 
         if (splitted.size() > 1)
