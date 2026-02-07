@@ -2163,8 +2163,8 @@
 var canvas = document.getElementById('canvas'),
     domainname = getDomainname(),
     changeCamValue = 0,	
-    param,
-    category,
+    config_param,
+    config_category,
     NUNBERSAkt = -1,
     NUMBERS;
 
@@ -2173,32 +2173,33 @@ function cameraParameterChanged() {
 
     if(!document.getElementById("TakeImage_CamZoom_value1").selectedIndex) {
         // EnDisableItem(_status, _param, _category, _cat, _name, _optional, _number = -1)
-        EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetX", false);
-        EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetY", false);
-        EnDisableItem(true, param, category, "TakeImage", "CamZoomSize", false);				
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomSize", false);				
     }
     else {
-        EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetX", false);
-        EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetY", false);
-        EnDisableItem(false, param, category, "TakeImage", "CamZoomSize", false);				
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomSize", false);				
     }
 
     if(document.getElementById("TakeImage_CamAutoSharpness_value1").selectedIndex) {
-        EnDisableItem(true, param, category, "TakeImage", "CamSharpness", false);				
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamSharpness", false);				
     }
     else {
-        EnDisableItem(false, param, category, "TakeImage", "CamSharpness", false);				
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamSharpness", false);				
     }
 }
 
 function LoadConfigNeu() {
     if (!loadConfig(domainname)) {
-        firework.launch('Configuration could not be loaded! Please reload the page!', 'danger', 30000);
-        return;
-    }
-	
-    param = getCamConfig();
-    category = getConfigCategory();
+		firework.launch('Configuration could not be loaded! Please reload the page!', 'danger', 30000);
+		return;
+    }		
+			
+    config_param = getConfigParameters();
+	config_category = getConfigCategory();
+			
     InitIndivParameter();
 
     UpdateInput();
@@ -2211,21 +2212,21 @@ function LoadConfigNeu() {
 
     if(!document.getElementById("TakeImage_CamZoom_value1").selectedIndex) {
         // EnDisableItem(_status, _param, _category, _cat, _name, _optional, _number = -1)
-        EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetX", false);
-        EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetY", false);
-        EnDisableItem(true, param, category, "TakeImage", "CamZoomSize", false);				
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomSize", false);				
     }
     else {
-        EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetX", false);
-        EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetY", false);
-        EnDisableItem(false, param, category, "TakeImage", "CamZoomSize", false);				
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomSize", false);				
     }
 
     if(document.getElementById("TakeImage_CamAutoSharpness_value1").selectedIndex) {
-        EnDisableItem(true, param, category, "TakeImage", "CamSharpness", false);				
+        EnDisableItem(true, config_param, config_category, "TakeImage", "CamSharpness", false);				
     }
     else {
-        EnDisableItem(false, param, category, "TakeImage", "CamSharpness", false);				
+        EnDisableItem(false, config_param, config_category, "TakeImage", "CamSharpness", false);				
     }	
 }
 
@@ -2282,179 +2283,179 @@ function InitIndivParameter() {
 
 function UpdateInputIndividual(sel) {
     if (NUNBERSAkt != -1) {
-        // ReadParameter(param, "PostProcessing", "PreValueUse", false, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "DecimalShift", true, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "AnalogToDigitTransitionStart", true, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "ChangeRateThreshold", true, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "MaxFlowRate", true, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
-        ReadParameter(param, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
-        ReadParameter(param, "InfluxDB", "Field", true, NUNBERSAkt);
-        ReadParameter(param, "InfluxDBv2", "Field", true, NUNBERSAkt);
-        ReadParameter(param, "InfluxDB", "Measurement", true, NUNBERSAkt);
-        ReadParameter(param, "InfluxDBv2", "Measurement", true, NUNBERSAkt);
-        ReadParameter(param, "MQTT", "DomoticzIDX", true, NUNBERSAkt);
+        // ReadParameter(config_param, "PostProcessing", "PreValueUse", false, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "DecimalShift", true, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "AnalogToDigitTransitionStart", true, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "ChangeRateThreshold", true, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "MaxFlowRate", true, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
+        ReadParameter(config_param, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
+        ReadParameter(config_param, "InfluxDB", "Field", true, NUNBERSAkt);
+        ReadParameter(config_param, "InfluxDBv2", "Field", true, NUNBERSAkt);
+        ReadParameter(config_param, "InfluxDB", "Measurement", true, NUNBERSAkt);
+        ReadParameter(config_param, "InfluxDBv2", "Measurement", true, NUNBERSAkt);
+        ReadParameter(config_param, "MQTT", "DomoticzIDX", true, NUNBERSAkt);
     }
 
     // var sel = document.getElementById("Numbers_value1");
     NUNBERSAkt = sel.selectedIndex;
-    // WriteParameter(param, category, "PostProcessing", "PreValueUse", false, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "DecimalShift", true, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "AnalogToDigitTransitionStart", true, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "ChangeRateThreshold", true, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "MaxFlowRate", true, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
-    WriteParameter(param, category, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
-    WriteParameter(param, category, "InfluxDB", "Field", true, NUNBERSAkt);
-    WriteParameter(param, category, "InfluxDBv2", "Field", true, NUNBERSAkt);
-    WriteParameter(param, category, "InfluxDB", "Measurement", true, NUNBERSAkt);
-    WriteParameter(param, category, "InfluxDBv2", "Measurement", true, NUNBERSAkt);
-    WriteParameter(param, category, "MQTT", "DomoticzIDX", true, NUNBERSAkt);
+    // WriteParameter(config_param, config_category, "PostProcessing", "PreValueUse", false, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "DecimalShift", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "AnalogToDigitTransitionStart", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "ChangeRateThreshold", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "MaxFlowRate", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "MaxRateValue", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "MaxRateType", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "ExtendedResolution", false, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "IgnoreLeadingNaN", false, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "AllowNegativeRates", false, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "PostProcessing", "CheckDigitIncreaseConsistency", false, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "InfluxDB", "Field", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "InfluxDBv2", "Field", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "InfluxDB", "Measurement", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "InfluxDBv2", "Measurement", true, NUNBERSAkt);
+    WriteParameter(config_param, config_category, "MQTT", "DomoticzIDX", true, NUNBERSAkt);
 }
 
 function UpdateInput() {
-    document.getElementById("Category_Digits_enabled").checked = category["Digits"]["enabled"];
-    setVisible("DigitItem", category["Digits"]["enabled"]);
+    document.getElementById("Category_Digits_enabled").checked = config_category["Digits"]["enabled"];
+    setVisible("DigitItem", config_category["Digits"]["enabled"]);
 
-    document.getElementById("Category_Analog_enabled").checked = category["Analog"]["enabled"];
-    setVisible("AnalogItem", category["Analog"]["enabled"]);
+    document.getElementById("Category_Analog_enabled").checked = config_category["Analog"]["enabled"];
+    setVisible("AnalogItem", config_category["Analog"]["enabled"]);
 
-    document.getElementById("Category_MQTT_enabled").checked = category["MQTT"]["enabled"];
-    setVisible("MQTTItem", category["MQTT"]["enabled"]);
+    document.getElementById("Category_MQTT_enabled").checked = config_category["MQTT"]["enabled"];
+    setVisible("MQTTItem", config_category["MQTT"]["enabled"]);
 
-    document.getElementById("Category_GPIO_enabled").checked = category["GPIO"]["enabled"];
-    setVisible("GPIO_item", category["GPIO"]["enabled"]);
+    document.getElementById("Category_GPIO_enabled").checked = config_category["GPIO"]["enabled"];
+    setVisible("GPIO_item", config_category["GPIO"]["enabled"]);
 
-    document.getElementById("Category_InfluxDB_enabled").checked = category["InfluxDB"]["enabled"];
-    setVisible("InfluxDBv1Item", category["InfluxDB"]["enabled"]);
+    document.getElementById("Category_InfluxDB_enabled").checked = config_category["InfluxDB"]["enabled"];
+    setVisible("InfluxDBv1Item", config_category["InfluxDB"]["enabled"]);
 
-    document.getElementById("Category_InfluxDBv2_enabled").checked = category["InfluxDBv2"]["enabled"];
-    setVisible("InfluxDBv2Item", category["InfluxDBv2"]["enabled"]);
+    document.getElementById("Category_InfluxDBv2_enabled").checked = config_category["InfluxDBv2"]["enabled"];
+    setVisible("InfluxDBv2Item", config_category["InfluxDBv2"]["enabled"]);
 
-    document.getElementById("Category_Webhook_enabled").checked = category["Webhook"]["enabled"];
-    setVisible("WebhookItem", category["Webhook"]["enabled"]);
+    document.getElementById("Category_Webhook_enabled").checked = config_category["Webhook"]["enabled"];
+    setVisible("WebhookItem", config_category["Webhook"]["enabled"]);
 
-    WriteParameter(param, category, "TakeImage", "RawImagesLocation", true);
-    WriteParameter(param, category, "TakeImage", "RawImagesRetention", true);
+    WriteParameter(config_param, config_category, "TakeImage", "RawImagesLocation", true);
+    WriteParameter(config_param, config_category, "TakeImage", "RawImagesRetention", true);
 
-    WriteParameter(param, category, "TakeImage", "WaitBeforeTakingPicture", false);
-	WriteParameter(param, category, "TakeImage", "CamXclkFreqMhz", false);
-    WriteParameter(param, category, "TakeImage", "CamGainceiling", false);	
-    WriteParameter(param, category, "TakeImage", "CamQuality", false);
-    WriteParameter(param, category, "TakeImage", "CamBrightness", false);
-    WriteParameter(param, category, "TakeImage", "CamContrast", false);
-    WriteParameter(param, category, "TakeImage", "CamSaturation", false);
-    WriteParameter(param, category, "TakeImage", "CamSharpness", false);
-    WriteParameter(param, category, "TakeImage", "CamAutoSharpness", false);	
-    WriteParameter(param, category, "TakeImage", "CamSpecialEffect", false);
-    WriteParameter(param, category, "TakeImage", "CamWbMode", false);
-    WriteParameter(param, category, "TakeImage", "CamAwb", false);
-    WriteParameter(param, category, "TakeImage", "CamAwbGain", false);	
-    WriteParameter(param, category, "TakeImage", "CamAec", false);
-    WriteParameter(param, category, "TakeImage", "CamAec2", false);
-    WriteParameter(param, category, "TakeImage", "CamAeLevel", false);
-    WriteParameter(param, category, "TakeImage", "CamAecValue", false);	
-    WriteParameter(param, category, "TakeImage", "CamAgc", false);
-    WriteParameter(param, category, "TakeImage", "CamAgcGain", false);	
-    WriteParameter(param, category, "TakeImage", "CamBpc", false);
-    WriteParameter(param, category, "TakeImage", "CamWpc", false);
-    WriteParameter(param, category, "TakeImage", "CamRawGma", false);
-    WriteParameter(param, category, "TakeImage", "CamLenc", false);
-    WriteParameter(param, category, "TakeImage", "CamHmirror", false);
-    WriteParameter(param, category, "TakeImage", "CamVflip", false);
-    WriteParameter(param, category, "TakeImage", "CamDcw", false);
-    WriteParameter(param, category, "TakeImage", "CamDenoise", false);
-    WriteParameter(param, category, "TakeImage", "CamZoom", false);
-    WriteParameter(param, category, "TakeImage", "CamZoomOffsetX", false);
-    WriteParameter(param, category, "TakeImage", "CamZoomOffsetY", false);
-    WriteParameter(param, category, "TakeImage", "CamZoomSize", false);	
-    WriteParameter(param, category, "TakeImage", "LEDIntensity", false);
-    WriteParameter(param, category, "TakeImage", "Demo", false);
+    WriteParameter(config_param, config_category, "TakeImage", "WaitBeforeTakingPicture", false);
+	WriteParameter(config_param, config_category, "TakeImage", "CamXclkFreqMhz", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamGainceiling", false);	
+    WriteParameter(config_param, config_category, "TakeImage", "CamQuality", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamBrightness", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamContrast", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamSaturation", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamSharpness", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamAutoSharpness", false);	
+    WriteParameter(config_param, config_category, "TakeImage", "CamSpecialEffect", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamWbMode", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamAwb", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamAwbGain", false);	
+    WriteParameter(config_param, config_category, "TakeImage", "CamAec", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamAec2", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamAeLevel", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamAecValue", false);	
+    WriteParameter(config_param, config_category, "TakeImage", "CamAgc", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamAgcGain", false);	
+    WriteParameter(config_param, config_category, "TakeImage", "CamBpc", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamWpc", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamRawGma", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamLenc", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamHmirror", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamVflip", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamDcw", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamDenoise", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamZoom", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+    WriteParameter(config_param, config_category, "TakeImage", "CamZoomSize", false);	
+    WriteParameter(config_param, config_category, "TakeImage", "LEDIntensity", false);
+    WriteParameter(config_param, config_category, "TakeImage", "Demo", false);
 	
-    WriteParameter(param, category, "Alignment", "SearchFieldX", false);		
-    WriteParameter(param, category, "Alignment", "SearchFieldY", false);
-    WriteParameter(param, category, "Alignment", "SearchMaxAngle", false);
-    WriteParameter(param, category, "Alignment", "Antialiasing", false);
-    WriteParameter(param, category, "Alignment", "AlignmentAlgo", true);			
-    WriteParameter(param, category, "Alignment", "InitialRotate", false);
+    WriteParameter(config_param, config_category, "Alignment", "SearchFieldX", false);		
+    WriteParameter(config_param, config_category, "Alignment", "SearchFieldY", false);
+    WriteParameter(config_param, config_category, "Alignment", "SearchMaxAngle", false);
+    WriteParameter(config_param, config_category, "Alignment", "Antialiasing", false);
+    WriteParameter(config_param, config_category, "Alignment", "AlignmentAlgo", true);			
+    WriteParameter(config_param, config_category, "Alignment", "InitialRotate", false);
 
-    WriteParameter(param, category, "Digits", "CNNGoodThreshold", true);
-    WriteParameter(param, category, "Digits", "ROIImagesLocation", true);		
-    WriteParameter(param, category, "Digits", "ROIImagesRetention", true);		
+    WriteParameter(config_param, config_category, "Digits", "CNNGoodThreshold", true);
+    WriteParameter(config_param, config_category, "Digits", "ROIImagesLocation", true);		
+    WriteParameter(config_param, config_category, "Digits", "ROIImagesRetention", true);		
     
-    WriteParameter(param, category, "Analog", "ROIImagesLocation", true);		
-    WriteParameter(param, category, "Analog", "ROIImagesRetention", true);		
+    WriteParameter(config_param, config_category, "Analog", "ROIImagesLocation", true);		
+    WriteParameter(config_param, config_category, "Analog", "ROIImagesRetention", true);		
     
-    WriteParameter(param, category, "PostProcessing", "PreValueUse", false);		
-    WriteParameter(param, category, "PostProcessing", "PreValueAgeStartup", true);		
-    WriteParameter(param, category, "PostProcessing", "ErrorMessage", false);
-    // WriteParameter(param, category, "PostProcessing", "CheckDigitIncreaseConsistency", false);
+    WriteParameter(config_param, config_category, "PostProcessing", "PreValueUse", false);		
+    WriteParameter(config_param, config_category, "PostProcessing", "PreValueAgeStartup", true);		
+    WriteParameter(config_param, config_category, "PostProcessing", "ErrorMessage", false);
+    // WriteParameter(config_param, config_category, "PostProcessing", "CheckDigitIncreaseConsistency", false);
 
-    WriteParameter(param, category, "MQTT", "Uri", true);	
-    WriteParameter(param, category, "MQTT", "MainTopic", true);	
-    WriteParameter(param, category, "MQTT", "ClientID", true);	
-    WriteParameter(param, category, "MQTT", "user", true);	
-    WriteParameter(param, category, "MQTT", "password", true);
-    WriteParameter(param, category, "MQTT", "RetainMessages", false);
-    WriteParameter(param, category, "MQTT", "HomeassistantDiscovery", false);
-    WriteParameter(param, category, "MQTT", "MeterType", true);
-    WriteParameter(param, category, "MQTT", "CACert", true);
-    WriteParameter(param, category, "MQTT", "ClientCert", true);
-    WriteParameter(param, category, "MQTT", "ClientKey", true);
-    WriteParameter(param, category, "MQTT", "ValidateServerCert", true);
-    WriteParameter(param, category, "MQTT", "DomoticzTopicIn", true);
+    WriteParameter(config_param, config_category, "MQTT", "Uri", true);	
+    WriteParameter(config_param, config_category, "MQTT", "MainTopic", true);	
+    WriteParameter(config_param, config_category, "MQTT", "ClientID", true);	
+    WriteParameter(config_param, config_category, "MQTT", "user", true);	
+    WriteParameter(config_param, config_category, "MQTT", "password", true);
+    WriteParameter(config_param, config_category, "MQTT", "RetainMessages", false);
+    WriteParameter(config_param, config_category, "MQTT", "HomeassistantDiscovery", false);
+    WriteParameter(config_param, config_category, "MQTT", "MeterType", true);
+    WriteParameter(config_param, config_category, "MQTT", "CACert", true);
+    WriteParameter(config_param, config_category, "MQTT", "ClientCert", true);
+    WriteParameter(config_param, config_category, "MQTT", "ClientKey", true);
+    WriteParameter(config_param, config_category, "MQTT", "ValidateServerCert", true);
+    WriteParameter(config_param, config_category, "MQTT", "DomoticzTopicIn", true);
     
-    WriteParameter(param, category, "InfluxDB", "Uri", true);	
-    WriteParameter(param, category, "InfluxDB", "Database", true);	
-    // WriteParameter(param, category, "InfluxDB", "Measurement", true);	
-    WriteParameter(param, category, "InfluxDB", "user", true);	
-    WriteParameter(param, category, "InfluxDB", "password", true);	
-    // WriteParameter(param, category, "InfluxDB", "Field", true);
+    WriteParameter(config_param, config_category, "InfluxDB", "Uri", true);	
+    WriteParameter(config_param, config_category, "InfluxDB", "Database", true);	
+    // WriteParameter(config_param, config_category, "InfluxDB", "Measurement", true);	
+    WriteParameter(config_param, config_category, "InfluxDB", "user", true);	
+    WriteParameter(config_param, config_category, "InfluxDB", "password", true);	
+    // WriteParameter(config_param, config_category, "InfluxDB", "Field", true);
 
-    WriteParameter(param, category, "InfluxDBv2", "Uri", true);	
-    WriteParameter(param, category, "InfluxDBv2", "Bucket", true);	
-    // WriteParameter(param, category, "InfluxDBv2", "Measurement", true);	
-    WriteParameter(param, category, "InfluxDBv2", "Org", true);	
-    WriteParameter(param, category, "InfluxDBv2", "Token", true);	
-    // WriteParameter(param, category, "InfluxDBv2", "Field", true);
+    WriteParameter(config_param, config_category, "InfluxDBv2", "Uri", true);	
+    WriteParameter(config_param, config_category, "InfluxDBv2", "Bucket", true);	
+    // WriteParameter(config_param, config_category, "InfluxDBv2", "Measurement", true);	
+    WriteParameter(config_param, config_category, "InfluxDBv2", "Org", true);	
+    WriteParameter(config_param, config_category, "InfluxDBv2", "Token", true);	
+    // WriteParameter(config_param, config_category, "InfluxDBv2", "Field", true);
 
-    WriteParameter(param, category, "Webhook", "Uri", true);	
-    WriteParameter(param, category, "Webhook", "ApiKey", true);
-    WriteParameter(param, category, "Webhook", "UploadImg", false);
+    WriteParameter(config_param, config_category, "Webhook", "Uri", true);	
+    WriteParameter(config_param, config_category, "Webhook", "ApiKey", true);
+    WriteParameter(config_param, config_category, "Webhook", "UploadImg", false);
 
-    WriteParameter(param, category, "GPIO", "IO0", true);
-    WriteParameter(param, category, "GPIO", "IO1", true);
-    WriteParameter(param, category, "GPIO", "IO3", true);
-    WriteParameter(param, category, "GPIO", "IO4", true);
-    WriteParameter(param, category, "GPIO", "IO12", true);
-    WriteParameter(param, category, "GPIO", "IO13", true);
-    WriteParameter(param, category, "GPIO", "LEDType", false);
-    WriteParameter(param, category, "GPIO", "LEDNumbers", false);
-    WriteParameter(param, category, "GPIO", "LEDColor", false);
+    WriteParameter(config_param, config_category, "GPIO", "IO0", true);
+    WriteParameter(config_param, config_category, "GPIO", "IO1", true);
+    WriteParameter(config_param, config_category, "GPIO", "IO3", true);
+    WriteParameter(config_param, config_category, "GPIO", "IO4", true);
+    WriteParameter(config_param, config_category, "GPIO", "IO12", true);
+    WriteParameter(config_param, config_category, "GPIO", "IO13", true);
+    WriteParameter(config_param, config_category, "GPIO", "LEDType", false);
+    WriteParameter(config_param, config_category, "GPIO", "LEDNumbers", false);
+    WriteParameter(config_param, config_category, "GPIO", "LEDColor", false);
 
-    //WriteParameter(param, category, "AutoTimer", "AutoStart", false);	
-    WriteParameter(param, category, "AutoTimer", "Interval", false);
+    //WriteParameter(config_param, config_category, "AutoTimer", "AutoStart", false);	
+    WriteParameter(config_param, config_category, "AutoTimer", "Interval", false);
 
-    WriteParameter(param, category, "DataLogging", "DataLogActive", false);	
-    WriteParameter(param, category, "DataLogging", "DataFilesRetention", false);	
+    WriteParameter(config_param, config_category, "DataLogging", "DataLogActive", false);	
+    WriteParameter(config_param, config_category, "DataLogging", "DataFilesRetention", false);	
 
-    WriteParameter(param, category, "Debug", "LogLevel", false);
-    WriteParameter(param, category, "Debug", "LogfilesRetention", false);
+    WriteParameter(config_param, config_category, "Debug", "LogLevel", false);
+    WriteParameter(config_param, config_category, "Debug", "LogfilesRetention", false);
 
-    WriteParameter(param, category, "System", "Tooltip", false);
-    WriteParameter(param, category, "System", "TimeZone", true);
-    WriteParameter(param, category, "System", "Hostname", true);
-    WriteParameter(param, category, "System", "TimeServer", true);
-    WriteParameter(param, category, "System", "RSSIThreshold", true);
-    WriteParameter(param, category, "System", "CPUFrequency", true);
+    WriteParameter(config_param, config_category, "System", "Tooltip", false);
+    WriteParameter(config_param, config_category, "System", "TimeZone", true);
+    WriteParameter(config_param, config_category, "System", "Hostname", true);
+    WriteParameter(config_param, config_category, "System", "TimeServer", true);
+    WriteParameter(config_param, config_category, "System", "RSSIThreshold", true);
+    WriteParameter(config_param, config_category, "System", "CPUFrequency", true);
 
     WriteModelFiles();
 }
@@ -2500,156 +2501,156 @@ function WriteModelFiles() {
         }
     }
 
-    WriteParameter(param, category, "Analog", "Model", false);		
-    WriteParameter(param, category, "Digits", "Model", false);		
+    WriteParameter(config_param, config_category, "Analog", "Model", false);		
+    WriteParameter(config_param, config_category, "Digits", "Model", false);		
 }
 
 function ReadParameterAll() {
-    category["Analog"]["enabled"] = document.getElementById("Category_Analog_enabled").checked;
-    category["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
-    category["MQTT"]["enabled"] = document.getElementById("Category_MQTT_enabled").checked;
-    category["InfluxDB"]["enabled"] = document.getElementById("Category_InfluxDB_enabled").checked;
-    category["InfluxDBv2"]["enabled"] = document.getElementById("Category_InfluxDBv2_enabled").checked;
-    category["Webhook"]["enabled"] = document.getElementById("Category_Webhook_enabled").checked;
-    category["GPIO"]["enabled"] = document.getElementById("Category_GPIO_enabled").checked;
+    config_category["Analog"]["enabled"] = document.getElementById("Category_Analog_enabled").checked;
+    config_category["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
+    config_category["MQTT"]["enabled"] = document.getElementById("Category_MQTT_enabled").checked;
+    config_category["InfluxDB"]["enabled"] = document.getElementById("Category_InfluxDB_enabled").checked;
+    config_category["InfluxDBv2"]["enabled"] = document.getElementById("Category_InfluxDBv2_enabled").checked;
+    config_category["Webhook"]["enabled"] = document.getElementById("Category_Webhook_enabled").checked;
+    config_category["GPIO"]["enabled"] = document.getElementById("Category_GPIO_enabled").checked;
 
-    ReadParameter(param, "TakeImage", "RawImagesLocation", true);
-    ReadParameter(param, "TakeImage", "RawImagesRetention", true);
-    ReadParameter(param, "TakeImage", "WaitBeforeTakingPicture", false);
-	ReadParameter(param, "TakeImage", "CamXclkFreqMhz", false);
-    ReadParameter(param, "TakeImage", "CamGainceiling", false);	
-    ReadParameter(param, "TakeImage", "CamQuality", false);	
-    ReadParameter(param, "TakeImage", "CamBrightness", false);
-    ReadParameter(param, "TakeImage", "CamContrast", false);
-    ReadParameter(param, "TakeImage", "CamSaturation", false);
-    ReadParameter(param, "TakeImage", "CamSharpness", false);
-    ReadParameter(param, "TakeImage", "CamAutoSharpness", false);	
-    ReadParameter(param, "TakeImage", "CamSpecialEffect", false);
-    ReadParameter(param, "TakeImage", "CamWbMode", false);
-    ReadParameter(param, "TakeImage", "CamAwb", false);
-    ReadParameter(param, "TakeImage", "CamAwbGain", false);	
-    ReadParameter(param, "TakeImage", "CamAec", false);
-    ReadParameter(param, "TakeImage", "CamAec2", false);
-    ReadParameter(param, "TakeImage", "CamAeLevel", false);
-    ReadParameter(param, "TakeImage", "CamAecValue", false);	
-    ReadParameter(param, "TakeImage", "CamAgc", false);
-    ReadParameter(param, "TakeImage", "CamAgcGain", false);
-    ReadParameter(param, "TakeImage", "CamBpc", false);
-    ReadParameter(param, "TakeImage", "CamWpc", false);
-    ReadParameter(param, "TakeImage", "CamRawGma", false);
-    ReadParameter(param, "TakeImage", "CamLenc", false);
-    ReadParameter(param, "TakeImage", "CamHmirror", false);
-    ReadParameter(param, "TakeImage", "CamVflip", false);
-    ReadParameter(param, "TakeImage", "CamDcw", false);
-    ReadParameter(param, "TakeImage", "CamDenoise", false);
-    ReadParameter(param, "TakeImage", "CamZoom", false);
-    ReadParameter(param, "TakeImage", "CamZoomOffsetX", false);
-    ReadParameter(param, "TakeImage", "CamZoomOffsetY", false);	
-    ReadParameter(param, "TakeImage", "CamZoomSize", false);	
-    ReadParameter(param, "TakeImage", "LEDIntensity", false);	
-    ReadParameter(param, "TakeImage", "Demo", false);	
+    ReadParameter(config_param, "TakeImage", "RawImagesLocation", true);
+    ReadParameter(config_param, "TakeImage", "RawImagesRetention", true);
+    ReadParameter(config_param, "TakeImage", "WaitBeforeTakingPicture", false);
+	ReadParameter(config_param, "TakeImage", "CamXclkFreqMhz", false);
+    ReadParameter(config_param, "TakeImage", "CamGainceiling", false);	
+    ReadParameter(config_param, "TakeImage", "CamQuality", false);	
+    ReadParameter(config_param, "TakeImage", "CamBrightness", false);
+    ReadParameter(config_param, "TakeImage", "CamContrast", false);
+    ReadParameter(config_param, "TakeImage", "CamSaturation", false);
+    ReadParameter(config_param, "TakeImage", "CamSharpness", false);
+    ReadParameter(config_param, "TakeImage", "CamAutoSharpness", false);	
+    ReadParameter(config_param, "TakeImage", "CamSpecialEffect", false);
+    ReadParameter(config_param, "TakeImage", "CamWbMode", false);
+    ReadParameter(config_param, "TakeImage", "CamAwb", false);
+    ReadParameter(config_param, "TakeImage", "CamAwbGain", false);	
+    ReadParameter(config_param, "TakeImage", "CamAec", false);
+    ReadParameter(config_param, "TakeImage", "CamAec2", false);
+    ReadParameter(config_param, "TakeImage", "CamAeLevel", false);
+    ReadParameter(config_param, "TakeImage", "CamAecValue", false);	
+    ReadParameter(config_param, "TakeImage", "CamAgc", false);
+    ReadParameter(config_param, "TakeImage", "CamAgcGain", false);
+    ReadParameter(config_param, "TakeImage", "CamBpc", false);
+    ReadParameter(config_param, "TakeImage", "CamWpc", false);
+    ReadParameter(config_param, "TakeImage", "CamRawGma", false);
+    ReadParameter(config_param, "TakeImage", "CamLenc", false);
+    ReadParameter(config_param, "TakeImage", "CamHmirror", false);
+    ReadParameter(config_param, "TakeImage", "CamVflip", false);
+    ReadParameter(config_param, "TakeImage", "CamDcw", false);
+    ReadParameter(config_param, "TakeImage", "CamDenoise", false);
+    ReadParameter(config_param, "TakeImage", "CamZoom", false);
+    ReadParameter(config_param, "TakeImage", "CamZoomOffsetX", false);
+    ReadParameter(config_param, "TakeImage", "CamZoomOffsetY", false);	
+    ReadParameter(config_param, "TakeImage", "CamZoomSize", false);	
+    ReadParameter(config_param, "TakeImage", "LEDIntensity", false);	
+    ReadParameter(config_param, "TakeImage", "Demo", false);	
 
-    ReadParameter(param, "Alignment", "SearchFieldX", false);	
-    ReadParameter(param, "Alignment", "SearchFieldY", false);
-	ReadParameter(param, "Alignment", "SearchMaxAngle", false);
-    ReadParameter(param, "Alignment", "Antialiasing", false);
-    ReadParameter(param, "Alignment", "AlignmentAlgo", true);
-    ReadParameter(param, "Alignment", "InitialRotate", false);
+    ReadParameter(config_param, "Alignment", "SearchFieldX", false);	
+    ReadParameter(config_param, "Alignment", "SearchFieldY", false);
+	ReadParameter(config_param, "Alignment", "SearchMaxAngle", false);
+    ReadParameter(config_param, "Alignment", "Antialiasing", false);
+    ReadParameter(config_param, "Alignment", "AlignmentAlgo", true);
+    ReadParameter(config_param, "Alignment", "InitialRotate", false);
 
-    ReadParameter(param, "Digits", "Model", false);
-    ReadParameter(param, "Digits", "CNNGoodThreshold", true);
-    ReadParameter(param, "Digits", "ROIImagesLocation", true);
-    ReadParameter(param, "Digits", "ROIImagesRetention", true);
+    ReadParameter(config_param, "Digits", "Model", false);
+    ReadParameter(config_param, "Digits", "CNNGoodThreshold", true);
+    ReadParameter(config_param, "Digits", "ROIImagesLocation", true);
+    ReadParameter(config_param, "Digits", "ROIImagesRetention", true);
 
-    ReadParameter(param, "Analog", "Model", false);
-    ReadParameter(param, "Analog", "ROIImagesLocation", true);
-    ReadParameter(param, "Analog", "ROIImagesRetention", true);
+    ReadParameter(config_param, "Analog", "Model", false);
+    ReadParameter(config_param, "Analog", "ROIImagesLocation", true);
+    ReadParameter(config_param, "Analog", "ROIImagesRetention", true);
 
-    ReadParameter(param, "PostProcessing", "PreValueUse", false);
-    ReadParameter(param, "PostProcessing", "PreValueAgeStartup", true);
-    ReadParameter(param, "PostProcessing", "ErrorMessage", false);
-    // ReadParameter(param, "PostProcessing", "CheckDigitIncreaseConsistency", false);	
+    ReadParameter(config_param, "PostProcessing", "PreValueUse", false);
+    ReadParameter(config_param, "PostProcessing", "PreValueAgeStartup", true);
+    ReadParameter(config_param, "PostProcessing", "ErrorMessage", false);
+    // ReadParameter(config_param, "PostProcessing", "CheckDigitIncreaseConsistency", false);	
 
-    ReadParameter(param, "MQTT", "Uri", true);
-    ReadParameter(param, "MQTT", "MainTopic", true);
-    ReadParameter(param, "MQTT", "ClientID", true);
-    ReadParameter(param, "MQTT", "user", true);
-    ReadParameter(param, "MQTT", "password", true);
-    ReadParameter(param, "MQTT", "RetainMessages", false);
-    ReadParameter(param, "MQTT", "HomeassistantDiscovery", false);
-    ReadParameter(param, "MQTT", "MeterType", true);
-    ReadParameter(param, "MQTT", "CACert", true);
-    ReadParameter(param, "MQTT", "ClientCert", true);
-    ReadParameter(param, "MQTT", "ClientKey", true);
-    ReadParameter(param, "MQTT", "ValidateServerCert", true);
-    ReadParameter(param, "MQTT", "DomoticzTopicIn", true);
+    ReadParameter(config_param, "MQTT", "Uri", true);
+    ReadParameter(config_param, "MQTT", "MainTopic", true);
+    ReadParameter(config_param, "MQTT", "ClientID", true);
+    ReadParameter(config_param, "MQTT", "user", true);
+    ReadParameter(config_param, "MQTT", "password", true);
+    ReadParameter(config_param, "MQTT", "RetainMessages", false);
+    ReadParameter(config_param, "MQTT", "HomeassistantDiscovery", false);
+    ReadParameter(config_param, "MQTT", "MeterType", true);
+    ReadParameter(config_param, "MQTT", "CACert", true);
+    ReadParameter(config_param, "MQTT", "ClientCert", true);
+    ReadParameter(config_param, "MQTT", "ClientKey", true);
+    ReadParameter(config_param, "MQTT", "ValidateServerCert", true);
+    ReadParameter(config_param, "MQTT", "DomoticzTopicIn", true);
 
-    ReadParameter(param, "InfluxDB", "Uri", true);
-    ReadParameter(param, "InfluxDB", "Database", true);
-    ReadParameter(param, "InfluxDB", "Measurement", true);
-    ReadParameter(param, "InfluxDB", "user", true);
-    ReadParameter(param, "InfluxDB", "password", true);
+    ReadParameter(config_param, "InfluxDB", "Uri", true);
+    ReadParameter(config_param, "InfluxDB", "Database", true);
+    ReadParameter(config_param, "InfluxDB", "Measurement", true);
+    ReadParameter(config_param, "InfluxDB", "user", true);
+    ReadParameter(config_param, "InfluxDB", "password", true);
 
-    ReadParameter(param, "InfluxDBv2", "Uri", true);
-    ReadParameter(param, "InfluxDBv2", "Bucket", true);
-    ReadParameter(param, "InfluxDBv2", "Measurement", true);
-    ReadParameter(param, "InfluxDBv2", "Org", true);
-    ReadParameter(param, "InfluxDBv2", "Token", true);
-    // ReadParameter(param, "InfluxDB", "Field", true);	
+    ReadParameter(config_param, "InfluxDBv2", "Uri", true);
+    ReadParameter(config_param, "InfluxDBv2", "Bucket", true);
+    ReadParameter(config_param, "InfluxDBv2", "Measurement", true);
+    ReadParameter(config_param, "InfluxDBv2", "Org", true);
+    ReadParameter(config_param, "InfluxDBv2", "Token", true);
+    // ReadParameter(config_param, "InfluxDB", "Field", true);	
 
-    ReadParameter(param, "Webhook", "Uri", true);	
-    ReadParameter(param, "Webhook", "ApiKey", true);
-    ReadParameter(param, "Webhook", "UploadImg", false);
+    ReadParameter(config_param, "Webhook", "Uri", true);	
+    ReadParameter(config_param, "Webhook", "ApiKey", true);
+    ReadParameter(config_param, "Webhook", "UploadImg", false);
 
-    ReadParameter(param, "GPIO", "IO0", true);
-    ReadParameter(param, "GPIO", "IO1", true);
-    ReadParameter(param, "GPIO", "IO3", true);
-    ReadParameter(param, "GPIO", "IO4", true);
-    ReadParameter(param, "GPIO", "IO12", true);
-    ReadParameter(param, "GPIO", "IO13", true);
-    ReadParameter(param, "GPIO", "LEDType", false);
-    ReadParameter(param, "GPIO", "LEDNumbers", false);
-    ReadParameter(param, "GPIO", "LEDColor", false);
+    ReadParameter(config_param, "GPIO", "IO0", true);
+    ReadParameter(config_param, "GPIO", "IO1", true);
+    ReadParameter(config_param, "GPIO", "IO3", true);
+    ReadParameter(config_param, "GPIO", "IO4", true);
+    ReadParameter(config_param, "GPIO", "IO12", true);
+    ReadParameter(config_param, "GPIO", "IO13", true);
+    ReadParameter(config_param, "GPIO", "LEDType", false);
+    ReadParameter(config_param, "GPIO", "LEDNumbers", false);
+    ReadParameter(config_param, "GPIO", "LEDColor", false);
 	
     // Folgende Zeilen sind für Abwärtskompatibität < v9.0.0 notwendig (manchmal parameter auskommentiert)
-    param["GPIO"]["LEDType"]["enabled"] = true;
-    param["GPIO"]["LEDNumbers"]["enabled"] = true;
-    param["GPIO"]["LEDColor"]["enabled"] = true;
-    param["GPIO"]["LEDType"]["found"] = true;
-    param["GPIO"]["LEDNumbers"]["found"] = true;
-    param["GPIO"]["LEDColor"]["found"] = true;
+    config_param["GPIO"]["LEDType"]["enabled"] = true;
+    config_param["GPIO"]["LEDNumbers"]["enabled"] = true;
+    config_param["GPIO"]["LEDColor"]["enabled"] = true;
+    config_param["GPIO"]["LEDType"]["found"] = true;
+    config_param["GPIO"]["LEDNumbers"]["found"] = true;
+    config_param["GPIO"]["LEDColor"]["found"] = true;
 
-    //ReadParameter(param, "AutoTimer", "AutoStart", false);
-    ReadParameter(param, "AutoTimer", "Interval", false);
+    //ReadParameter(config_param, "AutoTimer", "AutoStart", false);
+    ReadParameter(config_param, "AutoTimer", "Interval", false);
     
-    ReadParameter(param, "DataLogging", "DataLogActive", false);
-    ReadParameter(param, "DataLogging", "DataFilesRetention", false);
+    ReadParameter(config_param, "DataLogging", "DataLogActive", false);
+    ReadParameter(config_param, "DataLogging", "DataFilesRetention", false);
 
-    ReadParameter(param, "Debug", "LogLevel", false);
-    ReadParameter(param, "Debug", "LogfilesRetention", false);
+    ReadParameter(config_param, "Debug", "LogLevel", false);
+    ReadParameter(config_param, "Debug", "LogfilesRetention", false);
 
-    ReadParameter(param, "System", "Tooltip", false);
-    ReadParameter(param, "System", "TimeZone", true);
-    ReadParameter(param, "System", "Hostname", true);
-    ReadParameter(param, "System", "TimeServer", true);
-    ReadParameter(param, "System", "RSSIThreshold", true);
-    ReadParameter(param, "System", "CPUFrequency", true);
+    ReadParameter(config_param, "System", "Tooltip", false);
+    ReadParameter(config_param, "System", "TimeZone", true);
+    ReadParameter(config_param, "System", "Hostname", true);
+    ReadParameter(config_param, "System", "TimeServer", true);
+    ReadParameter(config_param, "System", "RSSIThreshold", true);
+    ReadParameter(config_param, "System", "CPUFrequency", true);
 
     var sel = document.getElementById("Numbers_value1");
     UpdateInputIndividual(sel);
 
-    // FormatDecimalValue(param, "PostProcessing", "MaxRateValue");
+    // FormatDecimalValue(config_param, "PostProcessing", "MaxRateValue");
 }
 
 function UpdateAfterCategoryCheck() {
     ReadParameterAll();
-    category["Analog"]["enabled"] = document.getElementById("Category_Analog_enabled").checked;
-    category["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
-    category["MQTT"]["enabled"] = document.getElementById("Category_MQTT_enabled").checked;
-    category["InfluxDB"]["enabled"] = document.getElementById("Category_InfluxDB_enabled").checked;
-    category["InfluxDBv2"]["enabled"] = document.getElementById("Category_InfluxDBv2_enabled").checked;
-    category["GPIO"]["enabled"] = document.getElementById("Category_GPIO_enabled").checked;
-    category["Webhook"]["enabled"] = document.getElementById("Category_Webhook_enabled").checked;
+    config_category["Analog"]["enabled"] = document.getElementById("Category_Analog_enabled").checked;
+    config_category["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
+    config_category["MQTT"]["enabled"] = document.getElementById("Category_MQTT_enabled").checked;
+    config_category["InfluxDB"]["enabled"] = document.getElementById("Category_InfluxDB_enabled").checked;
+    config_category["InfluxDBv2"]["enabled"] = document.getElementById("Category_InfluxDBv2_enabled").checked;
+    config_category["GPIO"]["enabled"] = document.getElementById("Category_GPIO_enabled").checked;
+    config_category["Webhook"]["enabled"] = document.getElementById("Category_Webhook_enabled").checked;
 
     UpdateInput();
     var sel = document.getElementById("Numbers_value1");
@@ -3091,7 +3092,7 @@ function InvertEnableItem(_cat, _param) {
 
     setEnabled(_cat + "_" + _param, _isOn);
 
-    for (var j = 1; j <= param[_cat][_param]["anzParam"]; ++j) {
+    for (var j = 1; j <= config_param[_cat][_param]["anzParam"]; ++j) {
         document.getElementById(_cat+"_"+_param+"_value"+j).disabled = !_isOn;	
         document.getElementById(_cat+"_"+_param+"_value"+j).style.color = _color;
     }

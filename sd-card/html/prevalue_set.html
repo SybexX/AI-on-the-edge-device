@@ -129,9 +129,6 @@
         </tr>	 
     </table>
 
-</body>
-</html>
-
 <link href="firework.css?v=$COMMIT_HASH" rel="stylesheet">
 <script type="text/javascript" src="jquery-3.6.0.min.js?v=$COMMIT_HASH"></script>  
 <script type="text/javascript" src="firework.js?v=$COMMIT_HASH"></script>
@@ -141,8 +138,10 @@
 <script type="text/javascript" src="readconfigparam.js?v=$COMMIT_HASH"></script>  
 
 <script type="text/javascript">
- 	var domainname = getDomainname(); 
-  var	NUMBERS;
+var domainname = getDomainname(),
+    config_param,
+	config_category,
+    NUMBERS;
 
 function setprevalue() {
 	var inputVal = document.getElementById("myInput").value;
@@ -209,7 +208,6 @@ function loadPrevalue(_domainname) {
   }
 }
 
-
 function numberChanged(){
   loadPrevalue(domainname);
 }
@@ -240,14 +238,22 @@ function UpdateNUMBERS(_sel){
     loadPrevalue(domainname);
 }
 
-
 function init(){
-  domainname = getDomainname();
-  loadConfig(domainname); 
-  ParseConfig();
+    domainname = getDomainname();
+  
+    if (!loadConfig(domainname)) {
+		firework.launch('Configuration could not be loaded! Please reload the page!', 'danger', 30000);
+		return;
+    }		
+			
+    config_param = getConfigParameters();
+	config_category = getConfigCategory();
+  
   UpdateNUMBERS();
   loadPrevalue(domainname);
 }
 
 init();
 </script>
+</body>
+</html>

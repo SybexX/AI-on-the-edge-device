@@ -55,7 +55,6 @@
                 <button class="button" onClick="window.location.href = getDomainname() + '/fileserver/log/message/'">Show Older Log Files</button>
             </div>
           </div>
-    </body>
 
     <script>  
         function reload() {
@@ -64,7 +63,6 @@
             window.scrollBy(0,document.body.scrollHeight);
             funcRequest(getDomainname() + '/log');
         } 
-
 
         function processLogLine(line, index, arr) {
             /* Make sure the whitespaces in the uptime field get persevered */
@@ -115,4 +113,5 @@
         funcRequest(getDomainname() + '/log');
 
     </script>
+    </body>
 </html>

@@ -460,15 +460,8 @@ function ParamExtractValueAll(_param, _linesplit, _catname, _aktline, _iscom) {
     }
 }
 
-function getCamConfig() {			
-	loadConfig();
-	ParseConfig();
-	
-    return config_param;	
-}
-
 function getConfigParameters() {
-	loadConfig();
+	// loadConfig();
 	ParseConfig();
 	
     return config_param;

@@ -57,11 +57,8 @@
         <p id="loaded_n_total"></p>
     </form>
     
-
-
     <script language="JavaScript">
         var domainname = getDomainname();
-        
         var action_runtime = 0;
         
         /* Max size of an individual file. Make sure this
@@ -128,7 +125,6 @@
             document.getElementById("start_OTA_button").disabled = false;
         }
 
-
         function start_OTA() {
             document.getElementById("start_OTA_button").disabled = true;
 
@@ -140,13 +136,11 @@
             prepareOnServer();
         }
 
-
         function doRebootAfterUpdate() {
             var xhttp = new XMLHttpRequest();
             xhttp.open("GET", domainname + "/reboot", true);
             xhttp.send();
         }
-
 
         function prepareOnServer() {
             document.getElementById("status").innerText = "Status: Preparing device...";
@@ -175,7 +169,6 @@
             xhttp.send();
         }
 
-
         function validateMd5(md5_on_device, callback) {
             const reader = new FileReader();
 
@@ -196,7 +189,6 @@
             var fileInput = document.getElementById("file_selector").files;
             reader.readAsArrayBuffer(fileInput[0]);
         }
-
 
         function extract() {
             var xhttp = new XMLHttpRequest();
@@ -254,11 +246,9 @@
             xhttp.send();
         }
 
-
         function _(el) {
             return document.getElementById(el);
         }
-
 
         function upload() {
             document.getElementById("status").innerText = "Status: Uploading...";
@@ -278,7 +268,6 @@
             ajax.send(file);
         }
 
-
         function progressHandler(event) {
             _("loaded_n_total").innerHTML = "Uploaded " + (event.loaded / 1024 / 1024).toFixed(2) + 
                     " MB of " + (event.total / 1024/ 1024).toFixed(2) + " MB";
@@ -294,7 +283,6 @@
                 _("status").innerHTML = "Status: " + Math.round(percent) + "% uploaded...";
             }
         }
-
 
         function completeHandler(event) {
             console.log("Upload completed");
@@ -323,13 +311,11 @@
             }
         }
 
-
         function errorHandler(event) {
             _("status").innerHTML = "Status: Upload Failed";
             firework.launch('Upload failed!', 'danger', 30000);
             document.getElementById("file_selector").disabled = false;
         }
-
 
         function abortHandler(event) {
             _("status").innerHTML = "Status: Upload Aborted";

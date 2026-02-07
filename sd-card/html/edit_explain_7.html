@@ -44,21 +44,23 @@ p {font-size: 1em;}
     <script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script> 
 
     <script type="text/javascript">
-    
+    var config_param,
+        config_category;
+
     function reboot() {
         if (confirm("Do you want to complete the setup mode and switch to regular web interface?")) {
-            domainname = getDomainname(); 
+            domainname = getDomainname();
+			
             if (!loadConfig(domainname)) {
-                firework.launch('Setup mode could not be deactivated! Please try again!', 'danger', 30000);
-                return;
-            }
+				firework.launch('Configuration could not be loaded! Please reload the page!', 'danger', 30000);
+				return;
+            }		
+			
+            config_param = getConfigParameters();
+			config_category = getConfigCategory();
 
-            // ParseConfig();	
-            // param = getConfigParameters();
-            param = getCamConfig();
-
-            param["System"]["SetupMode"]["enabled"] = true;
-            param["System"]["SetupMode"]["value1"] = "false";
+            config_param["System"]["SetupMode"]["enabled"] = true;
+            config_param["System"]["SetupMode"]["value1"] = "false";
 
             WriteConfigININew();
             SaveConfigToServer(domainname);  
@@ -72,6 +74,5 @@ p {font-size: 1em;}
     }
 
     </script>
-
 </body>
 </html>

@@ -36,8 +36,6 @@
     <hr>
     <h2>Restore Configuration</h2>
     <p>Use the <a href="/fileserver/config/" target="_self">File Server</a> to upload individual files.</p>
-</body>
-
 
 <script type="text/javascript" src="common.js?v=$COMMIT_HASH"></script>
 <script type="text/javascript" src="jszip.min.js?v=$COMMIT_HASH"></script>
@@ -97,7 +95,6 @@ function startBackup() {
         return;
     }
 }
-
 
 function fetchFiles(urls, filesData, index, retry, zipFilename) {
     url = urls[index];
@@ -172,7 +169,6 @@ function fetchFiles(urls, filesData, index, retry, zipFilename) {
     xhr.send(null);
 }
 
-
 function generateZipFile(urls, filesData, zipFilename) {
     setStatus("Creating Zip File...");
 
@@ -190,15 +186,8 @@ function generateZipFile(urls, filesData, zipFilename) {
     setStatus("Backup completed");
 }
 
-
 const backup = (urls, zipFilename) => {
     if(!urls) return;
-
-    /* Testing */
-    /*len = urls.length;
-    for (i = 0; i < len - 3; i++) {
-        urls.pop();
-    }*/
 
     console.log(urls);
 
@@ -206,7 +195,6 @@ const backup = (urls, zipFilename) => {
     setStatus("Fetching files...");
     fetchFiles(urls, [], 0, 0, zipFilename);
 };
-
 
 function setStatus(status) {
     console.log(status);
@@ -218,5 +206,5 @@ function getFilenameFromUrl(url) {
 }
 
 </script>
-
+</body>
 </html>

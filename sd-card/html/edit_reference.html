@@ -399,29 +399,29 @@
         context = canvas.getContext('2d'),
         imageObj = new Image(),
         isActReference = false,
-        param,
-        category;
+        config_param,
+        config_category;
 
         function cameraParameterChanged() {
             document.getElementById("savereferenceimage").disabled = true;
 
             if(!document.getElementById("TakeImage_CamZoom_value1").selectedIndex) {
 				// EnDisableItem(_status, _param, _category, _cat, _name, _optional, _number = -1)
-				EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetX", false);
-				EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetY", false);
-				EnDisableItem(true, param, category, "TakeImage", "CamZoomSize", false);				
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomSize", false);				
             }
             else {
-				EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetX", false);
-				EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetY", false);
-				EnDisableItem(false, param, category, "TakeImage", "CamZoomSize", false);				
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomSize", false);				
             }
 
             if(!document.getElementById("TakeImage_CamAutoSharpness_value1").selectedIndex) {
-				EnDisableItem(false, param, category, "TakeImage", "CamSharpness", false);				
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamSharpness", false);				
             }
             else {
-				EnDisableItem(true, param, category, "TakeImage", "CamSharpness", false);				
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamSharpness", false);				
             }			
         }
 
@@ -435,42 +435,42 @@
             document.getElementById("overlay").style.display = "block";
             document.getElementById("overlaytext").innerHTML = "Taking new image...";
 			
-			EnDisableItem(true, param, category, "TakeImage", "CamBrightness", false);
-			EnDisableItem(true, param, category, "TakeImage", "CamSaturation", false);
-			EnDisableItem(true, param, category, "TakeImage", "CamContrast", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamBrightness", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamSaturation", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamContrast", false);
 
-			EnDisableItem(true, param, category, "TakeImage", "CamAutoSharpness", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamAutoSharpness", false);
 			
             if(!document.getElementById("TakeImage_CamAutoSharpness_value1").selectedIndex) {
-				EnDisableItem(false, param, category, "TakeImage", "CamSharpness", false);				
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamSharpness", false);				
             }
             else {
-				EnDisableItem(true, param, category, "TakeImage", "CamSharpness", false);				
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamSharpness", false);				
             }			
 
-			EnDisableItem(true, param, category, "TakeImage", "CamZoom", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoom", false);
 			
             if(!document.getElementById("TakeImage_CamZoom_value1").selectedIndex) {
-				EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetX", false);
-				EnDisableItem(true, param, category, "TakeImage", "CamZoomOffsetY", false);
-				EnDisableItem(true, param, category, "TakeImage", "CamZoomSize", false);				
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+				EnDisableItem(true, config_param, config_category, "TakeImage", "CamZoomSize", false);				
             }
             else {
-				EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetX", false);
-				EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetY", false);
-				EnDisableItem(false, param, category, "TakeImage", "CamZoomSize", false);				
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+				EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomSize", false);				
             }
 
-			EnDisableItem(true, param, category, "TakeImage", "CamAec", false);				
-			EnDisableItem(true, param, category, "TakeImage", "CamAec2", false);
-			EnDisableItem(true, param, category, "TakeImage", "CamAeLevel", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamAec", false);				
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamAec2", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamAeLevel", false);
 				
-			EnDisableItem(true, param, category, "TakeImage", "CamHmirror", false);
-			EnDisableItem(true, param, category, "TakeImage", "CamVflip", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamHmirror", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamVflip", false);
 				
-			EnDisableItem(true, param, category, "TakeImage", "CamSpecialEffect", false);
+			EnDisableItem(true, config_param, config_category, "TakeImage", "CamSpecialEffect", false);
 				
-			EnDisableItem(true, param, category, "TakeImage", "LEDIntensity", false);			
+			EnDisableItem(true, config_param, config_category, "TakeImage", "LEDIntensity", false);			
 
             document.getElementById("ExpertModus_enabled").disabled = false;
 
@@ -760,7 +760,7 @@
             loadCanvas(url, false);
             isActReference = true;			
 		
-            var _rotate_temp = param["Alignment"]["InitialRotate"].value1;
+            var _rotate_temp = config_param["Alignment"]["InitialRotate"].value1;
 
             if (_rotate_temp < 0) {
                 document.getElementById("PreRotateAngle_value1").value = Math.ceil(_rotate_temp);
@@ -771,49 +771,49 @@
 
             document.getElementById("FineRotate_value1").value = (Number(_rotate_temp) - Number(document.getElementById("PreRotateAngle_value1").value)).toFixed(1);
 
-			WriteParameter(param, category, "TakeImage", "CamBrightness", false, true);
-			WriteParameter(param, category, "TakeImage", "CamContrast", false, true);
-			WriteParameter(param, category, "TakeImage", "CamSaturation", false, true);
-			WriteParameter(param, category, "TakeImage", "CamSharpness", false, true);
-			WriteParameter(param, category, "TakeImage", "CamAutoSharpness", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamBrightness", false, true);
+			WriteParameter(config_param, config_category, "TakeImage", "CamContrast", false, true);
+			WriteParameter(config_param, config_category, "TakeImage", "CamSaturation", false, true);
+			WriteParameter(config_param, config_category, "TakeImage", "CamSharpness", false, true);
+			WriteParameter(config_param, config_category, "TakeImage", "CamAutoSharpness", false);
 
-			WriteParameter(param, category, "TakeImage", "CamZoom", false);
-			WriteParameter(param, category, "TakeImage", "CamZoomOffsetX", false);
-			WriteParameter(param, category, "TakeImage", "CamZoomOffsetY", false);
-			WriteParameter(param, category, "TakeImage", "CamZoomSize", false);			
+			WriteParameter(config_param, config_category, "TakeImage", "CamZoom", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamZoomSize", false);			
 
-			WriteParameter(param, category, "TakeImage", "CamAec", false);	
-			WriteParameter(param, category, "TakeImage", "CamAec2", false);
-			WriteParameter(param, category, "TakeImage", "CamAeLevel", false, true);
+			WriteParameter(config_param, config_category, "TakeImage", "CamAec", false);	
+			WriteParameter(config_param, config_category, "TakeImage", "CamAec2", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamAeLevel", false, true);
 			
-			WriteParameter(param, category, "TakeImage", "CamHmirror", false);
-			WriteParameter(param, category, "TakeImage", "CamVflip", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamHmirror", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamVflip", false);
 			
-			WriteParameter(param, category, "TakeImage", "CamSpecialEffect", false);
+			WriteParameter(config_param, config_category, "TakeImage", "CamSpecialEffect", false);
 			
-			WriteParameter(param, category, "TakeImage", "LEDIntensity", false);
+			WriteParameter(config_param, config_category, "TakeImage", "LEDIntensity", false);
 
-			EnDisableItem(false, param, category, "TakeImage", "CamBrightness", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamSaturation", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamContrast", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamSharpness", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamAutoSharpness", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamBrightness", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamSaturation", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamContrast", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamSharpness", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamAutoSharpness", false);
 
-			EnDisableItem(false, param, category, "TakeImage", "CamZoom", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetX", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamZoomOffsetY", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamZoomSize", false);			
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoom", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetX", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomOffsetY", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamZoomSize", false);			
 
-			EnDisableItem(false, param, category, "TakeImage", "CamAec", false);				
-			EnDisableItem(false, param, category, "TakeImage", "CamAec2", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamAeLevel", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamAec", false);				
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamAec2", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamAeLevel", false);
 				
-			EnDisableItem(false, param, category, "TakeImage", "CamHmirror", false);
-			EnDisableItem(false, param, category, "TakeImage", "CamVflip", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamHmirror", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamVflip", false);
 				
-			EnDisableItem(false, param, category, "TakeImage", "CamSpecialEffect", false);
+			EnDisableItem(false, config_param, config_category, "TakeImage", "CamSpecialEffect", false);
 				
-			EnDisableItem(false, param, category, "TakeImage", "LEDIntensity", false);			
+			EnDisableItem(false, config_param, config_category, "TakeImage", "LEDIntensity", false);			
 			
             document.getElementById("ExpertModus_enabled").disabled = true;
 			
@@ -829,30 +829,30 @@
         }
 
         function SaveReference(){
-            param["Alignment"]["InitialRotate"].value1 = (Number(document.getElementById("PreRotateAngle_value1").value) + 
+            config_param["Alignment"]["InitialRotate"].value1 = (Number(document.getElementById("PreRotateAngle_value1").value) + 
                                                             Number(document.getElementById("FineRotate_value1").value)).toFixed(1);
 
-			ReadParameter(param, "TakeImage", "CamBrightness", false);
-			ReadParameter(param, "TakeImage", "CamContrast", false);
-			ReadParameter(param, "TakeImage", "CamSaturation", false);
-			ReadParameter(param, "TakeImage", "CamSharpness", false);
-			ReadParameter(param, "TakeImage", "CamAutoSharpness", false);
+			ReadParameter(config_param, "TakeImage", "CamBrightness", false);
+			ReadParameter(config_param, "TakeImage", "CamContrast", false);
+			ReadParameter(config_param, "TakeImage", "CamSaturation", false);
+			ReadParameter(config_param, "TakeImage", "CamSharpness", false);
+			ReadParameter(config_param, "TakeImage", "CamAutoSharpness", false);
 
-			ReadParameter(param, "TakeImage", "CamZoom", false);
-			ReadParameter(param, "TakeImage", "CamZoomOffsetX", false);
-			ReadParameter(param, "TakeImage", "CamZoomOffsetY", false);
-			ReadParameter(param, "TakeImage", "CamZoomSize", false);			
+			ReadParameter(config_param, "TakeImage", "CamZoom", false);
+			ReadParameter(config_param, "TakeImage", "CamZoomOffsetX", false);
+			ReadParameter(config_param, "TakeImage", "CamZoomOffsetY", false);
+			ReadParameter(config_param, "TakeImage", "CamZoomSize", false);			
 
-			ReadParameter(param, "TakeImage", "CamAec", false);	
-			ReadParameter(param, "TakeImage", "CamAec2", false);
-			ReadParameter(param, "TakeImage", "CamAeLevel", false);
+			ReadParameter(config_param, "TakeImage", "CamAec", false);	
+			ReadParameter(config_param, "TakeImage", "CamAec2", false);
+			ReadParameter(config_param, "TakeImage", "CamAeLevel", false);
 			
-			ReadParameter(param, "TakeImage", "CamHmirror", false);
-			ReadParameter(param, "TakeImage", "CamVflip", false);
+			ReadParameter(config_param, "TakeImage", "CamHmirror", false);
+			ReadParameter(config_param, "TakeImage", "CamVflip", false);
 			
-			ReadParameter(param, "TakeImage", "CamSpecialEffect", false);
+			ReadParameter(config_param, "TakeImage", "CamSpecialEffect", false);
 			
-			ReadParameter(param, "TakeImage", "LEDIntensity", false);			
+			ReadParameter(config_param, "TakeImage", "LEDIntensity", false);			
 
             var canvas = document.getElementById("canvas");
             drawRotated(false);
@@ -876,8 +876,8 @@
 				return;
             }		
 			
-            param = getCamConfig();
-			category = getConfigCategory();
+            config_param = getConfigParameters();
+			config_category = getConfigCategory();
 			
 			canvas.addEventListener('mousemove', mouseMove, false);			
 
@@ -1057,7 +1057,7 @@
 			var _style_pur = 'none';
 			var _hidden = true;
 
-			if (param["System"]["Tooltip"].value1 == 'true') {
+			if (config_param["System"]["Tooltip"].value1 == 'true') {
 				_style_pur = '';
 				_hidden = false;
 			}
@@ -1100,7 +1100,7 @@
 
 			setEnabled(_cat + "_" + _param, _isOn);
 
-			for (var j = 1; j <= param[_cat][_param]["anzParam"]; ++j) {
+			for (var j = 1; j <= config_param[_cat][_param]["anzParam"]; ++j) {
 				document.getElementById(_cat+"_"+_param+"_value"+j).disabled = !_isOn;	
 				document.getElementById(_cat+"_"+_param+"_value"+j).style.color = _color;
 			}

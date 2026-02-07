@@ -206,8 +206,8 @@
         drag = false,
         aktindex = 0,
         ROIInfo,
-        cofcat,
-        param,
+        config_category,
+        config_param,
         _roialt = "dig",
         enhanceCon = false,
         lockAspectRatio = true,
@@ -239,7 +239,7 @@
 		
         sah1(document.getElementById("div1"), !isEnabled);
 
-        cofcat["Digits"]["enabled"] = isEnabled;
+        config_category["Digits"]["enabled"] = isEnabled;
         document.getElementById("saveroi").disabled = false;
                 
         if (isEnabled) {
@@ -371,7 +371,7 @@
 
     function SaveToConfig() {
         // _zwcat = getConfigCategory();
-        cofcat["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
+        config_category["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
         WriteConfigININew();
         SaveConfigToServer(domainname);
         UpdateROIs();
@@ -421,9 +421,9 @@
         var _number = sel.options[sel.selectedIndex].text;
 
         ROIInfo = getROIInfo("digit", _number);
-        // _catzw = getConfigCategory();
+        // config_category = getConfigCategory();
 
-        if (cofcat["Digits"]["enabled"] == false)  {
+        if (config_category["Digits"]["enabled"] == false)  {
             document.getElementById("Category_Digits_enabled").checked = false;
             EnDisableDigits();
             firework.launch('Digit ROI processing is disabled. Activate with checkbox if needed', 'warning', 10000);
@@ -576,9 +576,8 @@
 			return;
 		}
 		
-        ParseConfig();
-        param = getConfigParameters(); 
-        cofcat = getConfigCategory();
+        config_param = getConfigParameters(); 
+        config_category = getConfigCategory();
 		
         canvas.addEventListener('mousedown', mouseDown, false);
         canvas.addEventListener('mouseup', mouseUp, false);

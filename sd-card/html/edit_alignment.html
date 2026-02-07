@@ -196,8 +196,8 @@
             domainname = getDomainname(),
             neueref1,
             neueref2,
-            cofcat,	
-            param;
+            config_category,	
+            config_param;
     
         function doReboot() {
             var stringota = domainname + "/reboot";
@@ -434,9 +434,8 @@
                 return;
             }
 
-            ParseConfig();
-            param = getConfigParameters();
-            cofcat = getConfigCategory();
+            config_param = getConfigParameters();
+            config_category = getConfigCategory();
 
             canvas.addEventListener('mousedown', mouseDown, false);
             canvas.addEventListener('mouseup', mouseUp, false);

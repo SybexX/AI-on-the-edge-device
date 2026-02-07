@@ -199,7 +199,7 @@
  </div> -->
 
 <script type="text/javascript">
-        var param, category;
+        var config_param, config_category;
 
         function init() {
             LoadHostname();
@@ -264,15 +264,17 @@
 		xhttp.open("GET", url, true);
 		xhttp.send();
     }
-    
 
     function HA_send_discovery_visibility()	{
-		loadConfig(domainname); 
-		ParseConfig();
-		category = getConfigCategory();
-        param = getConfigParameters();
+        if (!loadConfig(domainname)) {
+			firework.launch('Configuration could not be loaded! Please reload the page!', 'danger', 30000);
+			return;
+        }		
+			
+        config_param = getConfigParameters();
+		config_category = getConfigCategory();
 		
-		if (category["MQTT"]["enabled"] && param["MQTT"]["HomeassistantDiscovery"].value1 == "true") {
+		if (config_category["MQTT"]["enabled"] && config_param["MQTT"]["HomeassistantDiscovery"].value1 == "true") {
             document.getElementById("ManualControl").style.display="";
             document.getElementById("HASendDiscovery").style.display="";
         }

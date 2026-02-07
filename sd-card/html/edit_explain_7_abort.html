@@ -17,7 +17,6 @@ p {font-size: 1em;}
 	font-size: 16px;	
 }
 
-
 </style>
 <link href="firework.css?v=$COMMIT_HASH" rel="stylesheet">
 <script type="text/javascript" src="jquery-3.6.0.min.js?v=$COMMIT_HASH"></script>  
@@ -43,18 +42,23 @@ p {font-size: 1em;}
     <script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script> 
 
     <script type="text/javascript">
-   
+    var config_param,
+        config_category;
+
     function reboot() {
         if (confirm("Do you want to abort the setup mode and switch to regular web interface?")) {
-            domainname = getDomainname(); 
+            domainname = getDomainname();
+			
             if (!loadConfig(domainname)) {
                 firework.launch('Setup mode could not be deactivated! Please try again!', 'danger', 30000);
                 return;
             } 
-            ParseConfig();	
-            param = getConfigParameters();
-            param["System"]["SetupMode"]["enabled"] = true;
-            param["System"]["SetupMode"]["value1"] = "false";
+			
+            config_param = getConfigParameters();
+			config_category = getConfigCategory();
+			
+            config_param["System"]["SetupMode"]["enabled"] = true;
+            config_param["System"]["SetupMode"]["value1"] = "false";
 
             WriteConfigININew();
             SaveConfigToServer(domainname);    
@@ -68,6 +72,5 @@ p {font-size: 1em;}
     }
 
     </script>
-
 </body>
 </html>
