@@ -32,7 +32,7 @@ protected:
     int model_x_size;
     int model_y_size;
     int model_channel;
-    
+
     bool isLogImageSelect;
     std::string LogImageSelect;
     bool SaveAllFiles;

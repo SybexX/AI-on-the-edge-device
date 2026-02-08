@@ -12,7 +12,7 @@
 #include "esp_sleep.h"
 #include "esp_netif_sntp.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 #include "ClassLogFile.h"
 
@@ -243,7 +243,7 @@ bool setupTime()
         if (toUpper(splitted[0]) == "TIMEZONE")
         {
             if (splitted.size() <= 1)
-            { 
+            {
                 // parameter part is empty
                 timeZone = "";
             }
@@ -256,7 +256,7 @@ bool setupTime()
         if (toUpper(splitted[0]) == "TIMESERVER")
         {
             if (splitted.size() <= 1)
-            { 
+            {
                 // Key has no value => we use this to show it as disabled
                 timeServer = "";
             }

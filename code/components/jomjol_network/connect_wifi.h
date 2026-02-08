@@ -1,15 +1,15 @@
 #pragma once
 
-#ifndef CONNECT_WLAN_H
-#define CONNECT_WLAN_H
+#ifndef CONNECT_WIFI_H
+#define CONNECT_WIFI_H
 
 #include <string>
 
 int wifi_init_sta(void);
-std::string* getIPAddress();
-std::string* getSSID();
+std::string *getIPAddress();
+std::string *getSSID();
 int get_WIFI_RSSI();
-std::string* getHostname();
+std::string *getHostname();
 
 bool getWIFIisConnected();
 void WIFIDestroy();
@@ -22,4 +22,4 @@ void wifiRoamingQuery(void);
 void wifiRoamByScanning(void);
 #endif
 
-#endif //CONNECT_WLAN_H
+#endif // CONNECT_WIFI_H

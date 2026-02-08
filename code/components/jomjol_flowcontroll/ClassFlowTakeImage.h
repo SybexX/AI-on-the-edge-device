@@ -5,7 +5,7 @@
 
 #include "ClassFlowImage.h"
 #include "ClassControllCamera.h"
-#include "../../include/defines.h"
+#include "defines.h"
 
 #include <string>
 

@@ -22,7 +22,6 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 #include "esp_app_format.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
-// #include "protocol_examples_common.h"
 #include "errno.h"
 
 #include <sys/stat.h>
@@ -34,7 +33,7 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/migration-guides/rel
 #include "interface_mqtt.h"
 #endif // ENABLE_MQTT
 #include "ClassControllCamera.h"
-#include "connect_wlan.h"
+#include "connect_wifi.h"
 
 #include "ClassLogFile.h"
 

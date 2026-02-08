@@ -3,7 +3,7 @@
 #include "Helper.h"
 #include "psram.h"
 #include "esp_log.h"
-#include "../../include/defines.h"
+#include "defines.h"
 
 #include <sys/stat.h>
 

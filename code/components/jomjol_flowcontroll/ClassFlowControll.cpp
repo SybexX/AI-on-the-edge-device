@@ -1,7 +1,7 @@
 #include "ClassFlowControll.h"
 
-#include "connect_wlan.h"
-#include "read_wlanini.h"
+#include "connect_wifi.h"
+#include "read_network_config.h"
 
 #include "freertos/task.h"
 

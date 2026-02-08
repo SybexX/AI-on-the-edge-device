@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "../../include/defines.h"
+#include "defines.h"
 #include "Helper.h"
 #include "statusled.h"
 
@@ -24,8 +24,8 @@
 
 #include "server_file.h"
 
-#include "read_wlanini.h"
-#include "connect_wlan.h"
+#include "read_network_config.h"
+#include "connect_wifi.h"
 #include "psram.h"
 #include "basic_auth.h"
 

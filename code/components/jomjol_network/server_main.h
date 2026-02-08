@@ -1,7 +1,5 @@
-#ifdef ENABLE_SOFTAP
-
-#ifndef SOFTAP_H
-#define SOFTAP_H
+#ifndef SERVER_MAIN_H
+#define SERVER_MAIN_H
 
 #include <esp_wifi.h>
 #include <esp_event.h>
@@ -12,12 +10,11 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_eth.h"
-#include "protocol_examples_common.h"
-#include "esp_tls_crypto.h"
 #include <esp_http_server.h>
 
-void CheckStartAPMode();
+extern httpd_handle_t server;
 
-#endif  //SOFTAP_H
+httpd_handle_t start_webserver(void);
+void register_server_main_uri(httpd_handle_t server, const char *base_path);
 
-#endif //#ifdef ENABLE_SOFTAP
+#endif

@@ -22,8 +22,8 @@
 
 #include "ClassLogFile.h"
 
-#include "connect_wlan.h"
-#include "read_wlanini.h"
+#include "connect_wifi.h"
+#include "read_network_config.h"
 #include "server_GpioHandler.h"
 #include "server_main.h"
 #include "MainFlowControl.h"
@@ -42,7 +42,7 @@
 #include "statusled.h"
 #include "sdcard_check.h"
 
-#include "../../include/defines.h"
+#include "defines.h"
 
 #ifdef ENABLE_SOFTAP
 #include "softAP.h"
@@ -266,17 +266,17 @@ extern "C" void app_main(void)
     if (iSDCardStatus < 0)
     {
         if (iSDCardStatus <= -1 && iSDCardStatus >= -2)
-        { 
+        {
             // write error
             StatusLED(SDCARD_CHECK, 1, true);
         }
         else if (iSDCardStatus <= -3 && iSDCardStatus >= -5)
-        { 
+        {
             // read error
             StatusLED(SDCARD_CHECK, 2, true);
         }
         else if (iSDCardStatus == -6)
-        { 
+        {
             // delete error
             StatusLED(SDCARD_CHECK, 3, true);
         }
@@ -306,7 +306,7 @@ extern "C" void app_main(void)
         StatusLED(PSRAM_INIT, 1, true);
     }
     else
-    {                                             
+    {
         // ESP_OK -> PSRAM init OK --> continue to check PSRAM size
         size_t psram_size = esp_psram_get_size(); // size_t psram_size = esp_psram_get_size(); // comming in IDF 5.0
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "PSRAM size: " + std::to_string(psram_size) + " byte (" + std::to_string(psram_size / 1024 / 1024) + "MB / " + std::to_string(psram_size / 1024 / 1024 * 8) + "MBit)");
@@ -314,14 +314,14 @@ extern "C" void app_main(void)
         // Check PSRAM size
         // ********************************************
         if (psram_size < (4 * 1024 * 1024))
-        { 
+        {
             // PSRAM is below 4 MBytes (32Mbit)
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "PSRAM size >= 4MB (32Mbit) is mandatory to run this application");
             setSystemStatusFlag(SYSTEM_STATUS_PSRAM_BAD);
             StatusLED(PSRAM_INIT, 2, true);
         }
         else
-        { 
+        {
             // PSRAM size OK --> continue to check heap size
             size_t _hsize = getESPHeapSize();
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Total heap: " + std::to_string(_hsize) + " byte");
@@ -329,7 +329,7 @@ extern "C" void app_main(void)
             // Check heap memory
             // ********************************************
             if (_hsize < 4000000)
-            { 
+            {
                 // Check available Heap memory for a bit less than 4 MB (a test on a good device showed 4187558 bytes to be available)
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Total heap >= 4000000 byte is mandatory to run this application");
                 setSystemStatusFlag(SYSTEM_STATUS_HEAP_TOO_SMALL);
@@ -360,7 +360,7 @@ extern "C" void app_main(void)
                     // Check camera init
                     // ********************************************
                     if (camStatus != ESP_OK)
-                    { 
+                    {
                         // Camera init failed, retry to init
                         char camStatusHex[33];
                         sprintf(camStatusHex, "0x%02x", camStatus);
@@ -375,7 +375,7 @@ extern "C" void app_main(void)
                         vTaskDelay(xDelay);
 
                         if (camStatus != ESP_OK)
-                        { 
+                        {
                             // Camera init failed again
                             sprintf(camStatusHex, "0x%02x", camStatus);
                             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Camera init failed (" + std::string(camStatusHex) + ")! Check camera module and/or proper electrical connection");
@@ -436,7 +436,7 @@ extern "C" void app_main(void)
     std::string versionFormated = getFwVersion() + ", Date/Time: " + std::string(BUILD_TIME) + ", Web UI: " + getHTMLversion();
 
     if (std::string(GIT_TAG) != "")
-    { 
+    {
         // We are on a tag, add it as prefix
         versionFormated = "Tag: '" + std::string(GIT_TAG) + "', " + versionFormated;
     }
@@ -446,7 +446,7 @@ extern "C" void app_main(void)
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, std::string("Failed to read file html/version.txt to parse Web UI version"));
 
     if (getHTMLcommit().substr(0, 7) != std::string(GIT_REV).substr(0, 7))
-    { 
+    {
         // Compare the first 7 characters of both hashes
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Web UI version (" + getHTMLcommit() + ") does not match firmware version (" + std::string(GIT_REV) + ")");
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Recommendation: Repeat installation using AI-on-the-edge-device__update__*.zip");
@@ -456,7 +456,7 @@ extern "C" void app_main(void)
     // ********************************************
     CheckIsPlannedReboot();
     if (!getIsPlannedReboot() && (esp_reset_reason() == ESP_RST_PANIC))
-    { 
+    {
         // If system reboot was not triggered by user and reboot was caused by execption
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Reset reason: " + getResetReason());
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Device was rebooted due to a software exception! Log level is set to DEBUG until the next reboot. "
@@ -494,13 +494,13 @@ extern "C" void app_main(void)
         init_basic_auth();
     }
     else if (iWLANStatus == -1)
-    { 
+    {
         // wlan.ini not available, potentially empty or content not readable
         StatusLED(WLAN_INIT, 1, true);
         return; // No way to continue without reading the wlan.ini
     }
     else if (iWLANStatus == -2)
-    { 
+    {
         // SSID or password not configured
         StatusLED(WLAN_INIT, 2, true);
         return; // No way to continue with empty SSID or password!
@@ -576,7 +576,7 @@ extern "C" void app_main(void)
     // Check main init + start TFlite task
     // ********************************************
     if (getSystemStatus() == 0)
-    { 
+    {
         // No error flag is set
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initialization completed successfully");
         InitializeFlowTask();
@@ -588,7 +588,7 @@ extern "C" void app_main(void)
         InitializeFlowTask();
     }
     else
-    { 
+    {
         // Any other error is critical and makes running the flow impossible. Init is going to abort.
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Initialization failed. Flow task start aborted. Loading reduced web interface...");
     }
