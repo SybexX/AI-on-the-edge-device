@@ -95,7 +95,7 @@
 
     #define SERVER_FILER_SCRATCH_BUFSIZE  4096 
     #define SERVER_HELPER_SCRATCH_BUFSIZE  4096
-    #define SERVER_OTA_SCRATCH_BUFSIZE  1024 
+    #define SERVER_OTA_SCRATCH_BUFSIZE  2048 
 
 
     //server_file + server_help
