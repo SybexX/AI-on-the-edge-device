@@ -1,34 +1,34 @@
 <!DOCTYPE html>
 <html lang="en" xml:lang="en"> 
 <head>
-<title>Info</title>
-<meta charset="UTF-8" />
+    <title>Info</title>
+    <meta charset="UTF-8" />
 
-<style>
-h1 {font-size: 2em;}
-h2 {font-size: 1.5em;}
-h3 {font-size: 1.2em;}
-p {font-size: 1em;}
+    <style>
+        h1 {font-size: 2em;}
+        h2 {font-size: 1.5em;}
+        h3 {font-size: 1.2em;}
+        p {font-size: 1em;}
 
-th, td {
-  padding: 5px 5px 5px 5px;
-  border-width: 1px;
-  border-style: solid;
-  border-color: rgb(240, 240, 240);
-}
+        th, td {
+            padding: 5px 5px 5px 5px;
+            border-width: 1px;
+            border-style: solid;
+            border-color: rgb(240, 240, 240);
+        }
 
-output {
-	padding-left:5px;
-}
+        output {
+        	padding-left:5px;
+        }
 
-table {
-    width: 660px;
-	padding: 5px;
-	border-collapse:collapse;
-}
-</style>
+        table {
+            width: 660px;
+        	padding: 5px;
+        	border-collapse:collapse;
+        }
+    </style>
 
-<script type="text/javascript" src="common.js?v=$COMMIT_HASH"></script> 
+    <script type="text/javascript" src="common.js?v=$COMMIT_HASH"></script> 
 </head>
 
 <body style="font-family: arial; padding: 0px 10px;">
@@ -60,22 +60,15 @@ table {
 		</tr>
 		<tr>
 			<td>Firmware version:</td>
-			<td>
-				<output id="firmware"></output>
-			</td>
+			<td><output id="firmware"></output></td>
 		</tr>
 		<tr>
 			<td>Firmware build time:</td>
-			<td>
-				<output id="build-time"></output>
-			</td>
+			<td><output id="build-time"></output></td>
 		</tr>
-
 		<tr>
 			<td>Web interface version:</td>
-			<td>
-				<output id="web-ui"></output>
-			</td>
+			<td><output id="web-ui"></output></td>
 		</tr>
 	</table>
 
@@ -89,24 +82,17 @@ table {
 		</tr>
 		<tr>
 			<td>Chip Cores:</td>
-			<td>
-				<output id="chip-cores"></output>
-			</td>
+			<td><output id="chip-cores"></output></td>
 		</tr>
 		<tr>
 			<td>Chip Revision:</td>
-			<td>
-				<output id="chip-revision"></output>
-			</td>
+			<td><output id="chip-revision"></output></td>
 		</tr>
 		<tr>
 			<td>Chip Features:</td>
-			<td>
-				<output id="chip-features"></output>
-			</td>
+			<td><output id="chip-features"></output></td>
 		</tr>
 	</table>
-
 
 	<table>
 		<colgroup>
@@ -118,21 +104,15 @@ table {
 		</tr>
 		<tr>
 			<td>Hostname:</td>
-			<td>
-				<output id="hostname"></output>
-			</td>
+			<td><output id="hostname"></output></td>
 		</tr>
 		<tr>
 			<td>IP Address:</td>	
-			<td>
-				<output id="IP-address"></output>
-			</td>
+			<td><output id="IP-address"></output></td>
 		</tr>
 		<tr>
 			<td>WLAN SSID:</td>	
-			<td>
-				<output id="wlan-ssid"></output>
-			</td>
+			<td><output id="wlan-ssid"></output></td>
 		</tr>
 	</table>
 
@@ -146,45 +126,31 @@ table {
 		</tr>
 		<tr>
 			<td>SD card manufacturer:</td>
-			<td>
-				<output id="SDCardManufacturer"></output>
-			</td>
+			<td><output id="SDCardManufacturer"></output></td>
 		</tr>
 		<tr>
 			<td>SD card name:</td>
-			<td>
-				<output id="SDCardName"></output>
-			</td>
+			<td><output id="SDCardName"></output></td>
 		</tr>
 		<tr>
 			<td>SD card size:</td>
-			<td>
-				<output id="SDCardCapacity"></output>
-			</td>
+			<td><output id="SDCardCapacity"></output></td>
 		</tr>
 		<tr>
 			<td>SD card sector size:</td>
-			<td>
-				<output id="SDCardSectorSize"></output>
-			</td>
+			<td><output id="SDCardSectorSize"></output></td>
 		</tr>
 		<tr>
 			<td>Partition size:</td>
-			<td>
-				<output id="SDCardPartitionSize"></output>
-			</td>
+			<td><output id="SDCardPartitionSize"></output></td>
 		</tr>
 		<tr>
 			<td>Partition free space:</td>	
-			<td>
-				<output id="SDCardFreePartitionSpace"></output>
-			</td>
+			<td><output id="SDCardFreePartitionSpace"></output></td>
 		</tr>
 		<tr>
 			<td>Partition allocation size:</td>	
-			<td>
-				<output id="SDCardPartitionAllocationSize"></output>
-			</td>
+			<td><output id="SDCardPartitionAllocationSize"></output></td>
 		</tr>
 	</table>
 
@@ -198,70 +164,61 @@ table {
 		</tr>
 		<tr>
 			<td>Total Free (Int + Ext):</td>	
-			<td>
-				<output id="RAMTotalFree"></output>
-			</td>
+			<td><output id="RAMTotalFree"></output></td>
 		</tr>
 		<tr>
 			<td>Ext. RAM - Free:</td>	
-			<td>
-				<output id="ExtRAMFree"></output>
-			</td>
+			<td><output id="ExtRAMFree"></output></td>
 		</tr>
 		<tr>
 			<td>Ext. RAM - Largest Free Block:</td>	
-			<td>
-				<output id="ExtRAMLargestFree"></output>
-			</td>
+			<td><output id="ExtRAMLargestFree"></output></td>
 		</tr>
 		<tr>
 			<td>Ext. RAM - Min Free:</td>	
-			<td>
-				<output id="ExtRAMMinFree"></output>
-			</td>
+			<td><output id="ExtRAMMinFree"></output></td>
+		</tr>
+		<tr>
+			<td>Ext. RAM - Fragmentation:</td>	
+			<td><output id="ExtRAMFragmentation"></output></td>
 		</tr>
 		<tr>
 			<td>Int. RAM - Free:</td>	
-			<td>
-				<output id="IntRAMFree"></output>
-			</td>
+			<td><output id="IntRAMFree"></output></td>
 		</tr>
 		<tr>
 			<td>Int. RAM - Largest Free Block:</td>	
-			<td>
-				<output id="IntRAMLargestFree"></output>
-			</td>
+			<td><output id="IntRAMLargestFree"></output></td>
 		</tr>
 		<tr>
 			<td>Int. RAM - Min Free:</td>	
-			<td>
-				<output id="IntRAMMinFree"></output>
-			</td>
+			<td><output id="IntRAMMinFree"></output></td>
+		</tr>
+		<tr>
+			<td>Int. RAM - Fragmentation:</td>	
+			<td><output id="IntRamFragmentation"></output></td>
 		</tr>
 	</table>
-
 
 <h3>Copyright</h3>
 Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edge-device" target=_blank>Jomjol</a> and others.
 
-</body>
-</html>
-
 <script type="text/javascript">
+	let memoryRequestRunning = false;
 
 	function loadLastRestart() 
 	{
-		url = getDomainname() + '/starttime';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/starttime';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
 				//Input format: 19700101-010019
-				var timestamp = xhttp.response.substr(6,2) + "." +
-						   xhttp.response.substr(4,2) + "." +
-						   xhttp.response.substr(0,4) + " " +
-						   xhttp.response.substr(9,2) + ":" +
-						   xhttp.response.substr(11,2) + ":" +
-						   xhttp.response.substr(13,2);
+				const timestamp = xhttp.responseText.substr(6,2) + "." +
+						          xhttp.responseText.substr(4,2) + "." +
+						          xhttp.responseText.substr(0,4) + " " +
+						          xhttp.responseText.substr(9,2) + ":" +
+						          xhttp.responseText.substr(11,2) + ":" +
+						          xhttp.responseText.substr(13,2);
  				document.getElementById("starttime").value = timestamp;
 			}
 		}
@@ -271,11 +228,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadUptime() 
 	{
-		url = getDomainname() + '/uptime';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/uptime';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("uptime").value = xhttp.response;
+ 				document.getElementById("uptime").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -284,11 +241,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadFWVersion() 
 	{
-		url = getDomainname() + '/info?type=FirmwareVersion';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=FirmwareVersion';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("firmware").value = xhttp.response;
+ 				document.getElementById("firmware").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -297,16 +254,16 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadFWBuildTime() 
 	{
-		url = getDomainname() + '/info?type=BuildTime';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=BuildTime';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
 				// Input format: 2023-04-02 10:56
-				var timestamp = xhttp.response.substr(8,2) + "." +
-								xhttp.response.substr(5,2) + "." +
-								xhttp.response.substr(0,4) + " " +
-								xhttp.response.substr(11,2) + ":" +
-								xhttp.response.substr(14,2);
+				const timestamp = xhttp.responseText.substr(8,2) + "." +
+								  xhttp.responseText.substr(5,2) + "." +
+								  xhttp.responseText.substr(0,4) + " " +
+								  xhttp.responseText.substr(11,2) + ":" +
+								  xhttp.responseText.substr(14,2);
  				document.getElementById("build-time").value = timestamp;
 			}
 		}
@@ -316,11 +273,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadHTMLVersion() 
 	{
-		url = getDomainname() + '/info?type=HTMLVersion';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=HTMLVersion';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("web-ui").value = xhttp.response;
+ 				document.getElementById("web-ui").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -329,11 +286,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadHostname() 
 	{
-		url = getDomainname() + '/info?type=Hostname';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=Hostname';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("hostname").value = xhttp.response;
+ 				document.getElementById("hostname").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -342,11 +299,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadIPAddress() 
 	{
-		url = getDomainname() + '/info?type=IP';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=IP';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("IP-address").value = xhttp.response;
+ 				document.getElementById("IP-address").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -355,11 +312,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadWLANSSID() 
 	{
-		url = getDomainname() + '/info?type=SSID';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SSID';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("wlan-ssid").value = xhttp.response;
+ 				document.getElementById("wlan-ssid").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -368,11 +325,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadSDCardManufacturer() 
 	{
-		url = getDomainname() + '/info?type=SDCardManufacturer';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SDCardManufacturer';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("SDCardManufacturer").value = xhttp.response;
+ 				document.getElementById("SDCardManufacturer").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -381,11 +338,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadSDCardName() 
 	{
-		url = getDomainname() + '/info?type=SDCardName';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SDCardName';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("SDCardName").value = xhttp.response;
+ 				document.getElementById("SDCardName").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -394,11 +351,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadSDCardCapacity() 
 	{
-		url = getDomainname() + '/info?type=SDCardCapacity';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SDCardCapacity';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("SDCardCapacity").value = xhttp.response + " MB";
+ 				document.getElementById("SDCardCapacity").value = xhttp.responseText + " MB";
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -407,11 +364,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadSDCardSectorSize() 
 	{
-		url = getDomainname() + '/info?type=SDCardSectorSize';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SDCardSectorSize';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("SDCardSectorSize").value = xhttp.response + " byte";
+ 				document.getElementById("SDCardSectorSize").value = xhttp.responseText + " byte";
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -420,11 +377,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadSDCardPartitionSize() 
 	{
-		url = getDomainname() + '/info?type=SDCardPartitionSize';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SDCardPartitionSize';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("SDCardPartitionSize").value = xhttp.response + " MB";
+ 				document.getElementById("SDCardPartitionSize").value = xhttp.responseText + " MB";
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -433,11 +390,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadSDCardFreePartitionSpace() 
 	{
-		url = getDomainname() + '/info?type=SDCardFreePartitionSpace';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SDCardFreePartitionSpace';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("SDCardFreePartitionSpace").value = xhttp.response + " MB";
+ 				document.getElementById("SDCardFreePartitionSpace").value = xhttp.responseText + " MB";
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -446,31 +403,76 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadSDCardPartitionAllocationSize() 
 	{
-		url = getDomainname() + '/info?type=SDCardPartitionAllocationSize';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=SDCardPartitionAllocationSize';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
- 				document.getElementById("SDCardPartitionAllocationSize").value = xhttp.response + " byte";
+ 				document.getElementById("SDCardPartitionAllocationSize").value = xhttp.responseText + " byte";
 			}
 		}
 		xhttp.open("GET", url, true);
 		xhttp.send();
 	}
 
+	function colorFragmentation(value) {
+		const v = parseFloat(value);
+		if (v < 10) return "lightgreen";
+		if (v < 20) return "yellow";
+		if (v < 40) return "orange";
+		return "red";
+	}
+
+	function extractBytes(byteString) {
+		const value = parseInt(byteString, 10);
+		return Number.isNaN(value) ? 0 : value;
+	}
+	
+	// Berechnet Fragmentation in %
+	function calculateFragmentation(total, largest) {
+		total = Number(total);
+		largest = Number(largest);
+		if (total <= 0) return 0;
+		const frag = Math.max(0, Math.min(100, 100 * (1 - largest / total)));
+		return frag.toFixed(2);
+	}
+
 	function loadMemoryInfo() 
 	{
-		url = getDomainname() + '/heap';     
-		var xhttp = new XMLHttpRequest();
+		if (memoryRequestRunning) return;
+		memoryRequestRunning = true;
+		
+		const url = getDomainname() + '/heap';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
-			if (this.readyState == 4 && this.status == 200) {
-				data = xhttp.response.split("|");
- 				document.getElementById("RAMTotalFree").value = data[0].split("l: ")[1] + " byte";
-				document.getElementById("IntRAMFree").value = data[4].split(":")[1] + " byte";
-				document.getElementById("IntRAMLargestFree").value = data[5].split(":")[1] + " byte";
-				document.getElementById("IntRAMMinFree").value = data[6].split(":")[1] + " byte";
-				document.getElementById("ExtRAMFree").value = data[1].split(":")[1] + " byte";
-				document.getElementById("ExtRAMLargestFree").value = data[2].split(":")[1] + " byte";
-				document.getElementById("ExtRAMMinFree").value = data[3].split(":")[1] + " byte";
+			if (this.readyState == 4) {
+				memoryRequestRunning = false;
+				if (this.status == 200) {
+				    const data = xhttp.responseText.split("|");
+				    if (data.length < 7) {
+				        console.error("Invalid heap response:", xhttp.responseText);
+				        return;
+				    }
+					
+ 				    document.getElementById("RAMTotalFree").value = data[0].split("l: ")[1].trim() + " byte";
+
+				    document.getElementById("IntRAMFree").value = data[4].split(":")[1].trim() + " byte";
+				    document.getElementById("IntRAMLargestFree").value = data[5].split(":")[1].trim() + " byte";
+				    document.getElementById("IntRAMMinFree").value = data[6].split(":")[1].trim() + " byte";
+
+				    const intFrag = calculateFragmentation(extractBytes(data[4]), extractBytes(data[5]));
+				    const intel = document.getElementById("IntRamFragmentation");
+				    intel.innerText = intFrag + " %";
+				    intel.style.backgroundColor = colorFragmentation(intFrag);
+				
+				    document.getElementById("ExtRAMFree").value = data[1].split(":")[1].trim() + " byte";
+				    document.getElementById("ExtRAMLargestFree").value = data[2].split(":")[1].trim() + " byte";
+				    document.getElementById("ExtRAMMinFree").value = data[3].split(":")[1].trim() + " byte";
+
+				    const extFrag = calculateFragmentation(extractBytes(data[1]), extractBytes(data[2]));
+				    const extel = document.getElementById("ExtRAMFragmentation");
+				    extel.innerText = extFrag + " %";
+				    extel.style.backgroundColor = colorFragmentation(extFrag);
+				}
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -479,11 +481,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadChipCores() 
 	{
-		url = getDomainname() + '/info?type=ChipCores';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=ChipCores';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {				
- 				document.getElementById("chip-cores").value = xhttp.response;
+ 				document.getElementById("chip-cores").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -492,11 +494,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadChipRevision() 
 	{
-		url = getDomainname() + '/info?type=ChipRevision';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=ChipRevision';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {				
- 				document.getElementById("chip-revision").value = xhttp.response;
+ 				document.getElementById("chip-revision").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -505,11 +507,11 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 
 	function loadChipFeatures() 
 	{
-		url = getDomainname() + '/info?type=ChipFeatures';     
-		var xhttp = new XMLHttpRequest();
+		const url = getDomainname() + '/info?type=ChipFeatures';     
+		const xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {				
- 				document.getElementById("chip-features").value = xhttp.response;
+ 				document.getElementById("chip-features").value = xhttp.responseText;
 			}
 		}
 		xhttp.open("GET", url, true);
@@ -540,4 +542,9 @@ Copyright &copy; 2020 - 2024 by <a href="https://github.com/jomjol/AI-on-the-edg
 	}
 
 	init();
+
+	// Auto-Update alle 10 Sekunden
+	setInterval(loadMemoryInfo, 10000);
 </script>
+</body>
+</html>
