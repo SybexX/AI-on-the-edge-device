@@ -34,7 +34,7 @@ function upload() {
   } else if (filePath.length == 0) {
     firework.launch('File path on server is not set!', 'danger', 30000);
   } else if (filePath.length > 100) {
-    firework.launch('Filename is to long! Max 100 characters.', 'danger', 30000);
+    firework.launch('Filename is too long! Max 100 characters.', 'danger', 30000);
   } else if (filePath.indexOf(' ') >= 0) {
     firework.launch('File path on server cannot have spaces!', 'danger', 30000);
   } else if (filePath[filePath.length-1] == '/') {
@@ -59,7 +59,7 @@ function upload() {
           firework.launch('Server closed the connection abruptly!', 'danger', 30000);
           UpdatePage(false);
         } else {
-          firework.launch('An error occured: ' + xhttp.responseText, 'danger', 30000);
+          firework.launch('An error occurred: ' + xhttp.responseText, 'danger', 30000);
           UpdatePage(false);
         }
       }
