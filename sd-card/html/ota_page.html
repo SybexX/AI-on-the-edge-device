@@ -33,8 +33,8 @@
 
 <body style="font-family: arial; padding: 0px 10px;">
     <h2>OTA Update</h2>
-    <p>Check the <a href="https://github.com/jomjol/AI-on-the-edge-device/releases" target=_blank>Release Page</a> to see if there is an update available. </p>
-    <p>You can also automatically get notified about a release, see <a href="https://jomjol.github.io/AI-on-the-edge-device-docs/New-Releases-Notification" target=_blank>Release Notifications</a>.</p>
+    <p>Check the <a href="https://github.com/jomjol/AI-on-the-edge-device/releases" target="_blank">Release Page</a> to see if there is an update available.</p>
+    <p>You can also automatically get notified about a release, see <a href="https://jomjol.github.io/AI-on-the-edge-device-docs/New-Releases-Notification" target="_blank">Release Notifications</a>.</p>
 
     <h3>Update</h3>
     On the <a href="https://github.com/jomjol/AI-on-the-edge-device/releases" target=_blank>Release Page</a>, pick the <i><span style="font-family:monospace">AI-on-the-edge-device__update__*.zip</span></i> file!</p>
@@ -56,8 +56,6 @@
         <h3><span id="status">Status: Idle</span></h3>
         <p id="loaded_n_total"></p>
     </form>
-    
-
 
     <script language="JavaScript">
         var domainname = getDomainname();
@@ -113,7 +111,7 @@
                ( /[a-zRC0-9()_\-.]*(\.tflite$)/i.test(filename))) {
                 firework.launch('Great, the filename matches our expectations. You can now press "Upload and install".', 'success', 5000);
             }
-            /* Following filenames are acceptiod but not prefered:
+            /* Following filenames are accepted but not preferred:
              * - *.bin
              * - *.zip */
             else if (filename.endsWith(".zip") || filename.endsWith(".bin")) { // Warning but still accepted
@@ -128,7 +126,6 @@
             document.getElementById("start_OTA_button").disabled = false;
         }
 
-
         function start_OTA() {
             document.getElementById("start_OTA_button").disabled = true;
 
@@ -140,13 +137,11 @@
             prepareOnServer();
         }
 
-
         function doRebootAfterUpdate() {
             var xhttp = new XMLHttpRequest();
             xhttp.open("GET", domainname + "/reboot", true);
             xhttp.send();
         }
-
 
         function prepareOnServer() {
             document.getElementById("status").innerText = "Status: Preparing device...";
@@ -165,7 +160,7 @@
                     } else if (xhttp.status == 0) {
                         firework.launch('Server closed the connection abruptly!', 'danger', 30000);
                     } else {
-                        firework.launch('An error occured: ' + xhttp.responseText, 'danger', 30000);
+                        firework.launch('An error occurred: ' + xhttp.responseText, 'danger', 30000);
                     }
                 }
             };
@@ -174,7 +169,6 @@
             xhttp.open("GET", url, true);
             xhttp.send();
         }
-
 
         function validateMd5(md5_on_device, callback) {
             const reader = new FileReader();
@@ -196,7 +190,6 @@
             var fileInput = document.getElementById("file_selector").files;
             reader.readAsArrayBuffer(fileInput[0]);
         }
-
 
         function extract() {
             var xhttp = new XMLHttpRequest();
@@ -242,7 +235,7 @@
                     } else if (xhttp.status == 0) {
                         firework.launch('Server closed the connection abruptly!', 'danger', 30000);
                     } else {
-                        firework.launch('An error occured: ' + xhttp.responseText, 'danger', 30000);
+                        firework.launch('An error occurred: ' + xhttp.responseText, 'danger', 30000);
                     }
                 }
             };
@@ -254,11 +247,9 @@
             xhttp.send();
         }
 
-
         function _(el) {
             return document.getElementById(el);
         }
-
 
         function upload() {
             document.getElementById("status").innerText = "Status: Uploading...";
@@ -278,7 +269,6 @@
             ajax.send(file);
         }
 
-
         function progressHandler(event) {
             _("loaded_n_total").innerHTML = "Uploaded " + (event.loaded / 1024 / 1024).toFixed(2) + 
                     " MB of " + (event.total / 1024/ 1024).toFixed(2) + " MB";
@@ -294,7 +284,6 @@
                 _("status").innerHTML = "Status: " + Math.round(percent) + "% uploaded...";
             }
         }
-
 
         function completeHandler(event) {
             console.log("Upload completed");
@@ -323,13 +312,11 @@
             }
         }
 
-
         function errorHandler(event) {
             _("status").innerHTML = "Status: Upload Failed";
             firework.launch('Upload failed!', 'danger', 30000);
             document.getElementById("file_selector").disabled = false;
         }
-
 
         function abortHandler(event) {
             _("status").innerHTML = "Status: Upload Aborted";
