@@ -268,10 +268,9 @@ bool ClassFlowAlignment::doFlow(string time)
 
 void ClassFlowAlignment::SaveReferenceAlignmentValues()
 {
-    FILE *pFile;
     std::string zwtime, zwvalue;
 
-    pFile = fopen(FileStoreRefAlignment.c_str(), "w");
+    FILE *pFile = fopen(FileStoreRefAlignment.c_str(), "w");
 
     if (strlen(zwtime.c_str()) == 0) {
         time_t rawtime;
@@ -281,7 +280,7 @@ void ClassFlowAlignment::SaveReferenceAlignmentValues()
         time(&rawtime);
         timeinfo = localtime(&rawtime);
 
-        strftime(buffer, 80, "%Y-%m-%dT%H:%M:%S", timeinfo);
+        strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", timeinfo);
         zwtime = std::string(buffer);
     }
 
@@ -305,21 +304,19 @@ void ClassFlowAlignment::SaveReferenceAlignmentValues()
 
 bool ClassFlowAlignment::LoadReferenceAlignmentValues(void)
 {
-    FILE *pFile;
-    char zw[1024];
-    string zwvalue;
-    std::vector<string> splitted;
-
-    pFile = fopen(FileStoreRefAlignment.c_str(), "r");
+    FILE *pFile = fopen(FileStoreRefAlignment.c_str(), "r");
 
     if (pFile == NULL) {
         return false;
     }
 
-    fgets(zw, 1024, pFile);
+    char zw[256];
+    std::vector<string> splitted;
+    
+    fgets(zw, sizeof(zw), pFile);
     ESP_LOGD(TAG, "%s", zw);
 
-    fgets(zw, 1024, pFile);
+    fgets(zw, sizeof(zw), pFile);
     splitted = ZerlegeZeile(std::string(zw), " \t");
 
     if (splitted.size() < 6) {
@@ -334,7 +331,7 @@ bool ClassFlowAlignment::LoadReferenceAlignmentValues(void)
     References[0].fastalg_max = stoi(splitted[4]);
     References[0].fastalg_avg = stof(splitted[5]);
 
-    fgets(zw, 1024, pFile);
+    fgets(zw, sizeof(zw), pFile);
     splitted = ZerlegeZeile(std::string(zw));
 
     if (splitted.size() < 6) {
