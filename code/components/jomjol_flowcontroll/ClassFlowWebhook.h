@@ -27,9 +27,6 @@ protected:
 
     void SetInitialParameter(void); 
 
-    void handleFieldname(string _decsep, std::string _value);   
-    void handleMeasurement(string _decsep, std::string _value);
-
 public:
     ClassFlowWebhook();
     ClassFlowWebhook(std::vector<ClassFlow*>* lfc);
