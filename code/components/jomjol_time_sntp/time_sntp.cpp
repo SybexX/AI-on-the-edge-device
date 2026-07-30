@@ -19,11 +19,10 @@
 #include "configFile.h"
 #include "Helper.h"
 
-
 static const char *TAG = "SNTP";
 
 static std::string timeZone = "";
-static std::string timeServer = "undefined";
+static std::string timeServer = "";
 static bool useNtp = true;
 static bool timeWasNotSetAtBoot = false;
 static bool timeWasNotSetAtBoot_PrintStartBlock = false;
@@ -33,8 +32,6 @@ static void setTimeZone(std::string _tzstring);
 static std::string getServerName(void);
 
 int LocalTimeToUTCOffsetSeconds;
-
-
 
 std::string ConvertTimeToString(time_t _time, const char * frm)
 {
@@ -46,7 +43,6 @@ std::string ConvertTimeToString(time_t _time, const char * frm)
     std::string result(strftime_buf);
     return result;
 }
-
 
 std::string getCurrentTimeString(const char * frm)
 {
@@ -61,7 +57,6 @@ std::string getCurrentTimeString(const char * frm)
     return result;
 }
 
-
 void time_sync_notification_cb(struct timeval *tv)
 {
     if (timeWasNotSetAtBoot_PrintStartBlock) {
@@ -70,10 +65,8 @@ void time_sync_notification_cb(struct timeval *tv)
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "== Logs before time sync -> log_1970-01-01.txt ==");
         timeWasNotSetAtBoot_PrintStartBlock = false;
     }
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Time is synced with NTP Server " +
-            getServerName() + ": " + getCurrentTimeString("%Y-%m-%d %H:%M:%S"));
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Time is synced with NTP Server " + getServerName() + ": " + getCurrentTimeString("%Y-%m-%d %H:%M:%S"));
 }
-
 
 bool time_manual_reset_sync(void)
 {
@@ -81,17 +74,18 @@ bool time_manual_reset_sync(void)
 //    sntp_init();
     int retry = 0;
     const int retry_count = 10;
+    
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Waiting for system time to be set... " + std::to_string(retry) + "/" + std::to_string(retry_count));
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
+    
     if (retry >= retry_count)
         return false;
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Waiting for system time successfull with " + std::to_string(retry) + "/" + std::to_string(retry_count));
     return true;
 }
-
 
 int getUTCOffsetSeconds(std::string &zeitzone)
 {
@@ -121,7 +115,6 @@ int getUTCOffsetSeconds(std::string &zeitzone)
     return offset;
 }
 
-
 void setTimeZone(std::string _tzstring)
 {
     setenv("TZ", _tzstring.c_str(), 1);
@@ -136,8 +129,6 @@ void setTimeZone(std::string _tzstring)
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "time zone: " + zeitzone + " Delta to UTC: " + std::to_string(LocalTimeToUTCOffsetSeconds) + " seconds");
 }
 
-
-
 std::string getNtpStatusText(sntp_sync_status_t status) {
     if (status == SNTP_SYNC_STATUS_COMPLETED) {
         return "Synchronized";
@@ -149,7 +140,6 @@ std::string getNtpStatusText(sntp_sync_status_t status) {
         return "Reset";
     }
 }
-
 
 bool getTimeIsSet(void) {
     time_t now;
@@ -171,7 +161,6 @@ bool getTimeIsSet(void) {
  //   obtain_time();
 }*/
 
-
 bool getUseNtp(void) {
     return useNtp;
 }
@@ -181,15 +170,15 @@ bool getTimeWasNotSetAtBoot(void)
     return timeWasNotSetAtBoot;
 }
 
-
 std::string getServerName(void) {
     char buf[100];
 
-    if (sntp_getservername(0)){
+    if (sntp_getservername(0)) {
         snprintf(buf, sizeof(buf), "%s", sntp_getservername(0));
         return std::string(buf);
     }
-    else { // we have either IPv4 or IPv6 address
+    else { 
+        // we have either IPv4 or IPv6 address
         ip_addr_t const *ip = sntp_getserver(0);
         if (ipaddr_ntoa_r(ip, buf, sizeof(buf)) != NULL) {
             return std::string(buf);
@@ -198,61 +187,64 @@ std::string getServerName(void) {
     return "";
 }
 
-
 /**
  * Load the TimeZone and TimeServer from the config file and initialize the NTP client
  */
 bool setupTime() {
-    time_t now;
-    struct tm timeinfo;
-    char strftime_buf[64];
-
     ConfigFile configFile = ConfigFile(CONFIG_FILE); 
 
-    if (!configFile.ConfigFileExists()){
+    if (!configFile.ConfigFileExists()) {
         LogFile.WriteToFile(ESP_LOG_WARN, TAG, "No ConfigFile defined - exit setupTime()!");
         return false;
     }
 
-    std::vector<std::string> splitted;
     std::string line = "";
     bool disabledLine = false;
     bool eof = false;
 
-    /* Load config from config file */
-    while ((!configFile.GetNextParagraph(line, disabledLine, eof) || 
-            (line.compare("[System]") != 0)) && !eof) {}
-    if (eof) {
-        return false;
-    }
-
-    if (disabledLine) {
-        return false;
-    }
-
-    while (configFile.getNextLine(&line, disabledLine, eof) && 
-            !configFile.isNewParagraph(line)) {
-        splitted = ZerlegeZeile(line, "=");
-
-        if (toUpper(splitted[0]) == "TIMEZONE") {
-            if (splitted.size() <= 1) { // parameter part is empty
-                timeZone = "";
-            }
-            else {
-                timeZone = splitted[1];
-            }
-        }
-
-        if (toUpper(splitted[0]) == "TIMESERVER") {
-            if (splitted.size() <= 1) { // Key has no value => we use this to show it as disabled
-                timeServer = "";
-            }
-            else {
-                timeServer = splitted[1];
-            }
+    /* Find the [System] section */
+    while (configFile.GetNextParagraph(line, disabledLine, eof) && !eof)
+    {
+        if (line == "[System]")
+        {
+            break;
         }
     }
 
+    if (eof && line != "[System]")
+    { 
+        // If after the loop still not in the correct block
+        ESP_LOGW(TAG, "Could not find [System] section in config file");
+        return false;
+    }
+
+    if (!disabledLine) {
+        std::vector<std::string> splitted;
+        
+        while (configFile.getNextLine(&line, disabledLine, eof) && !configFile.isNewParagraph(line)) {
+            splitted = ZerlegeZeile(line, "=");
+
+            if (toUpper(splitted[0]) == "TIMEZONE") {
+                if (splitted.size() <= 1) { 
+                    // parameter part is empty
+                    timeZone = "";
+                }
+                else {
+                    timeZone = splitted[1];
+                }
+            }
+
+            if (toUpper(splitted[0]) == "TIMESERVER") {
+                if (splitted.size() <= 1) { 
+                    // Key has no value => we use this to show it as disabled
+                    timeServer = "";
+                }
+                else {
+                    timeServer = splitted[1];
+                }
+            }
+        }
+    }
 
     /* Setup NTP Server and Timezone */
     if (timeServer == "undefined") {
@@ -267,11 +259,13 @@ bool setupTime() {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TimeServer: " + timeServer);
     }
     
-    if (timeZone == "") {
+    if ((timeZone == "") || (timeZone == "undefined")) {
         timeZone = "CET-1CEST,M3.5.0,M10.5.0/3";
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TimeZone not set, using default: " + timeZone);
     }
-
+    else {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TimeZone: " + timeZone);
+    }
 
     if (useNtp) {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Configuring NTP Client...");        
@@ -286,10 +280,13 @@ bool setupTime() {
      * There should only be a minor correction through NTP */
 
     // Get current time from RTC
+    time_t now;
+    struct tm timeinfo;
+    char strftime_buf[64];
+    
     time(&now);
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
-
 
     if (getTimeIsSet()) {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Time is already set: " + std::string(strftime_buf));
@@ -305,5 +302,3 @@ bool setupTime() {
 
     return true;
 }
-
-
