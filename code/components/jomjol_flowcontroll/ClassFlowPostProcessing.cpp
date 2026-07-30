@@ -149,7 +149,7 @@ bool ClassFlowPostProcessing::SetPreValue(double _newvalue, string _numbers, boo
 bool ClassFlowPostProcessing::LoadPreValue(void) {
     std::vector<string> splitted;
     FILE* pFile;
-    char zw[1024];
+    char zw[256];
     string zwtime, zwvalue, name;
     bool _done = false;
 
@@ -164,7 +164,7 @@ bool ClassFlowPostProcessing::LoadPreValue(void) {
     // Makes sure that an empty file is treated as such.
     zw[0] = '\0';
 
-    fgets(zw, 1024, pFile);
+    fgets(zw, sizeof(zw), pFile);
     ESP_LOGD(TAG, "Read line Prevalue.ini: %s", zw);
     zwtime = trim(std::string(zw));
 	
@@ -215,7 +215,7 @@ bool ClassFlowPostProcessing::LoadPreValue(void) {
                 }
             }
 
-            if (!fgets(zw, 1024, pFile)) {
+            if (!fgets(zw, sizeof(zw), pFile)) {
                 _done = true;
             }
             else {
@@ -233,7 +233,7 @@ bool ClassFlowPostProcessing::LoadPreValue(void) {
     }   
     else {
         // Old Format
-        fgets(zw, 1024, pFile);
+        fgets(zw, sizeof(zw), pFile);
         fclose(pFile);
         ESP_LOGD(TAG, "%s", zw);
         zwvalue = trim(std::string(zw));
@@ -280,20 +280,20 @@ bool ClassFlowPostProcessing::LoadPreValue(void) {
 }
 
 void ClassFlowPostProcessing::SavePreValue() {
-    FILE* pFile;
-    string _zw;
+    std::string _zw = "";
 
     // PreValues unchanged --> File does not have to be rewritten
     if (!UpdatePreValueINI) {
         return;
     }
 
-    pFile = fopen(FilePreValue.c_str(), "w");
+    FILE *pFile = fopen(FilePreValue.c_str(), "w");
 
     for (int j = 0; j < NUMBERS.size(); ++j) {
         char buffer[80];
         struct tm* timeinfo = localtime(&NUMBERS[j]->timeStampLastPreValue);
-        strftime(buffer, 80, PREVALUE_TIME_FORMAT_OUTPUT, timeinfo);
+        strftime(buffer, sizeof(buffer), PREVALUE_TIME_FORMAT_OUTPUT, timeinfo);
+		
         NUMBERS[j]->timeStamp = std::string(buffer);
         NUMBERS[j]->timeStampTimeUTC = NUMBERS[j]->timeStampLastPreValue;
         // ESP_LOGD(TAG, "SaverPreValue %d, Value: %f, Nachkomma %d", j, NUMBERS[j]->PreValue, NUMBERS[j]->Nachkomma);
@@ -554,9 +554,6 @@ void ClassFlowPostProcessing::handlecheckDigitIncreaseConsistency(std::string _d
 }
 
 bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, string& aktparamgraph) {
-    std::vector<string> splitted;
-    int _n;
-
     aktparamgraph = trim(aktparamgraph);
 
     if (aktparamgraph.size() == 0) {
@@ -572,6 +569,8 @@ bool ClassFlowPostProcessing::ReadParameter(FILE* pfile, string& aktparamgraph) 
 
     InitNUMBERS();
 
+    std::vector<string> splitted;
+	
     while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph)) {
         splitted = ZerlegeZeile(aktparamgraph);
         std::string _param = GetParameterName(splitted[0]);
@@ -718,9 +717,7 @@ string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift) {
         return in;
     }
 
-    int _pos_dec_org, _pos_dec_neu;
-
-    _pos_dec_org = findDelimiterPos(in, ".");
+    int _pos_dec_org = findDelimiterPos(in, ".");
 	
     if (_pos_dec_org == std::string::npos) {
         _pos_dec_org = in.length();
@@ -729,7 +726,7 @@ string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift) {
         in = in.erase(_pos_dec_org, 1);
     }
     
-    _pos_dec_neu = _pos_dec_org + _decShift;
+    int _pos_dec_neu = _pos_dec_org + _decShift;
 
     // comma is before the first digit
     if (_pos_dec_neu <= 0) {
@@ -749,9 +746,7 @@ string ClassFlowPostProcessing::ShiftDecimal(string in, int _decShift) {
         return in;      
     }
 
-    string zw;
-    zw = in.substr(0, _pos_dec_neu);
-    zw = zw + ".";
+    std::string zw = in.substr(0, _pos_dec_neu) + ".";
     zw = zw + in.substr(_pos_dec_neu, in.length() - _pos_dec_neu);
 
     return zw;
@@ -1000,7 +995,7 @@ void ClassFlowPostProcessing::WriteDataLog(int _index) {
     string timezw = "";
     char buffer[80];
     struct tm* timeinfo = localtime(&NUMBERS[_index]->timeStampLastValue);
-    strftime(buffer, 80, PREVALUE_TIME_FORMAT_OUTPUT, timeinfo);
+    strftime(buffer, sizeof(buffer), PREVALUE_TIME_FORMAT_OUTPUT, timeinfo);
     timezw = std::string(buffer);
     
     if (flowAnalog) {
