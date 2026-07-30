@@ -314,23 +314,21 @@ void ClassFlowControll::InitFlow(std::string config)
     //#ifdef ENABLE_MQTT
         //MQTTPublish(mqttServer_getMainTopic() + "/" + "status", "Initialization", 1, false); // Right now, not possible -> MQTT Service is going to be started later
     //#endif //ENABLE_MQTT
-    
-    string line;
+
     flowpostprocessing = NULL;
 
     ClassFlow* cfc;
-    FILE* pFile;
+
     config = FormatFileName(config);
-    pFile = fopen(config.c_str(), "r");
+    FILE *pFile = fopen(config.c_str(), "r");
 
-    line = "";
-
-    char zw[1024];
+    char temp_char[256];
+    std::string line = "";
 	
     if (pFile != NULL) {
-        fgets(zw, 1024, pFile);
-        ESP_LOGD(TAG, "%s", zw);
-        line = std::string(zw);
+        fgets(temp_char, sizeof(temp_char), pFile);
+        ESP_LOGD(TAG, "%s", temp_char);
+        line = std::string(temp_char);
     }
 
     while ((line.size() > 0) && !(feof(pFile))) {
@@ -344,9 +342,9 @@ void ClassFlowControll::InitFlow(std::string config)
         else {
             line = "";
 		
-            if (fgets(zw, 1024, pFile) && !feof(pFile)) {
-                ESP_LOGD(TAG, "Read: %s", zw);
-                line = std::string(zw);
+            if (fgets(temp_char, sizeof(temp_char), pFile) && !feof(pFile)) {
+                ESP_LOGD(TAG, "Read: %s", temp_char);
+                line = std::string(temp_char);
             }
         }
     }
@@ -372,7 +370,7 @@ void ClassFlowControll::setActStatus(std::string _aktstatus)
 
 void ClassFlowControll::doFlowTakeImageOnly(string time)
 {
-    std::string zw_time;
+    std::string zw_time = "";
 
     for (int i = 0; i < FlowControll.size(); ++i) {
         if (FlowControll[i]->name() == "ClassFlowTakeImage") {
@@ -391,7 +389,7 @@ void ClassFlowControll::doFlowTakeImageOnly(string time)
 bool ClassFlowControll::doFlow(string time)
 {
     bool result = true;
-    std::string zw_time;
+    std::string zw_time = "";
     int repeat = 0;
     int qos = 1;
 
