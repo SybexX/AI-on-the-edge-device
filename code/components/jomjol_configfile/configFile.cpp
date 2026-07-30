@@ -32,7 +32,7 @@ bool ConfigFile::isNewParagraph(std::string input)
 
 bool ConfigFile::GetNextParagraph(std::string& aktparamgraph, bool &disabled, bool &eof)
 {
-	while (getNextLine(&aktparamgraph, disabled, eof) && !isNewParagraph(aktparamgraph));
+	while (getNextLine(&aktparamgraph, disabled, eof) && !isNewParagraph(aktparamgraph) && !eof);
 
 	if (isNewParagraph(aktparamgraph))
 		return true;
@@ -42,17 +42,17 @@ bool ConfigFile::GetNextParagraph(std::string& aktparamgraph, bool &disabled, bo
 bool ConfigFile::getNextLine(std::string *rt, bool &disabled, bool &eof)
 {
     eof = false;
-	char zw[1024] = "";
+	char temp_char[256] = "";
 	if (pFile == NULL)
 	{
 		*rt = "";
 		return false;
 	}
 
-	if (fgets(zw, 1024, pFile))
+	if (fgets(temp_char, sizeof(temp_char), pFile))
 	{
-		ESP_LOGD(TAG, "%s", zw);
-		if ((strlen(zw) == 0) && feof(pFile))
+		ESP_LOGD(TAG, "%s", temp_char);
+		if ((strlen(temp_char) == 0) && feof(pFile))
 		{
 			*rt = "";
 			eof = true;
@@ -65,19 +65,19 @@ bool ConfigFile::getNextLine(std::string *rt, bool &disabled, bool &eof)
 		eof = true;
 		return false;
 	}
-	*rt = zw;
+	*rt = temp_char;
 	*rt = trim(*rt);
-	while ((zw[0] == ';' || zw[0] == '#' || (rt->size() == 0)) && !(zw[1] == '['))
+	while ((temp_char[0] == ';' || temp_char[0] == '#' || (rt->size() == 0)) && !(temp_char[1] == '['))
 	{
-		fgets(zw, 1024, pFile);
-		ESP_LOGD(TAG, "%s", zw);
+		fgets(temp_char, sizeof(temp_char), pFile);
+		ESP_LOGD(TAG, "%s", temp_char);
 		if (feof(pFile))
 		{
 			*rt = "";
             eof = true;
 			return false;
 		}
-		*rt = zw;
+		*rt = temp_char;
 		*rt = trim(*rt);
 	}
 
