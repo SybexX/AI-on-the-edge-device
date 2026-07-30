@@ -1,6 +1,7 @@
 #ifdef ENABLE_WEBHOOK
 
 #pragma once
+
 #ifndef INTERFACE_WEBHOOK_H
 #define INTERFACE_WEBHOOK_H
 
