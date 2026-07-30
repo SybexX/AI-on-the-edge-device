@@ -1,20 +1,23 @@
 #ifdef ENABLE_WEBHOOK
-#include "interface_webhook.h"
 
-#include "esp_log.h"
-#include <time.h>
-#include "ClassLogFile.h"
-#include "esp_http_client.h"
-#include "time_sntp.h"
-#include "../../include/defines.h"
 #include <cJSON.h>
+#include <time.h>
+#include "esp_log.h"
+#include "esp_http_client.h"
+
+#include "../../include/defines.h"
+
 #include <ClassFlowDefineTypes.h>
 
+#include "interface_webhook.h"
+#include "ClassLogFile.h"
+
+#include "time_sntp.h"
 
 static const char *TAG = "WEBHOOK";
 
-std::string _webhookURI;
-std::string _webhookApiKey;
+std::string _webhookURI = "";
+std::string _webhookApiKey = "";
 long _lastTimestamp;
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt);
@@ -54,7 +57,8 @@ bool WebhookPublish(std::vector<NumberPost*>* numbers)
         
         cJSON_AddItemToArray(jsonArray, json);
 
-        if ((*numbers)[i]->ErrorMessage) {
+        if ((*numbers)[i]->ErrorMessage) 
+        {
             numbersWithError = true;
         }
     }
@@ -83,24 +87,30 @@ bool WebhookPublish(std::vector<NumberPost*>* numbers)
 
     esp_err_t err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_http_client_perform(http_client));
 
-    if(err == ESP_OK) {
+    if(err == ESP_OK) 
+    {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP request was performed");
         int status_code = esp_http_client_get_status_code(http_client);
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP status code: " + std::to_string(status_code));
-    } else {
+    } 
+    else 
+    {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "HTTP request failed");
     } 
 
     esp_http_client_cleanup(http_client);
     cJSON_Delete(jsonArray);
     free(jsonString);
+    
     return numbersWithError;    
 }
 
-void WebhookUploadPic(ImageData *Img) {
+void WebhookUploadPic(ImageData *Img) 
+{
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Starting WebhookUploadPic");
 
     std::string fullURI = _webhookURI + "?timestamp=" + std::to_string(_lastTimestamp);
+    
     char response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
     esp_http_client_config_t http_config = {
         .url = fullURI.c_str(),
@@ -120,11 +130,14 @@ void WebhookUploadPic(ImageData *Img) {
 
     err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_http_client_perform(http_client));
 
-    if (err == ESP_OK) {
+    if (err == ESP_OK) 
+    {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP PUT request was performed successfully");
         int status_code = esp_http_client_get_status_code(http_client);
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP status code: " + std::to_string(status_code));
-    } else {
+    } 
+    else 
+    {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "HTTP PUT request failed");
     }
 
@@ -132,7 +145,6 @@ void WebhookUploadPic(ImageData *Img) {
 
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "WebhookUploadPic finished");
 }
-
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
@@ -164,6 +176,7 @@ static esp_err_t http_event_handler(esp_http_client_event_t *evt)
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTP Redirect");
             break;
     }
+    
     return ESP_OK;
 }
 
