@@ -10,13 +10,11 @@ h2 {font-size: 1.5em;margin-block-start: 0.3em;}
 h3 {font-size: 1.2em;}
 p {font-size: 1em;}
 
-
 .button {
 	padding: 5px 10px;
     width: 205px;
 	font-size: 16px;	
 }
-
 
 </style>
 <link href="firework.css?v=$COMMIT_HASH" rel="stylesheet">
@@ -25,7 +23,6 @@ p {font-size: 1em;}
 </head>
 
 <body style="font-family: arial">
-
     <h4>Initial setup aborted!</h4>
 
     <p>You have <b>aborted</b> the initial setup!</p>
@@ -43,7 +40,6 @@ p {font-size: 1em;}
     <script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script> 
 
     <script type="text/javascript">
-   
     function reboot() {
         if (confirm("Do you want to abort the setup mode and switch to regular web interface?")) {
             domainname = getDomainname(); 
@@ -60,14 +56,9 @@ p {font-size: 1em;}
             SaveConfigToServer(domainname);    
 
             var stringota = getDomainname() + "/reboot";
-            parent.location = stringota;
             parent.location.href = stringota;
-            parent.location.assign(stringota);
-            parent.location.replace(stringota); 
         }
     }
-
     </script>
-
 </body>
 </html>

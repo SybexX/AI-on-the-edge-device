@@ -562,7 +562,14 @@ void doRebootOTA()
 
     Camera.LightOnOff(false);
     StatusLEDOff();
+
+/* Stop service tasks */
+#ifdef ENABLE_MQTT
+    MQTTdestroy_client(true);
+#endif // ENABLE_MQTT
+    gpio_handler_destroy();
     esp_camera_deinit();
+    WIFIDestroy();
 
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     esp_restart(); // Reset type: CPU reset (Reset both CPUs)
@@ -585,8 +592,12 @@ esp_err_t handler_reboot(httpd_req_t *req)
         "function m(h) {"
         "document.getElementById('t').innerHTML=h;"
         "setInterval(function (){h +='.'; document.getElementById('t').innerHTML=h;"
-        "fetch('reboot_page.html',{mode: 'no-cors'}).then(r=>{parent.location.href=('index.html');})}, 1000);"
-        "}</script></head></html><body style='font-family: arial'><h3 id=t></h3>"
+        "fetch('index.html',{cache: 'no-store'}).then(r=>{"
+        "if(r.ok){clearInterval(updateTimer);parent.location.href=('index.html?v=' + Math.random());}"
+        "}).catch(e=>{console.log('Waiting for device: '+e);});}, 1000);"
+        "}"
+        "</script></head>"
+        "<body style='font-family: arial'><h3 id=t></h3>"
         "<script>m('Rebooting!<br>The page will automatically reload in around 25..60s.<br><br>');</script>"
         "</body></html>";
 

@@ -2914,10 +2914,7 @@ function camSettingsSet(){
 	
 function doReboot() {
     var stringota = domainname + "/reboot";
-    window.location = stringota;
     window.location.href = stringota;
-    window.location.assign(stringota);
-    window.location.replace(stringota);
 }
 
 function FormatDecimalValue(_param, _cat, _name) {
@@ -2931,10 +2928,7 @@ function FormatDecimalValue(_param, _cat, _name) {
 function editConfigRaw() {
     if (confirm("Proceed to switch to raw edit mode? Unsaved changes will get lost")) {
         var stringota = domainname + "/edit_config_raw.html?v=$COMMIT_HASH";
-        window.location = stringota;
         window.location.href = stringota;
-        window.location.assign(stringota);
-        window.location.replace(stringota);
     }	
 }
 
@@ -2957,7 +2951,6 @@ function numberChanged() {
     if (_sel4.selectedIndex != _neu) {
         _sel4.selectedIndex = _neu
     }
-
 }
 
 function numberMQTTIdxChanged() {

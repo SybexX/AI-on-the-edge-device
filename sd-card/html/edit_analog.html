@@ -70,7 +70,6 @@
             <label style="font-weight: bold; font-size: larger;" for="Category_Analog_enabled">Analog ROI Processing</label>
     </p>
 
-
 <div id="div1">
     <table>
         <colgroup>
@@ -179,7 +178,6 @@ The following settings are only used for easier setup, they are <b>not</b> persi
         </tr>
     </table>
 
-
 <script type="text/javascript" src="readconfigparam.js?v=$COMMIT_HASH"></script>
 <script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script>
 
@@ -202,10 +200,7 @@ The following settings are only used for easier setup, they are <b>not</b> persi
 
     function doReboot() {
         var stringota = getDomainname() + "/reboot";
-        window.location = stringota;
         window.location.href = stringota;
-        window.location.assign(stringota);
-        window.location.replace(stringota);
     }
     
     function EnDisableAnalog() {
@@ -412,7 +407,6 @@ The following settings are only used for easier setup, they are <b>not</b> persi
             document.getElementById("multiplier_decshift").value="x" + Number(10 ** multiplier_decshift).toFixed(fixedDecimals_decshift);
         }
     }
-
 
     function UpdateROIs(_sel){
         document.getElementById("Category_Analog_enabled").checked = true;

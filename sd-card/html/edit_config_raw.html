@@ -57,9 +57,8 @@
 	<script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script>
 
 	<script type="text/javascript">
-		var canvas = document.getElementById('canvas'),
-			domainname = getDomainname(); 
-
+	var canvas = document.getElementById('canvas'),
+		domainname = getDomainname(); 
 
 	function LoadConfigNeu() {
 		domainname = getDomainname();  
@@ -77,16 +76,12 @@
 	}
 
 	function doReboot() {
-		var stringota = "/reboot";
-		window.location = stringota;
+		var stringota = domainname + "/reboot";
 		window.location.href = stringota;
-		window.location.assign(stringota);
-		window.location.replace(stringota);
 	}
 	
 	LoadConfigNeu();
 	
 	</script>
- 
 </body>
 </html>

@@ -107,7 +107,6 @@
     </tr>
 </table>
 
-
 <div class="menu" onmouseover="resetMenu()">
   <ul>
     <li><a href="#" onclick="loadPage('overview.html?v=$COMMIT_HASH');">Overview</a></li>
@@ -129,7 +128,6 @@
         <li style="width: 260px"><a href="#" onclick="loadPage('edit_config.html?v=$COMMIT_HASH');">Configuration</a></li>
       </ul>
 
-
     <li><a>Data<i class="arrow down"></i></a>
         <ul class="submenu">
             <li><a href="#" onclick="loadPage(getDomainname() + '/value?full');">Recognition</a></li>
@@ -146,7 +144,6 @@
         </ul>
     </li>
 
-
     <li><a>System <i class="arrow down"></i></a>
         <ul class="submenu">
             <li><a href="#" onclick="loadPage('backup.html?v=$COMMIT_HASH');">Backup/Restore</a></li>
@@ -158,6 +155,7 @@
             <li><a href="https://jomjol.github.io/AI-on-the-edge-device-docs/" target="_blank">Help</a></li>
         </ul>
     </li>
+	
     <li id="ManualControl" style="display:none;"><a>Manual Control <i class="arrow down"></i></a> <!-- Workaround: Hide menu if no entry is available -->
         <ul class="submenu" style="width: 300px">
             <li><a href="#" onclick="flow_start()">Start Round</a></li>
@@ -205,7 +203,6 @@
     console.log("Loading page: " + getCookie("page"));
     document.getElementById('maincontent').src = getCookie("page");
 
-    
     function flow_start() {
     var url = getDomainname() + '/flow_start'; 
 		var xhttp = new XMLHttpRequest();
@@ -227,7 +224,6 @@
 		xhttp.open("GET", url, true);
 		xhttp.send();
     }
-    
 
     function HA_send_discovery_visibility()	{
 		loadConfig(domainname); 
@@ -269,6 +265,5 @@
         streamPopup.focus();
     }
 </script>
-
 </body>
 </html>

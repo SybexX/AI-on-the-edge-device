@@ -129,9 +129,6 @@
         </tr>	 
     </table>
 
-</body>
-</html>
-
 <link href="firework.css?v=$COMMIT_HASH" rel="stylesheet">
 <script type="text/javascript" src="jquery-3.6.0.min.js?v=$COMMIT_HASH"></script>  
 <script type="text/javascript" src="firework.js?v=$COMMIT_HASH"></script>
@@ -141,8 +138,8 @@
 <script type="text/javascript" src="readconfigparam.js?v=$COMMIT_HASH"></script>  
 
 <script type="text/javascript">
- 	var domainname = getDomainname(); 
-  var	NUMBERS;
+var domainname = getDomainname(); 
+var NUMBERS;
 
 function setprevalue() {
 	var inputVal = document.getElementById("myInput").value;
@@ -209,7 +206,6 @@ function loadPrevalue(_domainname) {
   }
 }
 
-
 function numberChanged(){
   loadPrevalue(domainname);
 }
@@ -240,7 +236,6 @@ function UpdateNUMBERS(_sel){
     loadPrevalue(domainname);
 }
 
-
 function init(){
   domainname = getDomainname();
   loadConfig(domainname); 
@@ -251,3 +246,5 @@ function init(){
 
 init();
 </script>
+</body>
+</html>

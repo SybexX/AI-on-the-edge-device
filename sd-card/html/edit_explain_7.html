@@ -41,7 +41,6 @@ p {font-size: 1em;}
     <script type="text/javascript" src="readconfigcommon.js?v=$COMMIT_HASH"></script> 
 
     <script type="text/javascript">
-    
     function reboot() {
         if (confirm("Do you want to complete the setup mode and switch to regular web interface?")) {
             domainname = getDomainname(); 
@@ -60,14 +59,9 @@ p {font-size: 1em;}
             SaveConfigToServer(domainname);  
 
             var stringota = getDomainname() + "/reboot";
-            parent.location = stringota;
             parent.location.href = stringota;
-            parent.location.assign(stringota);
-            parent.location.replace(stringota);
         }
     }
-
     </script>
-
 </body>
 </html>
