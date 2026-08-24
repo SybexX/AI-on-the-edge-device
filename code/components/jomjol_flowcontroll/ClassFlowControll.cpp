@@ -431,6 +431,7 @@ bool ClassFlowControll::doFlow(string time)
             }
         }
         else {
+			repeat = 0;
             result = true;
         }
         
