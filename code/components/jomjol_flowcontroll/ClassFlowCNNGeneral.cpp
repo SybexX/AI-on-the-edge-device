@@ -482,13 +482,15 @@ bool ClassFlowCNNGeneral::doFlow(std::string time) {
       return true;
     }
 
-    if (!doAlignAndCut(time)){
+    if (!doAlignAndCut(time)) {
         return false;
     }
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "doFlow after alignment");
 
-    doNeuralNetwork(time);
+    if (!doNeuralNetwork(time)) {
+        return false;
+    }
 
     RemoveOldLogs();
 
@@ -627,6 +629,8 @@ bool ClassFlowCNNGeneral::getNetworkParameter() {
                 break;
             default:
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "tflite does not fit the firmware (outout_dimension=" + std::to_string(_anzoutputdimensions) + ")");
+                delete tflite;
+                return false;
         }
     }
 
