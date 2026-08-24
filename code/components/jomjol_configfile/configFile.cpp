@@ -21,13 +21,15 @@ ConfigFile::~ConfigFile()
     fclose(pFile);
 }
 
-bool ConfigFile::isNewParagraph(std::string input)
+bool ConfigFile::isNewParagraph(const std::string& input)
 {
-	if ((input[0] == '[') || ((input[0] == ';') && (input[1] == '[')))
-	{
-		return true;
-	}
-	return false;
+    if (input.empty())
+        return false;
+
+    if (input[0] == '[')
+        return true;
+
+    return input.size() >= 2 && input[0] == ';' && input[1] == '[';
 }
 
 bool ConfigFile::GetNextParagraph(std::string& aktparamgraph, bool &disabled, bool &eof)
@@ -36,6 +38,7 @@ bool ConfigFile::GetNextParagraph(std::string& aktparamgraph, bool &disabled, bo
 
 	if (isNewParagraph(aktparamgraph))
 		return true;
+	
 	return false;
 }
 
