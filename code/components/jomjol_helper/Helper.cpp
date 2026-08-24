@@ -54,7 +54,7 @@ bool SDCardIsMMC;
 string getESPHeapInfo()
 {
 	string espInfoResultStr = "";
-	char aMsgBuf[80];
+	char aMsgBuf[128];
 
 	size_t aFreeHeapSize = heap_caps_get_free_size(MALLOC_CAP_8BIT);
 
@@ -67,21 +67,21 @@ string getESPHeapInfo()
 	size_t aMinFreeHeapSize = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
 	size_t aMinFreeInternalHeapSize = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 
-	sprintf(aMsgBuf, "Heap Total: %ld", (long)aFreeHeapSize);
+	snprintf(aMsgBuf, sizeof(aMsgBuf), "Heap Total: %ld", (long)aFreeHeapSize);
 	espInfoResultStr += string(aMsgBuf);
 
-	sprintf(aMsgBuf, " | SPI Free: %ld", (long)aFreeSPIHeapSize);
+	snprintf(aMsgBuf, sizeof(aMsgBuf), " | SPI Free: %ld", (long)aFreeSPIHeapSize);
 	espInfoResultStr += string(aMsgBuf);
-	sprintf(aMsgBuf, " | SPI Large Block:  %ld", (long)aHeapLargestFreeBlockSize);
+	snprintf(aMsgBuf, sizeof(aMsgBuf), " | SPI Large Block:  %ld", (long)aHeapLargestFreeBlockSize);
 	espInfoResultStr += string(aMsgBuf);
-	sprintf(aMsgBuf, " | SPI Min Free: %ld", (long)aMinFreeHeapSize);
+	snprintf(aMsgBuf, sizeof(aMsgBuf), " | SPI Min Free: %ld", (long)aMinFreeHeapSize);
 	espInfoResultStr += string(aMsgBuf);
 
-	sprintf(aMsgBuf, " | Int Free: %ld", (long)(aFreeInternalHeapSize));
+	snprintf(aMsgBuf, sizeof(aMsgBuf), " | Int Free: %ld", (long)(aFreeInternalHeapSize));
 	espInfoResultStr += string(aMsgBuf);
-	sprintf(aMsgBuf, " | Int Large Block:  %ld", (long)aHeapIntLargestFreeBlockSize);
+	snprintf(aMsgBuf, sizeof(aMsgBuf), " | Int Large Block:  %ld", (long)aHeapIntLargestFreeBlockSize);
 	espInfoResultStr += string(aMsgBuf);
-	sprintf(aMsgBuf, " | Int Min Free: %ld", (long)(aMinFreeInternalHeapSize));
+	snprintf(aMsgBuf, sizeof(aMsgBuf), " | Int Min Free: %ld", (long)(aMinFreeInternalHeapSize));
 	espInfoResultStr += string(aMsgBuf);
 
 	return espInfoResultStr;
@@ -1074,7 +1074,7 @@ string getMac(void)
 	char macFormated[6 * 2 + 5 + 1]; // AA:BB:CC:DD:EE:FF
 
 	esp_read_mac(macInt, ESP_MAC_WIFI_STA);
-	sprintf(macFormated, "%02X:%02X:%02X:%02X:%02X:%02X", macInt[0], macInt[1], macInt[2], macInt[3], macInt[4], macInt[5]);
+	snprintf(macFormated, sizeof(macFormated), "%02X:%02X:%02X:%02X:%02X:%02X", macInt[0], macInt[1], macInt[2], macInt[3], macInt[4], macInt[5]);
 
 	return macFormated;
 }
