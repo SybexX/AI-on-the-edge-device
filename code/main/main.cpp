@@ -373,8 +373,15 @@ extern "C" void app_main(void)
                         // ********************************************
                         char caminfo[50];
                         sensor_t *sensor = esp_camera_sensor_get();
-                        sprintf(caminfo, "PID: 0x%02x, VER: 0x%02x, MIDL: 0x%02x, MIDH: 0x%02x", sensor->id.PID, sensor->id.VER, sensor->id.MIDH, sensor->id.MIDL);
-                        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Camera info: " + std::string(caminfo));
+                        if (!sensor) {
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to get camera sensor");
+                            setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
+                            StatusLED(CAM_INIT, 1, true);
+                        }
+                        else {
+                            sprintf(caminfo, "PID: 0x%02x, VER: 0x%02x, MIDL: 0x%02x, MIDH: 0x%02x", sensor->id.PID, sensor->id.VER, sensor->id.MIDH, sensor->id.MIDL);
+                            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Camera info: " + std::string(caminfo));
+                        }
                     }
 
                     Camera.LightOnOff(false); // make sure flashlight is off before start of flow
@@ -573,7 +580,12 @@ extern "C" void app_main(void)
 
 void migrateConfiguration(void)
 {
-    std::vector<string> splitted;
+    if (!FileExists(CONFIG_FILE))
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Config file seems to be missing!");
+        return;
+    }
+    
     bool migrated = false;
 
     bool CamZoom_found = false;
@@ -586,12 +598,7 @@ void migrateConfiguration(void)
     int CamZoomOffsetY_lines = 0;
     int CamZoomOffsetY_value = 0;
 
-    if (!FileExists(CONFIG_FILE))
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Config file seems to be missing!");
-        return;
-    }
-
+    std::vector<string> splitted;
     std::string section = "";
     std::ifstream ifs(CONFIG_FILE);
     std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
