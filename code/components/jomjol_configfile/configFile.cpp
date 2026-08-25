@@ -46,41 +46,35 @@ bool ConfigFile::GetNextParagraph(std::string& aktparamgraph, bool &disabled, bo
 bool ConfigFile::getNextLine(std::string *rt, bool &disabled, bool &eof)
 {
     eof = false;
-	char temp_char[256] = "";
+	disabled = false;
+
 	if (pFile == NULL)
 	{
 		*rt = "";
 		return false;
 	}
 
-	if (fgets(temp_char, sizeof(temp_char), pFile))
-	{
-		ESP_LOGD(TAG, "%s", temp_char);
-		if ((strlen(temp_char) == 0) && feof(pFile))
-		{
-			*rt = "";
-			eof = true;
-			return false;
-		}
-	}
-	else
+	char temp_char[256] = "";
+	if (fgets(temp_char, sizeof(temp_char), pFile) == NULL)
 	{
 		*rt = "";
-		eof = true;
+		eof = feof(pFile);
 		return false;
 	}
+
+	ESP_LOGD(TAG, "%s", temp_char);
 	*rt = temp_char;
 	*rt = trim(*rt);
+	
 	while ((temp_char[0] == ';' || temp_char[0] == '#' || (rt->size() == 0)) && !(temp_char[1] == '['))
 	{
-		fgets(temp_char, sizeof(temp_char), pFile);
-		ESP_LOGD(TAG, "%s", temp_char);
-		if (feof(pFile))
+		if (fgets(temp_char, sizeof(temp_char), pFile) == NULL)
 		{
 			*rt = "";
-            eof = true;
+			eof = feof(pFile);
 			return false;
 		}
+		ESP_LOGD(TAG, "%s", temp_char);
 		*rt = temp_char;
 		*rt = trim(*rt);
 	}
