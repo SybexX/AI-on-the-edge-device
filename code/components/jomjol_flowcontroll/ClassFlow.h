@@ -10,8 +10,6 @@
 #include "Helper.h"
 #include "CImageBasis.h"
 
-using namespace std;
-
 struct HTMLInfo
 {
 	float val;
@@ -21,13 +19,12 @@ struct HTMLInfo
 	std::string filename_org;	
 };
 
-
 class ClassFlow
 {
 protected:
-	bool isNewParagraph(string input);
-	bool GetNextParagraph(FILE* pfile, string& aktparamgraph);
-	bool getNextLine(FILE* pfile, string* rt);
+	bool isNewParagraph(const std::string& input);
+	bool GetNextParagraph(FILE* pfile, std::string& aktparamgraph);
+	bool getNextLine(FILE* pfile, std::string* rt);
 
 	std::vector<ClassFlow*>* ListFlowControll;
 	ClassFlow *previousElement;
@@ -43,10 +40,10 @@ public:
 	ClassFlow(std::vector<ClassFlow*> * lfc);
 	ClassFlow(std::vector<ClassFlow*> * lfc, ClassFlow *_prev);	
 	
-	virtual bool ReadParameter(FILE* pfile, string &aktparamgraph);
-	virtual bool doFlow(string time);
-	virtual string getHTMLSingleStep(string host);
-	virtual string name(){return "ClassFlow";};
+	virtual bool ReadParameter(FILE* pfile, std::string &aktparamgraph);
+	virtual bool doFlow(std::string time);
+	virtual std::string getHTMLSingleStep(std::string host);
+	virtual std::string name() { return "ClassFlow"; };
 
 };
 
