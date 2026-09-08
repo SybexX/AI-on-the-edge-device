@@ -520,7 +520,7 @@ void ClassFlowPostProcessing::handleChangeRateThreshold(string _decsep, string _
         int _zwdc = 2;
 
         if (isStringNumeric(_value)) {
-            _zwdc = std::stof(_value);
+            _zwdc = std::stoi(_value);
         }
 
         // Set to default first (if nothing else is set)
