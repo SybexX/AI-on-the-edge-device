@@ -51,7 +51,6 @@
 
 #include "../esp-protocols/components/mdns/include/mdns.h" 
 
-
 static const char *TAG = "WIFI";
 
 static bool APWithBetterRSSI = false;
@@ -60,7 +59,6 @@ static int WIFIReconnectCnt = 0;
 
 esp_netif_t *my_sta;
 
-
 void strinttoip4(const char *ip, int &a, int &b, int &c, int &d) {
     std::string zw = std::string(ip);
     std::stringstream s(zw);
@@ -68,13 +66,11 @@ void strinttoip4(const char *ip, int &a, int &b, int &c, int &d) {
     s >> a >> ch >> b >> ch >> c >> ch >> d;
 }
 
-
 std::string BssidToString(const char* c) {
 	char cBssid[25];
 	sprintf(cBssid, "%02x:%02x:%02x:%02x:%02x:%02x", c[0], c[1], c[2], c[3], c[4], c[5]);
 	return std::string(cBssid);
 }
-
 
 #ifdef WLAN_USE_MESH_ROAMING
 /* rrm ctx */
@@ -84,7 +80,6 @@ static inline uint32_t WPA_GET_LE32(const uint8_t *a)
 {
 	return ((uint32_t) a[3] << 24) | (a[2] << 16) | (a[1] << 8) | a[0];
 }
-
 
 #ifndef WLAN_EID_MEASURE_REPORT
 #define WLAN_EID_MEASURE_REPORT 39
@@ -101,7 +96,6 @@ static inline uint32_t WPA_GET_LE32(const uint8_t *a)
 #ifndef ETH_ALEN
 #define ETH_ALEN 6
 #endif
-
 
 #define MAX_NEIGHBOR_LEN 512
 static char * get_btm_neighbor_list(uint8_t *report, size_t report_len)
@@ -138,15 +132,13 @@ static char * get_btm_neighbor_list(uint8_t *report, size_t report_len)
 
 		if (pos[0] != WLAN_EID_NEIGHBOR_REPORT ||
 		    nr_len < NR_IE_MIN_LEN) {
-			ESP_LOGD(TAG, "Roaming CTRL: Invalid Neighbor Report element: id=%u len=%u",
-					data[0], nr_len);
+			ESP_LOGD(TAG, "Roaming CTRL: Invalid Neighbor Report element: id=%u len=%u", data[0], nr_len);
 			ret = -1;
 			goto cleanup;
 		}
 
 		if (2U + nr_len > report_len) {
-			ESP_LOGD(TAG, "Roaming CTRL: Invalid Neighbor Report element: id=%u len=%zu nr_len=%u",
-					data[0], report_len, nr_len);
+			ESP_LOGD(TAG, "Roaming CTRL: Invalid Neighbor Report element: id=%u len=%zu nr_len=%u", data[0], report_len, nr_len);
 			ret = -1;
 			goto cleanup;
 		}
@@ -197,9 +189,7 @@ static char * get_btm_neighbor_list(uint8_t *report, size_t report_len)
 				lci[0] ? " lci=" : "", lci,
 				civic[0] ? " civic=" : "", civic);
 
-		
-		LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: RMM neighbor report BSSID: " + BssidToString((char*)nr) + 
-		                                        ", Channel: " + std::to_string(nr[ETH_ALEN + 5]));
+		LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: RMM neighbor report BSSID: " + BssidToString((char*)nr) + ", Channel: " + std::to_string(nr[ETH_ALEN + 5]));
 
 		/* neighbor start */
 		len += snprintf(buf + len, MAX_NEIGHBOR_LEN - len, " neighbor=");
@@ -232,7 +222,6 @@ cleanup:
 	return buf;
 }
 
-
 void neighbor_report_recv_cb(void *ctx, const uint8_t *report, size_t report_len)
 {
 	int *val = (int*) ctx;
@@ -244,10 +233,12 @@ void neighbor_report_recv_cb(void *ctx, const uint8_t *report, size_t report_len
 		ESP_LOGD(TAG, "Roaming: Neighbor report is null");
 		return;
 	}
+	
 	if (*val != rrm_ctx) {
 		ESP_LOGE(TAG, "Roaming: rrm_ctx value didn't match, not initiated by us");
 		return;
 	}
+	
 	/* dump report info */
 	ESP_LOGD(TAG, "Roaming: RRM neighbor report len=%d", report_len);
 	ESP_LOG_BUFFER_HEXDUMP(TAG, pos, report_len, ESP_LOG_DEBUG);
@@ -258,17 +249,22 @@ void neighbor_report_recv_cb(void *ctx, const uint8_t *report, size_t report_len
 	/* In case neighbor list is not present issue a scan and get the list from that */
 	if (!neighbor_list) {
 		/* issue scan */
-		wifi_scan_config_t params;
-		memset(&params, 0, sizeof(wifi_scan_config_t));
-		if (esp_wifi_scan_start(&params, true) < 0) {
+		wifi_scan_config_t scan_config = {};
+		
+		scan_config.show_hidden = true;  // scan also hidden SSIDs
+		scan_config.channel = 0;         // scan all channels
+		
+		if (esp_wifi_scan_start(&scan_config, true) < 0) {
 			goto cleanup;
 		}
+		
 		/* cleanup from net802.11 */
 		uint16_t number = 1;
 		wifi_ap_record_t ap_records;
 		esp_wifi_scan_get_ap_records(&number, &ap_records);
 		cand_list = 1;
 	}
+	
 	/* send AP btm query requesting to roam depending on candidate list of AP */
 	// btm_query_reasons: https://github.com/espressif/esp-idf/blob/release/v4.4/components/wpa_supplicant/esp_supplicant/include/esp_wnm.h
 	ret = esp_wnm_send_bss_transition_mgmt_query(REASON_FRAME_LOSS, neighbor_list, cand_list);	// query reason 16 -> LOW RSSI --> (btm_query_reason)16
@@ -279,14 +275,12 @@ cleanup:
 		free(neighbor_list);
 }
 
-
 static void esp_bss_rssi_low_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
 	int retval = -1;
 	wifi_event_bss_rssi_low_t *event = (wifi_event_bss_rssi_low_t*) event_data;
 
-	LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming Event: RSSI " + std::to_string(event->rssi) + 
-								" < RSSI_Threshold " + std::to_string(wlan_config.rssi_threshold));
+	LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming Event: RSSI " + std::to_string(event->rssi) + " < RSSI_Threshold " + std::to_string(wlan_config.rssi_threshold));
 
 	/* If RRM is supported, call RRM and then send BTM query to AP */
 	if (esp_rrm_is_rrm_supported_connection() && esp_wnm_is_btm_supported_connection()) 
@@ -296,6 +290,7 @@ static void esp_bss_rssi_low_handler(void* arg, esp_event_base_t event_base, int
 
 		retval = esp_rrm_send_neighbor_rep_request(neighbor_report_recv_cb, &rrm_ctx);
 		ESP_LOGD(TAG, "esp_rrm_send_neighbor_rep_request retval: %d", retval);
+		
 		if (retval == 0)
 			LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: RRM + BTM query sent");
 		else
@@ -308,13 +303,13 @@ static void esp_bss_rssi_low_handler(void* arg, esp_event_base_t event_base, int
 		// btm_query_reasons: https://github.com/espressif/esp-idf/blob/release/v4.4/components/wpa_supplicant/esp_supplicant/include/esp_wnm.h
 		retval = esp_wnm_send_bss_transition_mgmt_query(REASON_FRAME_LOSS, NULL, 0);	// query reason 16 -> LOW RSSI --> (btm_query_reason)16
 		ESP_LOGD(TAG, "esp_wnm_send_bss_transition_mgmt_query retval: %d", retval);
+		
 		if (retval == 0)
 			LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: BTM query sent");
 		else
 			ESP_LOGD(TAG, "esp_wnm_send_bss_transition_mgmt_query retval: %d", retval);
 	}
 }
-
 
 void printRoamingFeatureSupport(void) 
 {
@@ -328,7 +323,6 @@ void printRoamingFeatureSupport(void)
 	else
 		LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Roaming: BTM (802.11v) NOT supported by AP");
 }
-
 
 #ifdef WLAN_USE_MESH_ROAMING_ACTIVATE_CLIENT_TRIGGERED_QUERIES
 void wifiRoamingQuery(void) 
@@ -347,32 +341,29 @@ void wifiRoamingQuery(void)
 #endif // WLAN_USE_MESH_ROAMING_ACTIVATE_CLIENT_TRIGGERED_QUERIES
 #endif // WLAN_USE_MESH_ROAMING
 
-
 #ifdef WLAN_USE_ROAMING_BY_SCANNING
 std::string getAuthModeName(const wifi_auth_mode_t auth_mode)
 {
-	std::string AuthModeNames[] = {"OPEN", "WEP", "WPA PSK", "WPA2 PSK", "WPA WPA2 PSK", "WPA2 ENTERPRISE",
-                                   "WPA3 PSK", "WPA2 WPA3 PSK", "WAPI_PSK", "MAX"};
+	std::string AuthModeNames[] = { "OPEN", "WEP", "WPA PSK", "WPA2 PSK", "WPA WPA2 PSK", "WPA2 ENTERPRISE", "WPA3 PSK", "WPA2 WPA3 PSK", "WAPI_PSK", "MAX" };
     return AuthModeNames[auth_mode];
 }
 
-
 void wifi_scan(void)
 {
-    wifi_scan_config_t wifi_scan_config;
-    memset(&wifi_scan_config, 0, sizeof(wifi_scan_config));
+    wifi_scan_config_t scan_config = {};
 
-    wifi_scan_config.ssid = (uint8_t*)wlan_config.ssid.c_str(); // only scan for configured SSID
-    wifi_scan_config.show_hidden = true;            // scan also hidden SSIDs
-	wifi_scan_config.channel = 0;                   // scan all channels
+    scan_config.ssid = (uint8_t*)wlan_config.ssid.c_str(); // only scan for configured SSID
+    scan_config.show_hidden = true;            // scan also hidden SSIDs
+	scan_config.channel = 0;                   // scan all channels
 
-    esp_wifi_scan_start(&wifi_scan_config, true);   // not using event handler SCAN_DONE by purpose to keep SYS_EVENT heap smaller 
-                                                    // and the calling task task_autodoFlow is after scan is finish in wait state anyway
-                                                    // Scan duration: ca. (120ms + 30ms) * Number of channels -> ca. 1,5 - 2s
+    esp_wifi_scan_start(&scan_config, true);   // not using event handler SCAN_DONE by purpose to keep SYS_EVENT heap smaller 
+                                               // and the calling task task_autodoFlow is after scan is finish in wait state anyway
+                                               // Scan duration: ca. (120ms + 30ms) * Number of channels -> ca. 1,5 - 2s
 
-    uint16_t max_number_of_ap_found = 10;           // max. number of APs, value will be updated by function "esp_wifi_scan_get_ap_num"
+    uint16_t max_number_of_ap_found = 10;      // max. number of APs, value will be updated by function "esp_wifi_scan_get_ap_num"
 	esp_wifi_scan_get_ap_num(&max_number_of_ap_found); // get actual found APs
     wifi_ap_record_t* wifi_ap_records = new wifi_ap_record_t[max_number_of_ap_found]; // Allocate necessary record datasets
+	
 	if (wifi_ap_records == NULL) {
 		esp_wifi_scan_get_ap_records(0, NULL); // free internal heap
 		LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "wifi_scan: Failed to allocate heap for wifi_ap_records");
@@ -391,6 +382,7 @@ void wifi_scan(void)
 
 	LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: Current AP BSSID=" + BssidToString((char*)currentAP.bssid));
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: Scan completed, APs found with configured SSID: " + std::to_string(max_number_of_ap_found));
+	
     for (int i = 0; i < max_number_of_ap_found; i++) {
         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: " + std::to_string(i+1) +
                                                 ": SSID=" + std::string((char*)wifi_ap_records[i].ssid) +
@@ -398,15 +390,15 @@ void wifi_scan(void)
                                                 ", RSSI=" + std::to_string(wifi_ap_records[i].rssi) + 
                                                 ", CH=" + std::to_string(wifi_ap_records[i].primary) + 
                                                 ", AUTH=" + getAuthModeName(wifi_ap_records[i].authmode));
-		if (wifi_ap_records[i].rssi > (currentAP.rssi + 5) && // RSSI is better than actual RSSI + 5 --> Avoid switching to AP with roughly same RSSI
-           (strcmp(BssidToString((char*)wifi_ap_records[i].bssid).c_str(), BssidToString((char*)currentAP.bssid).c_str()) != 0))
+		
+		// RSSI is better than actual RSSI + 5 --> Avoid switching to AP with roughly same RSSI
+		if (wifi_ap_records[i].rssi > (currentAP.rssi + 5) && (strcmp(BssidToString((char*)wifi_ap_records[i].bssid).c_str(), BssidToString((char*)currentAP.bssid).c_str()) != 0))
         {
 			APWithBetterRSSI = true;
         }
 	}
 	delete[] wifi_ap_records;
 }
-
 
 void wifiRoamByScanning(void)
 {
@@ -426,18 +418,15 @@ void wifiRoamByScanning(void)
 }
 #endif // WLAN_USE_ROAMING_BY_SCANNING
 
-
 std::string* getIPAddress()
 {
     return &wlan_config.ipaddress;
 }
 
-
 std::string* getSSID()
 {
     return &wlan_config.ssid;
 }
-
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
@@ -450,12 +439,14 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 	{
 		/* Disconnect reason: https://github.com/espressif/esp-idf/blob/d825753387c1a64463779bbd2369e177e5d59a79/components/esp_wifi/include/esp_wifi_types.h */
 		wifi_event_sta_disconnected_t *disconn = (wifi_event_sta_disconnected_t *)event_data;
+		
 		if (disconn->reason == WIFI_REASON_ROAMING) {
 			LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Disconnected (" + std::to_string(disconn->reason) + ", Roaming 802.11kv)");
 			// --> no reconnect neccessary, it should automatically reconnect to new AP
 		}
 		else {
 			WIFIConnected = false;
+			
 			if (disconn->reason == WIFI_REASON_NO_AP_FOUND) {
 				LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Disconnected (" + std::to_string(disconn->reason) + ", No AP)");
 				StatusLED(WLAN_CONN, 1, false);
@@ -476,21 +467,20 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 				LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Disconnected (" + std::to_string(disconn->reason) + ")");
 				StatusLED(WLAN_CONN, 4, false);
 			}
+			
 			WIFIReconnectCnt++;
 			esp_wifi_connect(); // Try to connect again
 		}
 
 		if (WIFIReconnectCnt >= 10) {
 			WIFIReconnectCnt = 0;
-			LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Disconnected, multiple reconnect attempts failed (" + 
-													 std::to_string(disconn->reason) + "), retrying after 5s");
+			LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Disconnected, multiple reconnect attempts failed (" + std::to_string(disconn->reason) + "), retrying after 5s");
 			vTaskDelay(5000 / portTICK_PERIOD_MS); // Delay between the reconnections
 		}
 	}	
 	else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) 
 	{
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Connected to: " + wlan_config.ssid + ", RSSI: " + 
-												std::to_string(get_WIFI_RSSI()));
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Connected to: " + wlan_config.ssid + ", RSSI: " + std::to_string(get_WIFI_RSSI()));
 
 		#ifdef WLAN_USE_MESH_ROAMING	
 			printRoamingFeatureSupport();
@@ -519,7 +509,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 	}
 }
 
-
 esp_err_t wifi_init_sta(void)
 {
 	esp_err_t retval = esp_netif_init();
@@ -538,8 +527,7 @@ esp_err_t wifi_init_sta(void)
 
     if (!wlan_config.ipaddress.empty() && !wlan_config.gateway.empty() && !wlan_config.netmask.empty())
     {
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Manual interface config -> IP: " + wlan_config.ipaddress + ", Gateway: " + 
-												std::string(wlan_config.gateway) + ", Netmask: " + std::string(wlan_config.netmask));
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Manual interface config -> IP: " + wlan_config.ipaddress + ", Gateway: " + std::string(wlan_config.gateway) + ", Netmask: " + std::string(wlan_config.netmask));
 		esp_netif_dhcpc_stop(my_sta);	// Stop DHCP service
 
         esp_netif_ip_info_t ip_info;
@@ -560,6 +548,7 @@ esp_err_t wifi_init_sta(void)
 	}
 
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+	
     retval = esp_wifi_init(&cfg);
 	if (retval != ESP_OK) {
 		LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_wifi_init: Error: "  + std::to_string(retval));
@@ -588,23 +577,20 @@ esp_err_t wifi_init_sta(void)
 		}
 	}
 
-    retval = esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
-                                                        &event_handler, NULL, NULL);
+    retval = esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, NULL);
 	if (retval != ESP_OK) {
 		LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_event_handler_instance_register - WIFI_ANY: Error: "  + std::to_string(retval));
 		return retval;
 	}
 
-    retval = esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
-                                                        &event_handler, NULL, NULL);
+    retval = esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, NULL);
 	if (retval != ESP_OK) {
 		LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_event_handler_instance_register - GOT_IP: Error: "  + std::to_string(retval));
 		return retval;
 	}
 
 	#ifdef WLAN_USE_MESH_ROAMING
-	retval = esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_BSS_RSSI_LOW,
-                                                        &esp_bss_rssi_low_handler, NULL, NULL);
+	retval = esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_BSS_RSSI_LOW, &esp_bss_rssi_low_handler, NULL, NULL);
 	if (retval != ESP_OK) {
 		LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "esp_event_handler_instance_register - BSS_RSSI_LOW: Error: "  + std::to_string(retval));
 		return retval;
@@ -674,7 +660,6 @@ esp_err_t wifi_init_sta(void)
 	return ESP_OK;
 }
 
-
 int get_WIFI_RSSI()
 {
 	wifi_ap_record_t ap;
@@ -684,7 +669,6 @@ int get_WIFI_RSSI()
 		return -127;	// Return -127 if no info available e.g. not connected
 }
 
-
 /*std::string getIp() {
 	esp_netif_ip_info_t ip_info;
 	ESP_ERROR_CHECK(esp_netif_get_ip_info(my_sta, ip_info));
@@ -693,17 +677,14 @@ int get_WIFI_RSSI()
 	return std::string(ipFormated);
 }*/
 
-
 std::string* getHostname() {
 	return &wlan_config.hostname;
 }
-
 
 bool getWIFIisConnected() 
 {
     return WIFIConnected;
 }
-
 
 void WIFIDestroy() 
 {	
@@ -717,4 +698,3 @@ void WIFIDestroy()
 	esp_wifi_stop();
 	esp_wifi_deinit();
 }
-
