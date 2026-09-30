@@ -99,7 +99,7 @@ static camera_config_t camera_config = {
     .pixel_format = PIXFORMAT_JPEG, // YUV422,GRAYSCALE,RGB565,JPEG
     .frame_size = FRAMESIZE_VGA,    // QQVGA-UXGA Do not use sizes above QVGA when not JPEG
     // .frame_size = FRAMESIZE_UXGA,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
-    .jpeg_quality = 12,                 // 0-63 lower number means higher quality
+    .jpeg_quality = 12,                // 0-63 lower number means higher quality
     .fb_count = 1,                     // if more than one, i2s runs in continuous mode. Use only with JPEG
     .fb_location = CAMERA_FB_IN_PSRAM, /*!< The location where the frame buffer will be allocated */
     .grab_mode = CAMERA_GRAB_LATEST,   // only from new esp32cam version
@@ -117,9 +117,9 @@ CCamera::CCamera(void)
     ESP_LOGD(TAG, "CreateClassCamera");
 #endif
 
-	CCstatus.ImageQuality = camera_config.jpeg_quality;
+    CCstatus.ImageQuality = camera_config.jpeg_quality;
     CCstatus.ImageFrameSize = camera_config.frame_size;
-	SetLEDIntensity(LedIntensity);
+    SetLEDIntensity(LedIntensity);
     CCstatus.WaitBeforePicture = 2;
 
     ledc_init();
@@ -132,7 +132,7 @@ esp_err_t CCamera::InitCam(void)
     // De-init in case it was already initialized
     PowerResetCamera();
     vTaskDelay(pdMS_TO_TICKS(200));
-	
+
     // initialize the camera
     esp_err_t err = esp_camera_init(&camera_config);
     if (err != ESP_OK)
@@ -246,39 +246,39 @@ esp_err_t CCamera::setSensorDatenFromCCstatus(void)
     if (s != NULL)
     {
         s->set_framesize(s, CCstatus.ImageFrameSize);
-		
+
         // s->set_contrast(s, CCstatus.ImageContrast);     // -2 to 2
         // s->set_brightness(s, CCstatus.ImageBrightness); // -2 to 2
         SetCamContrastBrightness(s, CCstatus.ImageContrast, CCstatus.ImageBrightness);
-		
+
         s->set_saturation(s, CCstatus.ImageSaturation); // -2 to 2
 
         s->set_quality(s, CCstatus.ImageQuality); // 0 - 63
-		
+
         // s->set_gainceiling(s, CCstatus.ImageGainceiling); // Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)
         SetCamGainceiling(s, CCstatus.ImageGainceiling);
-		
+
         s->set_gain_ctrl(s, CCstatus.ImageAgc);     // 0 = disable , 1 = enable
         s->set_exposure_ctrl(s, CCstatus.ImageAec); // 0 = disable , 1 = enable
-        s->set_hmirror(s, CCstatus.ImageHmirror); // 0 = disable , 1 = enable
-        s->set_vflip(s, CCstatus.ImageVflip);     // 0 = disable , 1 = enable
-		
-        s->set_whitebal(s, CCstatus.ImageAwb);     // 0 = disable , 1 = enable
-        s->set_aec2(s, CCstatus.ImageAec2);       // 0 = disable , 1 = enable
+        s->set_hmirror(s, CCstatus.ImageHmirror);   // 0 = disable , 1 = enable
+        s->set_vflip(s, CCstatus.ImageVflip);       // 0 = disable , 1 = enable
+
+        s->set_whitebal(s, CCstatus.ImageAwb);       // 0 = disable , 1 = enable
+        s->set_aec2(s, CCstatus.ImageAec2);          // 0 = disable , 1 = enable
         s->set_aec_value(s, CCstatus.ImageAecValue); // 0 to 1200
         // s->set_special_effect(s, CCstatus.ImageSpecialEffect); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
         SetCamSpecialEffect(s, CCstatus.ImageSpecialEffect);
-        s->set_wb_mode(s, CCstatus.ImageWbMode);               // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-        s->set_ae_level(s, CCstatus.ImageAeLevel);   // -2 to 2
-		
-        s->set_dcw(s, CCstatus.ImageDcw); // 0 = disable , 1 = enable
-        s->set_bpc(s, CCstatus.ImageBpc); // 0 = disable , 1 = enable
-        s->set_wpc(s, CCstatus.ImageWpc); // 0 = disable , 1 = enable
+        s->set_wb_mode(s, CCstatus.ImageWbMode);   // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+        s->set_ae_level(s, CCstatus.ImageAeLevel); // -2 to 2
+
+        s->set_dcw(s, CCstatus.ImageDcw);          // 0 = disable , 1 = enable
+        s->set_bpc(s, CCstatus.ImageBpc);          // 0 = disable , 1 = enable
+        s->set_wpc(s, CCstatus.ImageWpc);          // 0 = disable , 1 = enable
         s->set_awb_gain(s, CCstatus.ImageAwbGain); // 0 = disable , 1 = enable
-        s->set_agc_gain(s, CCstatus.ImageAgcGain);   // 0 to 30
-		
+        s->set_agc_gain(s, CCstatus.ImageAgcGain); // 0 to 30
+
         s->set_raw_gma(s, CCstatus.ImageRawGma); // 0 = disable , 1 = enable
-        s->set_lenc(s, CCstatus.ImageLenc);         // 0 = disable , 1 = enable
+        s->set_lenc(s, CCstatus.ImageLenc);      // 0 = disable , 1 = enable
 
         // s->set_sharpness(s, CCstatus.ImageSharpness);   // auto-sharpness is not officially supported, default to 0
         SetCamSharpness(CCstatus.ImageAutoSharpness, CCstatus.ImageSharpness);
@@ -304,33 +304,33 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
         CCstatus.CamSensor_id = s->id.PID;
 
         CCstatus.ImageFrameSize = (framesize_t)s->status.framesize;
-		
+
         CCstatus.ImageContrast = s->status.contrast;
         CCstatus.ImageBrightness = s->status.brightness;
         CCstatus.ImageSaturation = s->status.saturation;
-		
+
         CCstatus.ImageQuality = s->status.quality;
-		
+
         CCstatus.ImageGainceiling = (gainceiling_t)s->status.gainceiling;
 
         CCstatus.ImageAgc = s->status.agc;
         CCstatus.ImageAec = s->status.aec;
         CCstatus.ImageHmirror = s->status.hmirror;
         CCstatus.ImageVflip = s->status.vflip;
-		
+
         CCstatus.ImageAwb = s->status.awb;
         CCstatus.ImageAec2 = s->status.aec2;
         CCstatus.ImageAecValue = s->status.aec_value;
         CCstatus.ImageSpecialEffect = s->status.special_effect;
         CCstatus.ImageWbMode = s->status.wb_mode;
         CCstatus.ImageAeLevel = s->status.ae_level;
-		
+
         CCstatus.ImageDcw = s->status.dcw;
         CCstatus.ImageBpc = s->status.bpc;
         CCstatus.ImageWpc = s->status.wpc;
         CCstatus.ImageAwbGain = s->status.awb_gain;
         CCstatus.ImageAgcGain = s->status.agc_gain;
-		
+
         CCstatus.ImageRawGma = s->status.raw_gma;
         CCstatus.ImageLenc = s->status.lenc;
 
@@ -348,8 +348,8 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
 // on the OV5640, gainceiling must be set with the real value (x2>>>gainceilingLevel = 2, .... x128>>>gainceilingLevel = 128)
 int CCamera::SetCamGainceiling(sensor_t *s, gainceiling_t gainceilingLevel)
 {
-	int ret = 0;
-		
+    int ret = 0;
+
     if (CCstatus.CamSensor_id == OV2640_PID)
     {
         ret = s->set_gainceiling(s, gainceilingLevel); // Image gain (GAINCEILING_x2, x4, x8, x16, x32, x64 or x128)

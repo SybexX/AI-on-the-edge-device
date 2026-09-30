@@ -12,40 +12,41 @@ static const char *TAG = "CONFIG";
 
 ConfigFile::ConfigFile(std::string filePath)
 {
-    std::string config = FormatFileName(filePath);
-    pFile = fopen(config.c_str(), "r");
+	std::string config = FormatFileName(filePath);
+	pFile = fopen(config.c_str(), "r");
 }
 
 ConfigFile::~ConfigFile()
 {
-    if (pFile != NULL)
-        fclose(pFile);
+	if (pFile != NULL)
+		fclose(pFile);
 }
 
-bool ConfigFile::isNewParagraph(const std::string& input)
+bool ConfigFile::isNewParagraph(const std::string &input)
 {
-    if (input.empty())
-        return false;
+	if (input.empty())
+		return false;
 
-    if (input[0] == '[')
-        return true;
+	if (input[0] == '[')
+		return true;
 
-    return input.size() >= 2 && input[0] == ';' && input[1] == '[';
+	return input.size() >= 2 && input[0] == ';' && input[1] == '[';
 }
 
-bool ConfigFile::GetNextParagraph(std::string& aktparamgraph, bool &disabled, bool &eof)
+bool ConfigFile::GetNextParagraph(std::string &aktparamgraph, bool &disabled, bool &eof)
 {
-	while (getNextLine(&aktparamgraph, disabled, eof) && !isNewParagraph(aktparamgraph) && !eof);
+	while (getNextLine(&aktparamgraph, disabled, eof) && !isNewParagraph(aktparamgraph) && !eof)
+		;
 
 	if (isNewParagraph(aktparamgraph))
 		return true;
-	
+
 	return false;
 }
 
 bool ConfigFile::getNextLine(std::string *rt, bool &disabled, bool &eof)
 {
-    eof = false;
+	eof = false;
 	disabled = false;
 
 	if (pFile == NULL)
@@ -65,7 +66,7 @@ bool ConfigFile::getNextLine(std::string *rt, bool &disabled, bool &eof)
 	ESP_LOGD(TAG, "%s", temp_char);
 	*rt = temp_char;
 	*rt = trim(*rt);
-	
+
 	while ((temp_char[0] == ';' || temp_char[0] == '#' || (rt->size() == 0)) && !(temp_char[1] == '['))
 	{
 		if (fgets(temp_char, sizeof(temp_char), pFile) == NULL)
@@ -79,6 +80,6 @@ bool ConfigFile::getNextLine(std::string *rt, bool &disabled, bool &eof)
 		*rt = trim(*rt);
 	}
 
-    disabled = ((*rt)[0] == ';');
+	disabled = ((*rt)[0] == ';');
 	return true;
 }

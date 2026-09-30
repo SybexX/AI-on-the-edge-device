@@ -39,7 +39,7 @@ void PowerResetCamera()
         ESP_LOGD(TAG, "Camera power down");
         gpio_set_level(CAM_PIN_PWDN, 1);
         vTaskDelay(pdMS_TO_TICKS(1000));
-        
+
         ESP_LOGD(TAG, "Camera power up");
         gpio_set_level(CAM_PIN_PWDN, 0);
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -117,7 +117,7 @@ esp_err_t handler_capture(httpd_req_t *req)
 
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
-#endif        
+#endif
 
         esp_err_t result;
         result = Camera.CaptureToHTTP(req);
@@ -176,7 +176,7 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
 
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
-#endif        
+#endif
 
         Camera.LightOnOff(true);
         const TickType_t xDelay = delay / portTICK_PERIOD_MS;
@@ -259,7 +259,7 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
 
 #ifdef DEBUG_DETAIL_ON
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
-#endif        
+#endif
 
         esp_err_t result;
         result = Camera.CaptureToFile(fn, delay);

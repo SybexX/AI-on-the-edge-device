@@ -179,13 +179,111 @@ string getSDCardSectorSize()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-
-void memCopyGen(uint8_t *_source, uint8_t *_target, int _size)
+void mem_copy(uint8_t *_target, uint8_t *_source, int _size)
 {
-	for (int i = 0; i < _size; ++i)
+	if ((_target != nullptr) && (_source != nullptr) && (_size > 0))
 	{
-		*(_target + i) = *(_source + i);
+		uint8_t *dst = _target;
+		uint8_t *src = _source;
+
+		for (int i = 0; i < _size; ++i)
+		{
+			*dst++ = *src++;
+		}
 	}
+}
+
+void mem_copy32(void *_target, const void *_source, size_t _size)
+{
+	if ((_target != nullptr) && (_source != nullptr) && (_size > 0))
+	{
+		uint32_t *d32 = (uint32_t *)_target;
+		const uint32_t *s32 = (const uint32_t *)_source;
+
+		size_t words = _size / 4;
+
+		for (size_t i = 0; i < words; i++)
+		{
+			d32[i] = s32[i];
+		}
+
+		// Restliche Bytes kopieren
+		uint8_t *d8 = (uint8_t *)(d32 + words);
+		const uint8_t *s8 = (const uint8_t *)(s32 + words);
+
+		for (size_t i = 0; i < (_size % 4); i++)
+		{
+			d8[i] = s8[i];
+		}
+	}
+}
+
+float fast_atan2(float y, float x)
+{
+	float abs_y = fabs(y) + 1e-10;
+	float r = (x - abs_y) / (x + abs_y);
+	float angle = 0.78539816339 - 0.78539816339 * r;
+	return (y < 0) ? -angle : angle;
+}
+
+double pow10_double(int pot)
+{
+	static const double pow10_table[] = {
+		1.0,
+		10.0,
+		100.0,
+		1000.0,
+		10000.0,
+		100000.0,
+		1000000.0,
+		10000000.0,
+		100000000.0,
+		1000000000.0};
+
+	if (pot >= 0 && pot < (int)(sizeof(pow10_table) / sizeof(pow10_table[0])))
+	{
+		return pow10_table[pot];
+	}
+
+	// Fallback falls pot größer ist
+	double result = 1.0;
+	for (int i = 0; i < pot; ++i)
+	{
+		result *= 10.0;
+	}
+
+	return result;
+}
+
+uint32_t pow10_int(int pot)
+{
+	// Lookup-Tabelle für kleine Exponenten 0–9
+	static const uint32_t table[] = {
+		1,		   // 10^0
+		10,		   // 10^1
+		100,	   // 10^2
+		1000,	   // 10^3
+		10000,	   // 10^4
+		100000,	   // 10^5
+		1000000,   // 10^6
+		10000000,  // 10^7
+		100000000, // 10^8
+		1000000000 // 10^9
+	};
+
+	if (pot >= 0 && pot < (int)(sizeof(table) / sizeof(table[0])))
+	{
+		return table[pot];
+	}
+
+	// Fallback für größere pot
+	uint32_t result = 1;
+	for (int i = 0; i < pot; ++i)
+	{
+		result *= 10;
+	}
+
+	return result;
 }
 
 std::string FormatFileName(std::string input)
@@ -566,7 +664,7 @@ int mkdir_r(const char *dir, const mode_t mode)
 		return -1;
 	}
 
-	memcpy(tmp, dir, len);
+	mem_copy32(tmp, dir, len);
 	tmp[len] = '\0';
 
 	/* remove trailing slash */
@@ -1263,7 +1361,7 @@ bool isInString(std::string &s, std::string const &toFind)
 {
 	std::size_t pos = s.find(toFind);
 
-	if (pos == std::string::npos) 
+	if (pos == std::string::npos)
 	{
 		// Not found
 		return false;
@@ -1273,11 +1371,11 @@ bool isInString(std::string &s, std::string const &toFind)
 }
 
 // from https://stackoverflow.com/a/14678800
-void replaceAll(std::string& s, const std::string& toReplace, const std::string& replaceWith)
+void replaceAll(std::string &s, const std::string &toReplace, const std::string &replaceWith)
 {
 	size_t pos = 0;
-	
-	while ((pos = s.find(toReplace, pos)) != std::string::npos) 
+
+	while ((pos = s.find(toReplace, pos)) != std::string::npos)
 	{
 		s.replace(pos, toReplace.length(), replaceWith);
 		pos += replaceWith.length();
@@ -1290,10 +1388,10 @@ bool isStringNumeric(std::string &input)
 	{
 		return false;
 	}
-    
+
 	// Replace comma with a dot
 	replaceString(input, ",", ".", false);
-	
+
 	int start = 0;
 	int punkt_existiert_schon = 0;
 

@@ -373,12 +373,14 @@ extern "C" void app_main(void)
                         // ********************************************
                         char caminfo[50];
                         sensor_t *sensor = esp_camera_sensor_get();
-                        if (!sensor) {
+                        if (!sensor)
+                        {
                             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to get camera sensor");
                             setSystemStatusFlag(SYSTEM_STATUS_CAM_BAD);
                             StatusLED(CAM_INIT, 1, true);
                         }
-                        else {
+                        else
+                        {
                             sprintf(caminfo, "PID: 0x%02x, VER: 0x%02x, MIDL: 0x%02x, MIDH: 0x%02x", sensor->id.PID, sensor->id.VER, sensor->id.MIDH, sensor->id.MIDL);
                             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Camera info: " + std::string(caminfo));
                         }
@@ -585,7 +587,7 @@ void migrateConfiguration(void)
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Config file seems to be missing!");
         return;
     }
-    
+
     bool migrated = false;
 
     bool CamZoom_found = false;

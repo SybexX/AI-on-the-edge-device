@@ -186,7 +186,7 @@ static bool ota_update_task(std::string fn)
             if (data_read > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t))
             {
                 // check current version with downloading
-                memcpy(&new_app_info, &ota_write_data[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
+                mem_copy32(&new_app_info, &ota_write_data[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
                 ESP_LOGI(TAG, "New firmware version: %s", new_app_info.version);
 
                 esp_app_desc_t running_app_info;

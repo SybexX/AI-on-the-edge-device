@@ -99,7 +99,7 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
             if (isStringNumeric(splitted[1]))
             {
                 this->imagesRetention = std::stod(splitted[1]);
-            }          
+            }
         }
 
         else if ((toUpper(splitted[0]) == "SAVEALLFILES") && (splitted.size() > 1))
