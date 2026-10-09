@@ -310,7 +310,7 @@
                 <class id="TakeImage_CamXclkFreqMhz_text" style="color:black;">Camera Xclk Frequency</class>
             </td>
             <td>
-                <input required type="number" id="TakeImage_CamXclkFreqMhz_value1" size="13" min="8" max="20" onchange="cameraParameterChanged()"
+                <input required type="number" id="TakeImage_CamXclkFreqMhz_value1" size="13" min="8" max="20" step="2" onchange="cameraParameterChanged()"
                     oninput="(!validity.rangeUnderflow||(value=8)) && (!validity.rangeOverflow||(value=20)) &&
                         (!validity.stepMismatch||(value=parseInt(this.value)));">
             </td>
