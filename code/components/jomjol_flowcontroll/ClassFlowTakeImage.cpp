@@ -123,7 +123,7 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
             }
         }
 
-        else if ((toUpper(splitted[0]) == "CAMERAXCLKFREQMHZ") && (splitted.size() > 1))
+        else if ((toUpper(splitted[0]) == "CAMXCLKFREQMHZ") && (splitted.size() > 1))
         {
             if (isStringNumeric(splitted[1]))
             {
