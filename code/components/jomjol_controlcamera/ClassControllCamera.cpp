@@ -67,8 +67,8 @@ uint8_t *demoImage = NULL;    // Buffer holding the demo image in bytes
 // Originally: config.xclk_freq_mhz = 20000000, but this lead to visual artifacts on many modules.
 // See https://github.com/espressif/esp32-camera/issues/150#issuecomment-726473652 et al.
 #if !defined(XCLK_FREQ_MHZ)
-// int xclk = 8;
-int xclk = 20; // Orginal value
+int xclk = 8;
+// int xclk = 20; // Orginal value
 #else
 int xclk = XCLK_FREQ_MHZ;
 #endif
@@ -245,6 +245,8 @@ esp_err_t CCamera::setSensorDatenFromCCstatus(void)
 
     if (s != NULL)
     {
+        s->set_xclk(s, CAM_XCLK_TIMER, CCstatus.CameraXclkFreqMhz);
+
         s->set_framesize(s, CCstatus.ImageFrameSize);
 		
         // s->set_contrast(s, CCstatus.ImageContrast);     // -2 to 2
@@ -302,6 +304,8 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
     if (s != NULL)
     {
         CCstatus.CamSensor_id = s->id.PID;
+
+		CCstatus.CameraXclkFreqMhz = (int)(s->xclk_freq_hz / 1000000);
 
         CCstatus.ImageFrameSize = (framesize_t)s->status.framesize;
 		
