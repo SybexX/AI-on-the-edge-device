@@ -123,6 +123,15 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
             }
         }
 
+        else if ((toUpper(splitted[0]) == "CAMERAXCLKFREQMHZ") && (splitted.size() > 1))
+        {
+            if (isStringNumeric(splitted[1]))
+            {
+                int _CameraXclkFreqMhz = std::stoi(splitted[1]);
+                CCstatus.CameraXclkFreqMhz = clipInt(_CameraXclkFreqMhz, 20, 8);
+            }
+        }
+
         else if ((toUpper(splitted[0]) == "CAMGAINCEILING") && (splitted.size() > 1))
         {
             std::string _ImageGainceiling = toUpper(splitted[1]);
