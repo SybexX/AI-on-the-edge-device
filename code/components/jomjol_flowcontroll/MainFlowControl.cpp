@@ -148,6 +148,8 @@ esp_err_t setCCstatusToCFstatus(void)
 {
     CFstatus.CamSensor_id = CCstatus.CamSensor_id;
 
+    CFstatus.CameraXclkFreqMhz = CCstatus.CameraXclkFreqMhz;
+
     CFstatus.ImageFrameSize = CCstatus.ImageFrameSize;
 
     CFstatus.ImageContrast = CCstatus.ImageContrast;
@@ -199,6 +201,8 @@ esp_err_t setCCstatusToCFstatus(void)
 esp_err_t setCFstatusToCCstatus(void)
 {
     // CCstatus.CamSensor_id = CFstatus.CamSensor_id;
+
+    CCstatus.CameraXclkFreqMhz = CFstatus.CameraXclkFreqMhz;
 
     CCstatus.ImageFrameSize = CFstatus.ImageFrameSize;
 
@@ -254,6 +258,8 @@ esp_err_t setCFstatusToCam(void)
 
     if (s != NULL)
     {
+		s->set_xclk(s, LEDC_TIMER_0, CFstatus.CameraXclkFreqMhz);
+		
         s->set_framesize(s, CFstatus.ImageFrameSize);
 
         // s->set_contrast(s, CFstatus.ImageContrast);     // -2 to 2
@@ -980,6 +986,15 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_waitb))
                 {
                     CFstatus.WaitBeforePicture = std::stoi(_valuechar);
+                }
+            }
+
+            if (httpd_query_key_value(_query, "xclk", _valuechar, 30) == ESP_OK)
+            {
+                std::string _xclk = std::string(_valuechar);
+                if (isStringNumeric(_xclk))
+                {
+                    CFstatus.CameraXclkFreqMhz = std::stoi(_valuechar);
                 }
             }
 
