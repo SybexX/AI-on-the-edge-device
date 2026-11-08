@@ -496,7 +496,6 @@ size_t findDelimiterPos(string input, string delimiter)
 
 bool RenameFile(string from, string to)
 {
-	// ESP_LOGI(logTag, "Renaming File: %s", from.c_str());
 	FILE *fpSourceFile = fopen(from.c_str(), "rb");
 
 	// Sourcefile does not exist otherwise there is a mistake when renaming!
@@ -507,27 +506,36 @@ bool RenameFile(string from, string to)
 	}
 
 	fclose(fpSourceFile);
-	rename(from.c_str(), to.c_str());
+	
+    if (rename(from.c_str(), to.c_str()) != 0)
+    {
+        ESP_LOGE(TAG, "RenameFile: Failed to rename %s to %s (errno: %d)", from.c_str(), to.c_str(), errno);
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 bool RenameFolder(string from, string to)
 {
-	// ESP_LOGI(logTag, "Renaming Folder: %s", from.c_str());
-	DIR *fpSourceFolder = opendir(from.c_str());
+    DIR *fpSourceFolder = opendir(from.c_str());
 
 	// Sourcefolder does not exist otherwise there is a mistake when renaming!
-	if (!fpSourceFolder)
-	{
-		ESP_LOGE(TAG, "RenameFolder: Folder %s does not exist!", from.c_str());
-		return false;
-	}
+    if (!fpSourceFolder)
+    {
+        ESP_LOGE(TAG, "RenameFolder: Folder %s does not exist!", from.c_str());
+        return false;
+    }
 
-	closedir(fpSourceFolder);
-	rename(from.c_str(), to.c_str());
+    closedir(fpSourceFolder);
 
-	return true;
+    if (rename(from.c_str(), to.c_str()) != 0)
+    {
+        ESP_LOGE(TAG, "RenameFolder: Failed to rename %s to %s (errno: %d)", from.c_str(), to.c_str(), errno);
+        return false;
+    }
+
+    return true;
 }
 
 bool FileExists(string filename)
