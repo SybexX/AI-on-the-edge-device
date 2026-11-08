@@ -335,7 +335,7 @@ std::string unzip_firmware(std::string _in_zip_file, std::string _html_tmp, std:
     if (!mz_zip_reader_init_file(&zip_archive, _in_zip_file.c_str(), 0))
     {
         ESP_LOGD(TAG, "mz_zip_reader_init_file() failed!");
-        return "";
+        return "ERROR";
     }
 
     int numberoffiles = (int)mz_zip_reader_get_num_files(&zip_archive);
@@ -348,16 +348,17 @@ std::string unzip_firmware(std::string _in_zip_file, std::string _html_tmp, std:
 
         if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat))
         {
+            ESP_LOGE(TAG, "mz_zip_reader_file_stat() failed for entry %d!", i);
+            ret = "ERROR";
             continue;
         }
-
+        
         if (file_stat.m_is_directory)
         {
             continue;
         }
 
         std::string path(file_stat.m_filename);
-
         std::string logical_path;
 
         if (toUpper(path) == "FIRMWARE.BIN")
@@ -377,6 +378,7 @@ std::string unzip_firmware(std::string _in_zip_file, std::string _html_tmp, std:
             std::string modified = path;
             std::string _s1 = "config-initial";
             std::string _dir_new = "config";
+            
             FindReplace(modified, _s1, _dir_new);
 
             if (!dir.empty())
@@ -395,7 +397,6 @@ std::string unzip_firmware(std::string _in_zip_file, std::string _html_tmp, std:
         }
 
         std::string temp_file = logical_path + SUFFIX_ZW;
-
         std::string folder = temp_file.substr(0, temp_file.find_last_of('/'));
         MakeDir(folder);
 
