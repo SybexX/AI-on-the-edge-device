@@ -1,15 +1,15 @@
 #include "server_ota.h"
 
 #include <string>
-#include "string.h"
+#include <string.h>
 
 #include "esp_private/esp_int_wdt.h"
 
 #include <esp_task_wdt.h>
 
-#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include "esp_system.h"
 #include "esp_log.h"
 #include <esp_ota_ops.h>
@@ -52,20 +52,51 @@ static bool ota_update_task(std::string fn);
 std::string _file_name_update;
 bool initial_setup = false;
 
+static bool isValidHtmlFolder(const std::string& folder)
+{
+    static const char* requiredFiles[] = {
+        "index.html",
+        "overview.html",
+        "ota_page.html",
+        "log.html",
+        "setup.html",
+        "common.js",
+        "firework.js",
+        "readconfigcommon.js",
+        "readconfigparam.js",
+        "version.txt"
+    };
+
+    if (!FolderExists(folder))
+    {
+        return false;
+    }
+
+    for (const char* file : requiredFiles)
+    {
+        if (!FileExists(folder + "/" + file) && !FileExists(folder + "/" + file + ".gz"))
+        {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "HTML update incomplete: missing " + folder + "/" + file);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void task_do_Update_ZIP(void *pvParameter)
 {
     StatusLED(AP_OR_OTA, 1, true); // Signaling an OTA update
+    
     std::string filetype = toUpper(getFileType(_file_name_update));
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "File: " + _file_name_update + " Filetype: " + filetype);
 
     if (filetype == "ZIP")
     {
-        std::string in, outHtml, outHtmlTmp, outHtmlOld, outbin, zw, retfirmware;
-
-        outHtml = "/sdcard/html";
-        outHtmlTmp = "/sdcard/html_tmp";
-        outHtmlOld = "/sdcard/html_old";
-        outbin = "/sdcard/firmware";
+        std::string outHtml = "/sdcard/html";
+        std::string outHtmlTmp = "/sdcard/html_tmp";
+        std::string outHtmlOld = "/sdcard/html_old";
+        std::string outbin = "/sdcard/firmware";
 
         /* Remove the old and tmp html folder in case they still exist */
         removeFolder(outHtmlTmp.c_str(), TAG);
@@ -73,18 +104,53 @@ void task_do_Update_ZIP(void *pvParameter)
 
         /* Extract the ZIP file. The content of the html folder gets extracted to the temporar folder html-temp. */
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Extracting ZIP file " + _file_name_update + "...");
-        retfirmware = unzip_firmware(_file_name_update, outHtmlTmp + "/", outHtml + "/", outbin + "/", "/sdcard/", initial_setup);
+        std::string retfirmware = unzip_firmware(_file_name_update, outHtmlTmp + "/", outHtml + "/", outbin + "/", "/sdcard/", initial_setup);
+
+        if (retfirmware == "ERROR")
+        {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Extracting ZIP file failed! Trigger reboot.");
+            doRebootOTA();
+            return;
+        }
+
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Files unzipped.");
-
-        /* ZIP file got extracted, replace the old html folder with the new one */
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Renaming folder " + outHtml + " to " + outHtmlOld + "...");
-        RenameFolder(outHtml, outHtmlOld);
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Renaming folder " + outHtmlTmp + " to " + outHtml + "...");
-        RenameFolder(outHtmlTmp, outHtml);
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Deleting folder " + outHtmlOld + "...");
-        removeFolder(outHtmlOld.c_str(), TAG);
-
-        if (retfirmware.length() > 0)
+        
+        /* Replace HTML folder only if a new HTML folder has actually been extracted. */
+        if (FolderExists(outHtmlTmp) && isValidHtmlFolder(outHtmlTmp))
+        {
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "HTML update detected. Replacing HTML folder.");
+    
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Renaming folder " + outHtml + " to " + outHtmlOld + "...");
+            if (RenameFolder(outHtml, outHtmlOld))
+            {
+                LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Renaming folder " + outHtmlTmp + " to " + outHtml + "...");
+                if (RenameFolder(outHtmlTmp, outHtml))
+                {
+                    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "HTML update successful. Removing backup.");
+                    removeFolder(outHtmlOld.c_str(), TAG);
+                }
+                else
+                {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "HTML update failed. Restoring backup!");
+                    if (!RenameFolder(outHtmlOld, outHtml))
+                    {
+                        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CRITICAL: Restoring HTML backup failed!");
+                    }
+                }
+            }
+            else
+            {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Cannot rename existing HTML folder. HTML update aborted!");
+                removeFolder(outHtmlTmp.c_str(), TAG);
+            }
+        }
+        else
+        {
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "No HTML update found. Existing HTML folder remains unchanged.");
+            removeFolder(outHtmlTmp.c_str(), TAG);
+        }
+        
+        if (!retfirmware.empty())
         {
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Found firmware.bin");
             ota_update_task(retfirmware);
@@ -97,6 +163,7 @@ void task_do_Update_ZIP(void *pvParameter)
     {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Do firmware update - file: " + _file_name_update);
         ota_update_task(_file_name_update);
+        
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Trigger reboot due to firmware update");
         doRebootOTA();
     }
@@ -166,7 +233,6 @@ static bool ota_update_task(std::string fn)
     }
 
     int data_read = fread(ota_write_data, 1, SERVER_OTA_SCRATCH_BUFSIZE, f);
-
     if (data_read <= 0)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Error: SSL data read error");
