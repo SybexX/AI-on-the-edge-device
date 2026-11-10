@@ -203,16 +203,13 @@ esp_err_t info_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-
 esp_err_t starttime_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    
     httpd_resp_send(req, starttime.c_str(), starttime.length()); 
 
     return ESP_OK;
 }
-
 
 esp_err_t hello_main_handler(httpd_req_t *req)
 {
@@ -228,8 +225,7 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     char *base_path = (char*) req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri - 1, sizeof(filepath));    
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri - 1, sizeof(filepath));    
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
     if ((strcmp(req->uri, "/") == 0))
@@ -280,12 +276,10 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     }
 
     ESP_LOGD(TAG, "Filename: %s", filename);
-    
     ESP_LOGD(TAG, "File requested: %s", filetosend.c_str());
 
-    if (!filename) {
+    if (filename == nullptr) {
         ESP_LOGE(TAG, "Filename is too long");
-        /* Respond with 414 Error */
         httpd_resp_send_err(req, HTTPD_414_URI_TOO_LONG, "Filename too long");
         return ESP_FAIL;
     }
@@ -295,17 +289,12 @@ esp_err_t hello_main_handler(httpd_req_t *req)
     if (res != ESP_OK)
         return res;
 
-    /* Respond with an empty chunk to signal HTTP response completion */
-//    httpd_resp_sendstr(req, "");
-//    httpd_resp_send_chunk(req, NULL, 0);
-
 #ifdef DEBUG_DETAIL_ON      
     LogFile.WriteHeapInfo("hello_main_handler - Stop");   
 #endif
 
     return ESP_OK;
 }
-
 
 esp_err_t img_tmp_handler(httpd_req_t *req)
 {
@@ -315,17 +304,19 @@ esp_err_t img_tmp_handler(httpd_req_t *req)
     char *base_path = (char*) req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
+    if (filename == nullptr) {
+        return httpd_resp_send_err(req, HTTPD_414_URI_TOO_LONG, "Filename too long");
+    }
+    
     filetosend = filetosend + "/img_tmp/" + std::string(filename);
     ESP_LOGD(TAG, "File to upload: %s", filetosend.c_str());
 
     // send_file() already terminates the chunked response
     return send_file(req, filetosend);
 }
-
 
 esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
 {
@@ -340,10 +331,13 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
     char *base_path = (char*) req->user_ctx;
     std::string filetosend(base_path);
 
-    const char *filename = get_path_from_uri(filepath, base_path,
-                                             req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
+    const char *filename = get_path_from_uri(filepath, base_path, req->uri  + sizeof("/img_tmp/") - 1, sizeof(filepath));    
     ESP_LOGD(TAG, "1 uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
+    if (filename == nullptr) {
+        return httpd_resp_send_err(req, HTTPD_414_URI_TOO_LONG, "Filename too long");
+    }
+    
     filetosend = std::string(filename);
     ESP_LOGD(TAG, "File to upload: %s", filetosend.c_str());
 
@@ -362,7 +356,6 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
     // File was not served already --> serve with img_tmp_handler
     return img_tmp_handler(req);
 }
-
 
 esp_err_t sysinfo_handler(httpd_req_t *req)
 {
@@ -395,7 +388,6 @@ esp_err_t sysinfo_handler(httpd_req_t *req)
 
     return ESP_OK;
 }
-
 
 void register_server_main_uri(httpd_handle_t server, const char *base_path)
 {
@@ -438,9 +430,7 @@ void register_server_main_uri(httpd_handle_t server, const char *base_path)
         .user_ctx  = (void*) base_path    // Pass server data as context
     };
     httpd_register_uri_handler(server, &main_rest_handle);
-
 }
-
 
 httpd_handle_t start_webserver(void)
 {
@@ -482,15 +472,12 @@ httpd_handle_t start_webserver(void)
     return NULL;
 }
 
-
 void stop_webserver(httpd_handle_t server)
 {
     httpd_stop(server);
 }
 
-
-void disconnect_handler(void* arg, esp_event_base_t event_base, 
-                               int32_t event_id, void* event_data)
+void disconnect_handler(void* arg, esp_event_base_t event_base,  int32_t event_id, void* event_data)
 {
     httpd_handle_t* server = (httpd_handle_t*) arg;
     if (*server) {
@@ -500,9 +487,7 @@ void disconnect_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-
-void connect_handler(void* arg, esp_event_base_t event_base, 
-                            int32_t event_id, void* event_data)
+void connect_handler(void* arg, esp_event_base_t event_base,  int32_t event_id, void* event_data)
 {
     httpd_handle_t* server = (httpd_handle_t*) arg;
     if (*server == NULL) {
