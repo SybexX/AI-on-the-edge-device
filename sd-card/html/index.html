@@ -256,13 +256,19 @@
         if (streamPopup) {
             streamPopup.close();
 		}
+		
         if (streamFlashlight) {
             streamPopup = window.open(domainname + '/stream?flashlight=true','LivestreamWithlight',streamWindowFeatures);
 		}
         else {
             streamPopup = window.open(domainname + '/stream','Livestream',streamWindowFeatures);
 		}
-        streamPopup.focus();
+
+		if (streamPopup && !streamPopup.closed) {
+    		streamPopup.focus();
+		} else {
+    		console.warn("Livestream popup could not be opened");
+		}
     }
 </script>
 </body>
