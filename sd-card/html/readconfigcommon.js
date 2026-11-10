@@ -14,35 +14,37 @@ function SaveConfigToServer(_domainname){
      } 
 
      FileDeleteOnServer("/config/config.ini", _domainname);
-
      FileSendContent(config_gesamt, "/config/config.ini", _domainname);          
 }
 
 function UpdateConfig(zw, _index, _enhance, _domainname){
      var namezw = zw["name"];
      FileCopyOnServer("/img_tmp/ref_zw.jpg", namezw, _domainname);
-     var namezw = zw["name"].replace(".jpg", "_org.jpg");
+	
+     namezw = zw["name"].replace(".jpg", "_org.jpg");
      FileCopyOnServer("/img_tmp/ref_zw_org.jpg", namezw, _domainname);     
 }
 
-
 function createReader(file) {
-     var image = new Image();
-	 
-     reader.onload = function(evt) {
-         var image = new Image();
-		 
-         image.onload = function(evt) {
-             var width = this.width;
-             var height = this.height;
-         };
-		 
-         image.src = evt.target.result; 
-     };
-	 
-     reader.readAsDataURL(file);
- }
+    var reader = new FileReader();
 
+    reader.onload = function(evt) {
+        var image = new Image();
+
+        image.onload = function() {
+            var width = this.width;
+            var height = this.height;
+        };
+
+        image.src = evt.target.result;
+    };
+
+    reader.onerror = function() {
+        console.error("Image reading failed");
+    };
+
+    reader.readAsDataURL(file);
+}
 
 function ZerlegeZeile(input, delimiter = " =\t\r") {
     var Output = Array(0);
@@ -88,7 +90,6 @@ function ZerlegeZeile(input, delimiter = " =\t\r") {
     return Output;
 }    
 
-
 function findDelimiterPos(input, delimiter) {
     var pos = -1;
     var zw;
@@ -112,7 +113,6 @@ function findDelimiterPos(input, delimiter) {
     
 	return pos;
 }
-     
 
 function trim(istring, adddelimiter) {
     while ((istring.length > 0) && (adddelimiter.indexOf(istring[0]) >= 0)) {
@@ -125,18 +125,16 @@ function trim(istring, adddelimiter) {
 
     return istring;
 }
-     
 
 function getConfig() {
     return config_gesamt;
 }
 
-     
 function loadConfig(_domainname) {
     var xhttp = new XMLHttpRequest();
     
 	try {
-        url = _domainname + '/fileserver/config/config.ini';     
+        var url = _domainname + '/fileserver/config/config.ini';     
         xhttp.open("GET", url, false);
         xhttp.send();
         config_gesamt = xhttp.responseText;
@@ -146,21 +144,21 @@ function loadConfig(_domainname) {
 	return true;
 }
 
-     
 function dataURLtoBlob(dataurl) {
     var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-          bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    var bstr = atob(arr[1]);
+	var n = bstr.length;
+	var u8arr = new Uint8Array(n);
     
-	while(n--){
+	while(n--) {
         u8arr[n] = bstr.charCodeAt(n);
     }
     
 	return new Blob([u8arr], {type:mime});
 }	
- 
 
 function FileCopyOnServer(_source, _target, _domainname = "") {
-    url = _domainname + "/editflow?task=copy&in=" + _source + "&out=" + _target;
+    var url = _domainname + "/editflow?task=copy&in=" + _source + "&out=" + _target;
     var xhttp = new XMLHttpRequest();  
     
 	try {
@@ -168,7 +166,6 @@ function FileCopyOnServer(_source, _target, _domainname = "") {
         xhttp.send();
 	} catch (error) {}
 }
-
 
 function FileDeleteOnServer(_filename, _domainname = "") {
     var xhttp = new XMLHttpRequest();
@@ -199,7 +196,6 @@ function FileDeleteOnServer(_filename, _domainname = "") {
     return okay;
 }
 
-
 function FileSendContent(_content, _filename, _domainname = "") {
     var xhttp = new XMLHttpRequest();  
     var okay = false;
@@ -219,14 +215,13 @@ function FileSendContent(_content, _filename, _domainname = "") {
     };
 
     try {
-        upload_path = _domainname + "/upload" + _filename;
-        xhttp.open("POST", upload_path, false);
+        var url = _domainname + "/upload" + _filename;
+        xhttp.open("POST", url, false);
         xhttp.send(_content);
     } catch (error) {}
 	
     return okay;        
 }
-
 
 function MakeRefImageZW(zw, _enhance, _domainname){
     var _filename = zw["name"].replace("/config/", "/img_tmp/");
