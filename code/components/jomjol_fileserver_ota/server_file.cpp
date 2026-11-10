@@ -84,6 +84,11 @@ esp_err_t get_data_file_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "text/plain");
 
     DIR *dir = opendir(verz_name);
+    if (dir == nullptr) {
+        ESP_LOGE(TAG, "Cannot open directory: %s", verz_name);
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Directory unavailable");
+    }
+   
     while ((entry = readdir(dir)) != NULL)
     {
         _filename = std::string(entry->d_name);
@@ -128,6 +133,11 @@ esp_err_t get_tflite_file_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "text/plain");
 
     DIR *dir = opendir(verz_name);
+    if (dir == nullptr) {
+        ESP_LOGE(TAG, "Cannot open directory: %s", verz_name);
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Directory unavailable");
+    }
+   
     while ((entry = readdir(dir)) != NULL)
     {
         _filename = std::string(entry->d_name);
@@ -172,6 +182,10 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
     struct stat entry_stat;
 
     char dirpath_corrected[FILE_PATH_MAX];
+
+    if (strlen(dirpath) >= sizeof(dirpath_corrected)) {
+        return httpd_resp_send_err(req, HTTPD_414_URI_TOO_LONG, "Path too long");
+    }
     strcpy(dirpath_corrected, dirpath);
 
     file_server_data *server_data = (file_server_data *)req->user_ctx;
@@ -183,6 +197,12 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
     }
 
     DIR *pdir = opendir(dirpath_corrected);
+    if (!pdir)
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to stat dir: " + std::string(dirpath) + "!");
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, get404());
+        return ESP_FAIL;
+    }
 
     const size_t dirpath_len = strlen(dirpath);
     ESP_LOGD(TAG, "Dirpath: <%s>, Pathlength: %d", dirpath, dirpath_len);
@@ -190,14 +210,6 @@ static esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath, const
     // Retrieve the base path of file storage to construct the full path
     strlcpy(entrypath, dirpath, sizeof(entrypath));
     ESP_LOGD(TAG, "entrypath: <%s>", entrypath);
-
-    if (!pdir)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to stat dir: " + std::string(dirpath) + "!");
-        // Respond with 404 Not Found
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, get404());
-        return ESP_FAIL;
-    }
 
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
@@ -347,7 +359,7 @@ static esp_err_t datafileact_get_last_part_handler(httpd_req_t *req)
 static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "data_get_last_part_handler");
-    FILE *fd = NULL;
+
     // struct stat file_stat;
     ESP_LOGD(TAG, "uri: %s", req->uri);
 
@@ -355,7 +367,7 @@ static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
 
     ESP_LOGD(TAG, "uri: %s, filename: %s, filepath: %s", req->uri, currentfilename.c_str(), currentfilename.c_str());
 
-    fd = fopen(currentfilename.c_str(), "r");
+    FILE *fd = fopen(currentfilename.c_str(), "r");
     if (!fd)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to read file: " + currentfilename + "!");
@@ -433,7 +445,7 @@ static esp_err_t send_datafile(httpd_req_t *req, bool send_full_file)
 static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "log_get_last_part_handler");
-    FILE *fd = NULL;
+
     // struct stat file_stat;
     ESP_LOGI(TAG, "uri: %s", req->uri);
 
@@ -446,7 +458,7 @@ static esp_err_t send_logfile(httpd_req_t *req, bool send_full_file)
     // Since the log file is still could open for writing, we need to close it first
     LogFile.CloseLogFileAppendHandle();
 
-    fd = fopen(currentfilename.c_str(), "r");
+    FILE *fd = fopen(currentfilename.c_str(), "r");
     if (!fd)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to read file: " + currentfilename + "!");
@@ -526,12 +538,10 @@ static esp_err_t download_get_handler(httpd_req_t *req)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "download_get_handler");
     char filepath[FILE_PATH_MAX];
-    FILE *fd = NULL;
     struct stat file_stat;
     ESP_LOGD(TAG, "uri: %s", req->uri);
 
-    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                             req->uri + sizeof("/fileserver") - 1, sizeof(filepath));
+    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/fileserver") - 1, sizeof(filepath));
 
     ESP_LOGD(TAG, "uri: %s, filename: %s, filepath: %s", req->uri, filename, filepath);
 
@@ -584,7 +594,7 @@ static esp_err_t download_get_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    fd = fopen(filepath, "r");
+    FILE *fd = fopen(filepath, "r");
     if (!fd)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to read file: " + std::string(filepath) + "!");
@@ -635,7 +645,6 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "upload_post_handler");
     char filepath[FILE_PATH_MAX];
-    FILE *fd = NULL;
     struct stat file_stat;
 
     ESP_LOGI(TAG, "uri: %s", req->uri);
@@ -644,8 +653,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
 
     /* Skip leading "/upload" from URI to get filename */
     /* Note sizeof() counts NULL termination hence the -1 */
-    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                             req->uri + sizeof("/upload") - 1, sizeof(filepath));
+    const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/upload") - 1, sizeof(filepath));
     if (!filename)
     {
         /* Respond with 413 Error */
@@ -675,14 +683,13 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "File too large: " + to_string(req->content_len) + " bytes");
         /* Respond with 400 Bad Request */
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
-                            "File size must be less than " MAX_FILE_SIZE_STR "!");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "File size must be less than " MAX_FILE_SIZE_STR "!");
         /* Return failure to close underlying connection else the
          * incoming file content will keep the socket busy */
         return ESP_FAIL;
     }
 
-    fd = fopen(filepath, "w");
+    FILE *fd = fopen(filepath, "w");
     if (!fd)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to create file: " + string(filepath));
@@ -863,8 +870,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
     {
         /* Skip leading "/delete" from URI to get filename */
         /* Note sizeof() counts NULL termination hence the -1 */
-        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                                 req->uri + sizeof("/delete") - 1, sizeof(filepath));
+        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/delete") - 1, sizeof(filepath));
         if (!filename)
         {
             /* Respond with 414 Error */
@@ -891,8 +897,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
     {
         /* Skip leading "/delete" from URI to get filename */
         /* Note sizeof() counts NULL termination hence the -1 */
-        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path,
-                                                 req->uri + sizeof("/delete") - 1, sizeof(filepath));
+        const char *filename = get_path_from_uri(filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri + sizeof("/delete") - 1, sizeof(filepath));
         if (!filename)
         {
             /* Respond with 500 Internal Server Error */
@@ -973,16 +978,16 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
 
 void delete_all_in_directory(std::string _directory)
 {
-    struct dirent *entry;
     DIR *dir = opendir(_directory.c_str());
-    std::string filename;
-
     if (!dir)
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to stat dir: " + _directory);
         return;
     }
 
+    struct dirent *entry;
+    std::string filename;
+   
     /* Iterate over all files / folders and fetch their names and sizes */
     while ((entry = readdir(dir)) != NULL)
     {
@@ -1025,8 +1030,7 @@ void register_server_file_uri(httpd_handle_t server, const char *base_path)
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to allocate memory for server data");
         //        return ESP_ERR_NO_MEM;
     }
-    strlcpy(server_data->base_path, base_path,
-            sizeof(server_data->base_path));
+    strlcpy(server_data->base_path, base_path, sizeof(server_data->base_path));
 
     /* URI handler for getting uploaded files */
     //    char zw[sizeof(serverprefix)+1];
