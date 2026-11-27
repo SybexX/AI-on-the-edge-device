@@ -25,6 +25,7 @@ class CTfLiteClass
         uint8_t *tensor_arena;
         bool ownsSharedMemoryLease;
         bool modelMemoryClaimed;
+        bool lastInvokeSucceeded;
 
         unsigned char *modelfile = NULL;
 
