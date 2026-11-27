@@ -23,6 +23,7 @@
 #include <sys/param.h>
 #include <string.h>
 #include <limits.h>
+#include <algorithm>
 #include <new>
 #include <sys/stat.h>
 
@@ -173,7 +174,10 @@ private:
 
 CCamera::CCamera(void)
     : m_cameraMutex(xSemaphoreCreateRecursiveMutex()),
-      m_driverInitialized(false)
+      m_driverInitialized(false),
+      m_temporarySettingsActive(false),
+      m_previewCapturePending(false),
+      m_previewCaptureDelayMs(0)
 {
 #ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "CreateClassCamera");
@@ -333,7 +337,16 @@ bool CCamera::getCameraInitSuccessful(void)
 
 esp_err_t CCamera::setSensorDatenFromCCstatus(void)
 {
-    return ApplySettings(CCstatus);
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired()) return ESP_ERR_TIMEOUT;
+    const esp_err_t result = ApplySettings(CCstatus);
+    if (result == ESP_OK)
+    {
+        m_temporarySettingsActive = false;
+        m_previewCapturePending = false;
+        m_previewCaptureDelayMs = 0;
+    }
+    return result;
 }
 
 esp_err_t CCamera::ApplySettings(CameraSettings &settings)
@@ -404,18 +417,33 @@ esp_err_t CCamera::ApplySettings(CameraSettings &settings)
     return firstError == 0 ? ESP_OK : ESP_FAIL;
 }
 
-esp_err_t CCamera::RestoreCommittedSettingsIfNeeded(bool preserveTemporaryCapture)
+esp_err_t CCamera::ApplyPreviewSettings(const CameraSettings &settings)
 {
-    if (!CFstatus.changedCameraSettings || preserveTemporaryCapture)
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired()) return ESP_ERR_TIMEOUT;
+    CameraSettings previewSettings = settings;
+    const esp_err_t result = ApplySettings(previewSettings);
+    if (result == ESP_OK)
     {
-        return ESP_OK;
+        m_temporarySettingsActive = true;
+        m_previewCapturePending = true;
+        const int waitSeconds = std::max(0, settings.WaitBeforePicture);
+        m_previewCaptureDelayMs = waitSeconds > INT_MAX / 1000 ? INT_MAX : waitSeconds * 1000;
     }
+    return result;
+}
 
+esp_err_t CCamera::RestoreCommittedSettingsIfNeeded(void)
+{
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired()) return ESP_ERR_TIMEOUT;
+    if (!m_temporarySettingsActive) return ESP_OK;
     const esp_err_t result = ApplySettings(CCstatus);
     if (result == ESP_OK)
     {
-        CFstatus.changedCameraSettings = false;
-        CFstatus.previewCapturePending = false;
+        m_temporarySettingsActive = false;
+        m_previewCapturePending = false;
+        m_previewCaptureDelayMs = 0;
     }
     return result;
 }
@@ -946,7 +974,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
     return captureOkay ? ESP_OK : ESP_FAIL;
 }
 
-esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay, bool preserveTemporaryCapture)
+esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay, bool previewCapture)
 {
     ScopedCameraLock cameraLock(m_cameraMutex);
     if (!cameraLock.acquired())
@@ -956,8 +984,21 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay, bool preserveTempo
         httpd_resp_send(req, "Camera is busy", HTTPD_RESP_USE_STRLEN);
         return ESP_ERR_TIMEOUT;
     }
-    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(preserveTemporaryCapture);
-    if (restoreResult != ESP_OK) return restoreResult;
+    const bool useTemporaryPreview = previewCapture && m_temporarySettingsActive && m_previewCapturePending;
+    if (useTemporaryPreview)
+    {
+        delay = m_previewCaptureDelayMs;
+    }
+    else
+    {
+        const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded();
+        if (restoreResult != ESP_OK) return restoreResult;
+        if (previewCapture)
+        {
+            const int waitSeconds = std::max(0, CCstatus.WaitBeforePicture);
+            delay = waitSeconds > INT_MAX / 1000 ? INT_MAX : waitSeconds * 1000;
+        }
+    }
 
     esp_err_t res = ESP_OK;
     size_t fb_len = 0;
@@ -1006,7 +1047,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay, bool preserveTempo
                 fb_len = demoLength;
                 res = httpd_resp_send(req, (const char *)demoData, demoLength);
                 free_psram_heap("Demo image HTTP frame", demoData);
-                if (res == ESP_OK && preserveTemporaryCapture) CFstatus.previewCapturePending = false;
+
             } else {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToHTTP: could not load demo image");
                 res = ESP_FAIL;
@@ -1033,7 +1074,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay, bool preserveTempo
     }
 
     esp_camera_fb_return(fb);
-    if (res == ESP_OK && preserveTemporaryCapture) CFstatus.previewCapturePending = false;
+    if (res == ESP_OK && useTemporaryPreview) m_previewCapturePending = false;
     int64_t fr_end = esp_timer_get_time();
 
     ESP_LOGI(TAG, "JPG: %dKB %dms", (int)(fb_len / 1024), (int)((fr_end - fr_start) / 1000));

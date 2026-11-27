@@ -31,6 +31,9 @@ class CCamera
 protected:
     SemaphoreHandle_t m_cameraMutex;
     bool m_driverInitialized;
+    bool m_temporarySettingsActive;
+    bool m_previewCapturePending;
+    int m_previewCaptureDelayMs;
     std::vector<std::string> m_demoFiles;
 
     void ledc_init(void);
@@ -52,7 +55,8 @@ public:
 
     esp_err_t setSensorDatenFromCCstatus(void);
     esp_err_t ApplySettings(CameraSettings &settings);
-    esp_err_t RestoreCommittedSettingsIfNeeded(bool preserveTemporaryCapture = false);
+    esp_err_t ApplyPreviewSettings(const CameraSettings &settings);
+    esp_err_t RestoreCommittedSettingsIfNeeded(void);
     esp_err_t getSensorDatenToCCstatus(void);
 
     int SetCamGainceiling(sensor_t *s, gainceiling_t gainceilingLevel);
@@ -60,7 +64,7 @@ public:
     void SetCamSpecialEffect(sensor_t *s, int specialEffect);
     void SetCamContrastBrightness(sensor_t *s, int _contrast, int _brightness);
 
-    esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0, bool preserveTemporaryCapture = false);
+    esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0, bool previewCapture = false);
     esp_err_t CaptureToStream(httpd_req_t *req, bool FlashlightOn);
 
     esp_err_t SetQualityZoomSize(CameraSettings &settings);
