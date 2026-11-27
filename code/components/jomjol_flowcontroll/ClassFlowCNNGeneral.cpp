@@ -1,7 +1,8 @@
 #include "ClassFlowCNNGeneral.h"
 
 #include <math.h>
-#include <iomanip> 
+#include <iomanip>
+#include <new> 
 #include <sys/types.h>
 #include <sstream>      // std::stringstream
 
@@ -597,7 +598,12 @@ bool ClassFlowCNNGeneral::getNetworkParameter() {
         return true;
     }
 
-    CTfLiteClass *tflite = new CTfLiteClass;  
+    CTfLiteClass *tflite = new (std::nothrow) CTfLiteClass;
+    if (tflite == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate CTfLiteClass object");
+        LogFile.WriteHeapInfo("CTfLiteClass object allocation");
+        return false;
+    }  
     string zwcnn = "/sdcard" + cnnmodelfile;
     zwcnn = FormatFileName(zwcnn);
     ESP_LOGD(TAG, "%s", zwcnn.c_str());
@@ -671,7 +677,12 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
 
     string logPath = CreateLogFolder(time);
 
-    CTfLiteClass *tflite = new CTfLiteClass;  
+    CTfLiteClass *tflite = new (std::nothrow) CTfLiteClass;
+    if (tflite == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate CTfLiteClass object");
+        LogFile.WriteHeapInfo("CTfLiteClass object allocation");
+        return false;
+    }  
     string zwcnn = "/sdcard" + cnnmodelfile;
     zwcnn = FormatFileName(zwcnn);
     ESP_LOGD(TAG, "%s", zwcnn.c_str());

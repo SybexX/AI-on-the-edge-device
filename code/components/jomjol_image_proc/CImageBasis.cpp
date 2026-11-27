@@ -20,6 +20,28 @@ using namespace std;
 
 static const char *TAG = "C IMG BASIS";
 
+static bool getImageBufferSize(int width, int height, int channels, size_t* size)
+{
+    if (size == nullptr || width <= 0 || height <= 0 || channels <= 0) return false;
+    const size_t w = static_cast<size_t>(width);
+    const size_t h = static_cast<size_t>(height);
+    const size_t c = static_cast<size_t>(channels);
+    if (w > SIZE_MAX / h || w * h > SIZE_MAX / c) return false;
+    const size_t total = w * h * c;
+    if (total > static_cast<size_t>(INT_MAX)) return false;
+    *size = total;
+    return true;
+}
+
+static void releaseOwnedImageBuffer(const std::string& tag, const std::string& name,
+                                    uint8_t* image, int size, bool sharedLease)
+{
+    if (image == nullptr) return;
+    if (sharedLease) psram_free_shared_temp_image_memory();
+    else if (size == 0) stbi_image_free(image);
+    else free_psram_heap(tag + " (" + name + ", " + std::to_string(size) + ")", image);
+}
+
 
 
 //#define DEBUG_DETAIL_ON
@@ -58,6 +80,16 @@ void CImageBasis::RGBImageRelease()
 uint8_t * CImageBasis::RGBImageGet()
 {
     return rgb_image;
+}
+
+bool CImageBasis::SetIndepended()
+{
+    size_t size = 0;
+    if (rgb_image == nullptr || !getImageBufferSize(width, height, channels, &size)) return false;
+    externalImage = false;
+    memsize = static_cast<int>(size);
+    ownsSharedTempImageLease = false;
+    return true;
 }
 
 
@@ -411,27 +443,35 @@ void CImageBasis::EmptyImage()
 
 void CImageBasis::LoadFromMemory(stbi_uc *_buffer, int len)
 {
-    RGBImageLock();
-    if (rgb_image != NULL && !externalImage) {
-        if (name == "tmpImage" && memsize > 0) {
-            psram_free_shared_temp_image_memory();
-        } else if (memsize == 0) {
-            stbi_image_free(rgb_image);
-        } else {
-            free_psram_heap(std::string(TAG) + "->CImageBasis (" + name + ", " + std::to_string(memsize) + ")", rgb_image);
-        }
+    if (_buffer == NULL || len <= 0) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "LoadFromMemory: invalid input buffer");
+        return;
     }
-    rgb_image = stbi_load_from_memory(_buffer, len, &width, &height, &channels, STBI_rgb);
+
+    int newWidth = 0, newHeight = 0, sourceChannels = 0;
+    uint8_t* decoded = stbi_load_from_memory(_buffer, len, &newWidth, &newHeight,
+                                              &sourceChannels, STBI_rgb);
+    size_t decodedSize = 0;
+    if (decoded == NULL || !getImageBufferSize(newWidth, newHeight, STBI_rgb, &decodedSize)) {
+        if (decoded != NULL) stbi_image_free(decoded);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "LoadFromMemory: image decode failed or returned invalid dimensions");
+        LogFile.WriteHeapInfo("LoadFromMemory");
+        return;
+    }
+
+    if (rgb_image != NULL && !externalImage) {
+        releaseOwnedImageBuffer(std::string(TAG) + "->CImageBasis", name,
+                                rgb_image, memsize, ownsSharedTempImageLease);
+    }
+    rgb_image = decoded;
+    width = newWidth;
+    height = newHeight;
+    channels = STBI_rgb;
+    bpp = sourceChannels;
     memsize = 0;
     externalImage = false;
-    bpp = channels;
+    ownsSharedTempImageLease = false;
     ESP_LOGD(TAG, "Image loaded from memory: %d, %d, %d", width, height, channels);
-    if ((width * height * channels) == 0) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image with size 0 loaded --> reboot to be done! Check that your camera module is working and connected properly.");
-        LogFile.WriteHeapInfo("LoadFromMemory");
-        doReboot();
-    }
-    RGBImageRelease();
 }
 
 
@@ -458,46 +498,65 @@ void CImageBasis::crop_image(unsigned short cropLeft, unsigned short cropRight, 
 }
 
 
-CImageBasis::CImageBasis(string _name, CImageBasis *_copyfrom) 
+CImageBasis::CImageBasis(string _name, CImageBasis *_copyfrom)
 {
     name = _name;
     islocked = false;
     externalImage = false;
-    channels = _copyfrom->channels;
-    width = _copyfrom->width;
-    height = _copyfrom->height;
-    bpp = _copyfrom->bpp;
+    rgb_image = NULL;
+    width = height = channels = bpp = 0;
+    memsize = 0;
+    ownsSharedTempImageLease = false;
 
-    RGBImageLock();
-
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CImageBasis_copyfrom - Start");
-    #endif
-
-    memsize = width * height * channels;
-
-
-    if (name == "tmpImage") {
-        rgb_image = (unsigned char*)psram_reserve_shared_tmp_image_memory();
-    }
-    else {
-        rgb_image = (unsigned char*)malloc_psram_heap(std::string(TAG) + "->CImageBasis (" + name + ")", memsize, MALLOC_CAP_SPIRAM);
-    }
-
-    if (rgb_image == NULL)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-Copyfrom: Can't allocate enough memory: " + std::to_string(memsize));
-        LogFile.WriteHeapInfo("CImageBasis-Copyfrom");
-        RGBImageRelease();
+    if (_copyfrom == NULL || !_copyfrom->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-Copyfrom: source image is not available");
         return;
     }
 
-    memCopy(_copyfrom->rgb_image, rgb_image, memsize);
-    RGBImageRelease();
+    size_t imageSize = 0;
+    if (!getImageBufferSize(_copyfrom->width, _copyfrom->height, _copyfrom->channels, &imageSize)) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-Copyfrom: invalid source dimensions");
+        return;
+    }
+    width = _copyfrom->width;
+    height = _copyfrom->height;
+    channels = _copyfrom->channels;
+    bpp = _copyfrom->bpp;
 
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CImageBasis_copyfrom - done");
-    #endif
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CImageBasis_copyfrom - Start");
+#endif
+
+    uint8_t* source = _copyfrom->RGBImageLock();
+    if (source == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-Copyfrom: source image is locked");
+        return;
+    }
+
+    if (name == "tmpImage") {
+        rgb_image = static_cast<uint8_t*>(psram_reserve_shared_tmp_image_memory());
+        ownsSharedTempImageLease = (rgb_image != NULL);
+        memsize = (rgb_image != NULL) ? static_cast<int>(imageSize) : 0;
+    } else {
+        rgb_image = static_cast<uint8_t*>(malloc_psram_heap(
+            std::string(TAG) + "->CImageBasis (" + name + ")", imageSize,
+            MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        memsize = (rgb_image != NULL) ? static_cast<int>(imageSize) : 0;
+    }
+
+    if (rgb_image == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-Copyfrom: PSRAM allocation failed (" + std::to_string(imageSize) + " bytes)");
+        LogFile.WriteHeapInfo("CImageBasis-Copyfrom");
+        _copyfrom->RGBImageRelease();
+        return;
+    }
+
+    memCopy(source, rgb_image, static_cast<int>(imageSize));
+    _copyfrom->RGBImageRelease();
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CImageBasis_copyfrom - done");
+#endif
 }
 
 
@@ -506,34 +565,39 @@ CImageBasis::CImageBasis(string _name, int _width, int _height, int _channels)
     name = _name;
     islocked = false;
     externalImage = false;
-    channels = _channels;
-    width = _width;
-    height = _height;
-    bpp = _channels;
+    ownsSharedTempImageLease = false;
+    rgb_image = NULL;
+    width = height = channels = bpp = 0;
+    memsize = 0;
 
-    RGBImageLock();
-
-     #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CImageBasis_width,height,ch - Start");
-    #endif
-
-    memsize = width * height * channels;
-
-    rgb_image = (unsigned char*)malloc_psram_heap(std::string(TAG) + "->CImageBasis (" + name + ")", memsize, MALLOC_CAP_SPIRAM);
-
-    if (rgb_image == NULL)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-width,height,ch: Can't allocate enough memory: " + std::to_string(memsize));
-        LogFile.WriteHeapInfo("CImageBasis-width,height,ch");
-        RGBImageRelease();
+    size_t imageSize = 0;
+    if (!getImageBufferSize(_width, _height, _channels, &imageSize)) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-width,height,ch: invalid image dimensions");
         return;
     }
 
-    RGBImageRelease();
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CImageBasis_width,height,ch - Start");
+#endif
 
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CImageBasis_width,height,ch - done");
-    #endif
+    rgb_image = static_cast<uint8_t*>(malloc_psram_heap(
+        std::string(TAG) + "->CImageBasis (" + name + ")", imageSize,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (rgb_image == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CImageBasis-width,height,ch: PSRAM allocation failed (" + std::to_string(imageSize) + " bytes)");
+        LogFile.WriteHeapInfo("CImageBasis-width,height,ch");
+        return;
+    }
+
+    width = _width;
+    height = _height;
+    channels = _channels;
+    bpp = _channels;
+    memsize = static_cast<int>(imageSize);
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CImageBasis_width,height,ch - done");
+#endif
 }
 
 
@@ -632,15 +696,12 @@ void CImageBasis::Contrast(float _contrast)
 
 CImageBasis::~CImageBasis()
 {
-    RGBImageLock();
-    if (!externalImage) {
-        if (name == "tmpImage") {
-            if (memsize == 0) stbi_image_free(rgb_image);
-            else psram_free_shared_temp_image_memory();
-        } else if (memsize == 0) stbi_image_free(rgb_image);
-        else free_psram_heap(std::string(TAG) + "->CImageBasis (" + name + ", " + to_string(memsize) + ")", rgb_image);
+    if (!externalImage && rgb_image != NULL) {
+        releaseOwnedImageBuffer(std::string(TAG) + "->CImageBasis", name,
+                                rgb_image, memsize, ownsSharedTempImageLease);
     }
-    RGBImageRelease();
+    rgb_image = NULL;
+    ownsSharedTempImageLease = false;
 }
 
 
@@ -660,57 +721,77 @@ void CImageBasis::SaveToFile(std::string _imageout)
 
 void CImageBasis::Resize(int _new_dx, int _new_dy)
 {
-    // tmpImage lives in the shared PSRAM region and its destructor relies on that; never resize it in place
-    if ((rgb_image == NULL) || (name == "tmpImage")) {
+    if (rgb_image == NULL || name == "tmpImage") {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Resize: not possible for image " + name);
         return;
     }
-
-    int new_memsize = _new_dx * _new_dy * channels;
-    uint8_t* odata = (unsigned char*)malloc_psram_heap(std::string(TAG) + "->CImageBasis Resize (" + name + ")", new_memsize, MALLOC_CAP_SPIRAM);
-
-    if (odata == NULL) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Resize: Can't allocate enough memory: " + std::to_string(new_memsize));
+    size_t newSize = 0;
+    if (!getImageBufferSize(_new_dx, _new_dy, channels, &newSize)) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Resize: invalid target dimensions");
         return;
     }
 
-    RGBImageLock();
-
-    stbir_resize_uint8(rgb_image, width, height, 0, odata, _new_dx, _new_dy, 0, channels);
-
-    // Release the old buffer with the allocator it came from (same rule as the destructor)
-    if (!externalImage) {
-        if (memsize == 0) { // Loaded via STBI (STBI_MALLOC)
-            stbi_image_free(rgb_image);
-        }
-        else {
-            free_psram_heap(std::string(TAG) + "->CImageBasis Resize old (" + name + ")", rgb_image);
-        }
+    uint8_t* source = RGBImageLock();
+    if (source == NULL) return;
+    uint8_t* output = static_cast<uint8_t*>(malloc_psram_heap(
+        std::string(TAG) + "->CImageBasis Resize (" + name + ")", newSize,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (output == NULL) {
+        RGBImageRelease();
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Resize: PSRAM allocation failed: " + std::to_string(newSize));
+        return;
     }
 
-    rgb_image = odata;
-    memsize = new_memsize;
-    externalImage = false; // The image now owns a normal PSRAM buffer
+    const int resized = stbir_resize_uint8(source, width, height, 0,
+                                            output, _new_dx, _new_dy, 0, channels);
+    RGBImageRelease();
+    if (resized == 0) {
+        free_psram_heap(std::string(TAG) + "->CImageBasis Resize (failed)", output);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Resize: stb resize failed");
+        return;
+    }
+
+    if (!externalImage) {
+        releaseOwnedImageBuffer(std::string(TAG) + "->CImageBasis Resize old", name,
+                                rgb_image, memsize, ownsSharedTempImageLease);
+    }
+    rgb_image = output;
+    memsize = static_cast<int>(newSize);
+    externalImage = false;
+    ownsSharedTempImageLease = false;
     width = _new_dx;
     height = _new_dy;
-
-    RGBImageRelease();
 }
 
 
 void CImageBasis::Resize(int _new_dx, int _new_dy, CImageBasis *_target)
 {
-    if ((_target->height != _new_dy) || (_target->width != _new_dx) || (_target->channels != channels))
-    {
-        ESP_LOGE(TAG, "Resize - Target image size does not fit!");
+    if (_target == NULL || rgb_image == NULL || !_target->ImageOkay() ||
+        _target->height != _new_dy || _target->width != _new_dx ||
+        _target->channels != channels) {
+        ESP_LOGE(TAG, "Resize - Target image size does not fit or is unavailable!");
         return;
     }
 
-    RGBImageLock();
+    size_t sourceSize = 0, targetSize = 0;
+    if (!getImageBufferSize(width, height, channels, &sourceSize) ||
+        !getImageBufferSize(_new_dx, _new_dy, channels, &targetSize)) {
+        ESP_LOGE(TAG, "Resize - Invalid source or target dimensions");
+        return;
+    }
 
-    uint8_t* odata = _target->rgb_image;
-    stbir_resize_uint8(rgb_image, width, height, 0, odata, _new_dx, _new_dy, 0, channels);
+    uint8_t* source = RGBImageLock();
+    if (source == NULL) return;
+    uint8_t* target = _target->RGBImageLock();
+    if (target == NULL) {
+        RGBImageRelease();
+        return;
+    }
 
+    const int resized = stbir_resize_uint8(source, width, height, 0,
+                                            target, _new_dx, _new_dy, 0, channels);
+    _target->RGBImageRelease();
     RGBImageRelease();
+    if (resized == 0) ESP_LOGE(TAG, "Resize - stb resize failed");
 }
 

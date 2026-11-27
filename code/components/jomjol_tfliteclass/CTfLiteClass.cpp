@@ -6,6 +6,8 @@
 #include "../../include/defines.h"
 
 #include <sys/stat.h>
+#include <new>
+#include <limits.h>
 
 // #define DEBUG_DETAIL_ON
 
@@ -30,7 +32,9 @@ void CTfLiteClass::MakeStaticResolver()
 
 float CTfLiteClass::GetOutputValue(int nr)
 {
+    if (this->interpreter == nullptr || nr < 0) return -1000.0f;
     TfLiteTensor* output2 = this->interpreter->output(0);
+    if (output2 == nullptr || output2->dims == nullptr || output2->dims->size < 2) return -1000.0f;
 
     int numeroutput = output2->dims->data[1];
     if ((nr+1) > numeroutput)
@@ -42,7 +46,7 @@ float CTfLiteClass::GetOutputValue(int nr)
 
 int CTfLiteClass::GetClassFromImageBasis(CImageBasis *rs)
 {
-    if (!LoadInputImageBasis(rs))
+    if (interpreter == nullptr || !LoadInputImageBasis(rs))
       return -1000;
 
     Invoke();
@@ -92,10 +96,15 @@ int CTfLiteClass::GetOutClassification(int _von, int _bis)
 }
 
 
-void CTfLiteClass::GetInputDimension(bool silent = false)
+void CTfLiteClass::GetInputDimension(bool silent)
 {
+  if (this->interpreter == nullptr) return;
   TfLiteTensor* input2 = this->interpreter->input(0);
+  if (input2 == nullptr || input2->dims == nullptr) return;
 
+  im_height = 0;
+  im_width = 0;
+  im_channel = 0;
   int numdim = input2->dims->size;
   if (!silent)  ESP_LOGD(TAG, "NumDimension: %d", numdim);
 
@@ -126,7 +135,9 @@ int CTfLiteClass::ReadInputDimenstion(int _dim)
 
 int CTfLiteClass::GetAnzOutPut(bool silent)
 {
+  if (this->interpreter == nullptr) return 0;
   TfLiteTensor* output2 = this->interpreter->output(0);
+  if (output2 == nullptr || output2->dims == nullptr) return 0;
 
   int numdim = output2->dims->size;
   if (!silent) ESP_LOGD(TAG, "NumDimension: %d", numdim);
@@ -154,46 +165,74 @@ int CTfLiteClass::GetAnzOutPut(bool silent)
 
 void CTfLiteClass::Invoke()
 {
-    if (interpreter != nullptr)
-      interpreter->Invoke();
+    if (interpreter == nullptr) return;
+    if (interpreter->Invoke() != kTfLiteOk) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite Invoke() failed");
+    }
 }
 
 
 bool CTfLiteClass::LoadInputImageBasis(CImageBasis *rs)
 {
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - Start");
-    #endif
+    if (rs == nullptr || !rs->ImageOkay() || interpreter == nullptr) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "LoadInputImageBasis: image or interpreter is unavailable");
+        return false;
+    }
 
-    unsigned int w = rs->width;
-    unsigned int h = rs->height;
-    unsigned char red, green, blue;
-//    ESP_LOGD(TAG, "Image: %s size: %d x %d\n", _fn.c_str(), w, h);
+    TfLiteTensor* inputTensor = interpreter->input(0);
+    if (inputTensor == nullptr || inputTensor->dims == nullptr ||
+        inputTensor->data.f == nullptr || inputTensor->type != kTfLiteFloat32 ||
+        inputTensor->dims->size < 4) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "LoadInputImageBasis: input tensor is unavailable or not float32 image data");
+        return false;
+    }
 
-    input_i = 0;
-    float* input_data_ptr = (interpreter->input(0))->data.f;
+    const int imageWidth = rs->width;
+    const int imageHeight = rs->height;
+    if (imageWidth <= 0 || imageHeight <= 0 || rs->channels < 3) return false;
 
-    for (int y = 0; y < h; ++y)
-        for (int x = 0; x < w; ++x)
-            {
-                red = rs->GetPixelColor(x, y, 0);
-                green = rs->GetPixelColor(x, y, 1);
-                blue = rs->GetPixelColor(x, y, 2);
-                *(input_data_ptr) = (float) red;
-                input_data_ptr++;
-                *(input_data_ptr) = (float) green;
-                input_data_ptr++;
-                *(input_data_ptr) = (float) blue;
-                input_data_ptr++;
-            }
+    const int expectedHeight = inputTensor->dims->data[1];
+    const int expectedWidth = inputTensor->dims->data[2];
+    const int expectedChannels = inputTensor->dims->data[3];
+    if (expectedWidth != imageWidth || expectedHeight != imageHeight || expectedChannels != 3) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "LoadInputImageBasis: image dimensions do not match model input tensor");
+        return false;
+    }
 
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - done");
-    #endif
+    if (static_cast<size_t>(imageWidth) > SIZE_MAX / static_cast<size_t>(imageHeight)) return false;
+    const size_t pixelCount = static_cast<size_t>(imageWidth) * static_cast<size_t>(imageHeight);
+    if (pixelCount > SIZE_MAX / (3U * sizeof(float))) return false;
+    const size_t requiredBytes = pixelCount * 3U * sizeof(float);
+    if (inputTensor->bytes < requiredBytes) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "LoadInputImageBasis: model input tensor buffer is smaller than the image");
+        return false;
+    }
 
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - Start");
+#endif
+
+    uint8_t* image = rs->RGBImageLock();
+    if (image == nullptr) return false;
+    float* inputData = inputTensor->data.f;
+    size_t outputIndex = 0;
+    for (int y = 0; y < imageHeight; ++y) {
+        for (int x = 0; x < imageWidth; ++x) {
+            const size_t sourceOffset =
+                (static_cast<size_t>(y) * static_cast<size_t>(imageWidth) +
+                 static_cast<size_t>(x)) * static_cast<size_t>(rs->channels);
+            inputData[outputIndex++] = static_cast<float>(image[sourceOffset]);
+            inputData[outputIndex++] = static_cast<float>(image[sourceOffset + 1]);
+            inputData[outputIndex++] = static_cast<float>(image[sourceOffset + 2]);
+        }
+    }
+    rs->RGBImageRelease();
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTfLiteClass::LoadInputImageBasis - done");
+#endif
     return true;
 }
-
 
 
 bool CTfLiteClass::MakeAllocate()
@@ -343,6 +382,9 @@ CTfLiteClass::CTfLiteClass()
     this->input = nullptr;
     this->output = nullptr;
     this->kTensorArenaSize = TENSOR_ARENA_SIZE;
+    this->im_height = 0;
+    this->im_width = 0;
+    this->im_channel = 0;
     this->tensor_arena = static_cast<uint8_t*>(psram_get_shared_tensor_arena_memory());
     this->ownsSharedMemoryLease = (this->tensor_arena != NULL);
     if (!this->ownsSharedMemoryLease) {

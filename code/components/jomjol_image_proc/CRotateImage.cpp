@@ -1,8 +1,22 @@
 #include <string>
+#include <limits.h>
 #include "CRotateImage.h"
 #include "psram.h"
 
 static const char *TAG = "C ROTATE IMG";
+
+static bool getRotateBufferSize(int width, int height, int channels, size_t* size)
+{
+    if (size == NULL || width <= 0 || height <= 0 || channels <= 0) return false;
+    const size_t w = static_cast<size_t>(width);
+    const size_t h = static_cast<size_t>(height);
+    const size_t c = static_cast<size_t>(channels);
+    if (w > SIZE_MAX / h || w * h > SIZE_MAX / c) return false;
+    const size_t total = w * h * c;
+    if (total > static_cast<size_t>(INT_MAX)) return false;
+    *size = total;
+    return true;
+}
 
 // Value written to target pixels whose source lies outside the image (the gaps left by a rotation or
 // translation). It has to be black: the reference image is rotated in the browser (edit_reference.html),
@@ -71,15 +85,32 @@ void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
         m[1][2] = m[1][2] - (org_width/2) + (org_height/2);
     }
 
-    int memsize = width * height * channels;
-    uint8_t* odata;
-    if (ImageTMP)
-    {
-        odata = ImageTMP->RGBImageLock();
+    size_t bufferSize = 0;
+    if (!getRotateBufferSize(width, height, channels, &bufferSize)) {
+        if (doflip) {
+            width = org_width;
+            height = org_height;
+            if (ImageOrg) { ImageOrg->width = width; ImageOrg->height = height; }
+        }
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: invalid dimensions or size overflow");
+        return;
     }
-    else
-    {
-        odata = (unsigned char*)malloc_psram_heap(std::string(TAG) + "->odata", memsize, MALLOC_CAP_SPIRAM);
+    const int memsize = static_cast<int>(bufferSize);
+    uint8_t* odata;
+    if (ImageTMP) {
+        odata = ImageTMP->RGBImageLock();
+    } else {
+        odata = static_cast<unsigned char*>(malloc_psram_heap(
+            std::string(TAG) + "->odata", bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    }
+    if (odata == NULL) {
+        if (doflip) {
+            width = org_width;
+            height = org_height;
+            if (ImageOrg) { ImageOrg->width = width; ImageOrg->height = height; }
+        }
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: temporary PSRAM allocation failed");
+        return;
     }
     
 
@@ -87,7 +118,18 @@ void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
     stbi_uc* p_target;
     stbi_uc* p_source;
 
-    RGBImageLock();
+    uint8_t* source = RGBImageLock();
+    if (source == NULL) {
+        if (ImageTMP) ImageTMP->RGBImageRelease();
+        else free_psram_heap(std::string(TAG) + "->odata", odata);
+        if (doflip) {
+            width = org_width;
+            height = org_height;
+            if (ImageOrg) { ImageOrg->width = width; ImageOrg->height = height; }
+        }
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: source image is unavailable");
+        return;
+    }
 
     // y outer / x inner: write the target (and mostly read the source) sequentially in PSRAM
     for (int y = 0; y < height; ++y)
@@ -103,7 +145,7 @@ void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
 
             if ((x_source >= 0) && (x_source < org_width) && (y_source >= 0) && (y_source < org_height))
             {
-                p_source = rgb_image + (channels * (y_source * org_width + x_source));
+                p_source = source + (channels * (y_source * org_width + x_source));
                 for (int _channels = 0; _channels < channels; ++_channels)
                     p_target[_channels] = p_source[_channels];
             }
@@ -115,7 +157,7 @@ void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
         }
 
     //    memcpy(rgb_image, odata, memsize);
-    memCopy(odata, rgb_image, memsize);
+    memCopy(odata, source, memsize);
 
     if (!ImageTMP)
     {
@@ -172,15 +214,32 @@ void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
         m[1][2] = m[1][2] - (org_width/2) + (org_height/2);
     }
 
-    int memsize = width * height * channels;
-    uint8_t* odata;
-    if (ImageTMP)
-    {
-        odata = ImageTMP->RGBImageLock();
+    size_t bufferSize = 0;
+    if (!getRotateBufferSize(width, height, channels, &bufferSize)) {
+        if (doflip) {
+            width = org_width;
+            height = org_height;
+            if (ImageOrg) { ImageOrg->width = width; ImageOrg->height = height; }
+        }
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: invalid dimensions or size overflow");
+        return;
     }
-    else
-    {
-        odata = (unsigned char*)malloc_psram_heap(std::string(TAG) + "->odata", memsize, MALLOC_CAP_SPIRAM);
+    const int memsize = static_cast<int>(bufferSize);
+    uint8_t* odata;
+    if (ImageTMP) {
+        odata = ImageTMP->RGBImageLock();
+    } else {
+        odata = static_cast<unsigned char*>(malloc_psram_heap(
+            std::string(TAG) + "->odata", bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    }
+    if (odata == NULL) {
+        if (doflip) {
+            width = org_width;
+            height = org_height;
+            if (ImageOrg) { ImageOrg->width = width; ImageOrg->height = height; }
+        }
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: temporary PSRAM allocation failed");
+        return;
     }
     
 
@@ -190,7 +249,18 @@ void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
     stbi_uc* p_target;
     stbi_uc *p_source_ul, *p_source_ur, *p_source_ol, *p_source_or;
 
-    RGBImageLock();
+    uint8_t* source = RGBImageLock();
+    if (source == NULL) {
+        if (ImageTMP) ImageTMP->RGBImageRelease();
+        else free_psram_heap(std::string(TAG) + "->odata", odata);
+        if (doflip) {
+            width = org_width;
+            height = org_height;
+            if (ImageOrg) { ImageOrg->width = width; ImageOrg->height = height; }
+        }
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: source image is unavailable");
+        return;
+    }
 
     // y outer / x inner: write the target (and mostly read the source) sequentially in PSRAM
     for (int y = 0; y < height; ++y)
@@ -217,10 +287,10 @@ void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
 
             if ((x_source_1 >= 0) && (x_source_2 < org_width) && (y_source_1 >= 0) && (y_source_2 < org_height))
             {
-                p_source_ul = rgb_image + (channels * (y_source_1 * org_width + x_source_1));
-                p_source_ur = rgb_image + (channels * (y_source_1 * org_width + x_source_2));
-                p_source_or = rgb_image + (channels * (y_source_2 * org_width + x_source_1));
-                p_source_ol = rgb_image + (channels * (y_source_2 * org_width + x_source_2));
+                p_source_ul = source + (channels * (y_source_1 * org_width + x_source_1));
+                p_source_ur = source + (channels * (y_source_1 * org_width + x_source_2));
+                p_source_or = source + (channels * (y_source_2 * org_width + x_source_1));
+                p_source_ol = source + (channels * (y_source_2 * org_width + x_source_2));
                 for (int _channels = 0; _channels < channels; ++_channels)
                 {
                     p_target[_channels] = (int)((float)p_source_ul[_channels] * quad_ul
@@ -237,7 +307,7 @@ void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
         }
 
     //    memcpy(rgb_image, odata, memsize);
-    memCopy(odata, rgb_image, memsize);
+    memCopy(odata, source, memsize);
 
     if (!ImageTMP)
     {
@@ -268,15 +338,22 @@ void CRotateImage::Translate(int _dx, int _dy)
         return;
     }
 
-    int memsize = width * height * channels;
-    uint8_t* odata;
-    if (ImageTMP)
-    {
-        odata = ImageTMP->RGBImageLock();
+    size_t bufferSize = 0;
+    if (!getRotateBufferSize(width, height, channels, &bufferSize)) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: invalid dimensions or size overflow");
+        return;
     }
-    else
-    {
-        odata = (unsigned char*)malloc_psram_heap(std::string(TAG) + "->odata", memsize, MALLOC_CAP_SPIRAM);
+    const int memsize = static_cast<int>(bufferSize);
+    uint8_t* odata;
+    if (ImageTMP) {
+        odata = ImageTMP->RGBImageLock();
+    } else {
+        odata = static_cast<unsigned char*>(malloc_psram_heap(
+            std::string(TAG) + "->odata", bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    }
+    if (odata == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: temporary PSRAM allocation failed");
+        return;
     }
 
 
@@ -285,7 +362,13 @@ void CRotateImage::Translate(int _dx, int _dy)
     stbi_uc* p_target;
     stbi_uc* p_source;
 
-    RGBImageLock();
+    uint8_t* source = RGBImageLock();
+    if (source == NULL) {
+        if (ImageTMP) ImageTMP->RGBImageRelease();
+        else free_psram_heap(std::string(TAG) + "->odata", odata);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: source image is unavailable");
+        return;
+    }
 
     // y outer / x inner: write the target (and mostly read the source) sequentially in PSRAM
     for (int y = 0; y < height; ++y)
@@ -298,7 +381,7 @@ void CRotateImage::Translate(int _dx, int _dy)
 
             if ((x_source >= 0) && (x_source < width) && (y_source >= 0) && (y_source < height))
             {
-                p_source = rgb_image + (channels * (y_source * width + x_source));
+                p_source = source + (channels * (y_source * width + x_source));
                 for (int _channels = 0; _channels < channels; ++_channels)
                     p_target[_channels] = p_source[_channels];
             }
@@ -310,7 +393,7 @@ void CRotateImage::Translate(int _dx, int _dy)
         }
 
     //    memcpy(rgb_image, odata, memsize);
-    memCopy(odata, rgb_image, memsize);
+    memCopy(odata, source, memsize);
     if (!ImageTMP)
     {
         free_psram_heap(std::string(TAG) + "->odata", odata);

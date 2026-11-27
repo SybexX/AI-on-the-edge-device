@@ -43,6 +43,7 @@ class CImageBasis
 {
     protected:
         bool externalImage;
+        bool ownsSharedTempImageLease = false;
         std::string filename;
         std::string name; // Just used for diagnostics
         int memsize = 0;
@@ -75,7 +76,7 @@ class CImageBasis
         bool ImageOkay();
         bool CopyFromMemory(uint8_t* _source, int _size);
 
-        void SetIndepended(){externalImage = false; memsize = width * height * channels;};
+        bool SetIndepended();
 
         void CreateEmptyImage(int _width, int _height, int _channels);
         void EmptyImage();
