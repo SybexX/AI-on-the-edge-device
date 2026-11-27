@@ -727,7 +727,7 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
     bool _sendDelete = false;
 
     if (_fn == "alg.jpg") {
-        if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
+        if (flowalignment && flowalignment->ImageBasis && flowalignment->ImageBasis->ImageOkay()) {
             _send = flowalignment->ImageBasis;
         }
         else {
@@ -832,7 +832,7 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
                 }
                 else {
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: alg_roi.jpg cannot be served -> alg.jpg is going to be served!");
-                    if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
+                    if (flowalignment && flowalignment->ImageBasis && flowalignment->ImageBasis->ImageOkay()) {
                         _send = flowalignment->ImageBasis;
                     }
                     else {
@@ -842,13 +842,14 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
                 }
             }
             else {
-                if (flowalignment && flowalignment->AlgROI) {
+                if (flowalignment && flowalignment->AlgROI &&
+                    flowalignment->AlgROI->size > 0 && flowalignment->AlgROI->size <= MAX_JPG_SIZE) {
                     httpd_resp_set_type(req, "image/jpeg");
                     result = httpd_resp_send(req, (const char *)flowalignment->AlgROI->data, flowalignment->AlgROI->size);
                 }
                 else {
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: alg_roi.jpg cannot be served -> alg.jpg is going to be served!");
-                    if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: alg_roi.jpg is unavailable -> alg.jpg is going to be served!");
+                    if (flowalignment && flowalignment->ImageBasis && flowalignment->ImageBasis->ImageOkay()) {
                         _send = flowalignment->ImageBasis;
                     }
                     else {

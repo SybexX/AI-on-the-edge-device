@@ -582,39 +582,58 @@ bool ClassFlowCNNGeneral::doAlignAndCut(string time) {
         return true;
     }
 
-    CAlignAndCutImage *caic = flowpostalignment->GetAlignAndCutImage();    
+    if (flowpostalignment == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Alignment flow is unavailable");
+        return false;
+    }
+    CAlignAndCutImage *caic = flowpostalignment->GetAlignAndCutImage();
+    if (caic == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Aligned source image is unavailable");
+        return false;
+    }
 
     for (int _ana = 0; _ana < GENERAL.size(); ++_ana) {
         for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i) {
+            roi *region = GENERAL[_ana]->ROI[i];
+            if (region == NULL || region->image_org == NULL || region->image == NULL) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI image buffers are unavailable");
+                return false;
+            }
             ESP_LOGD(TAG, "General %d - Align&Cut", i);
-            
-            caic->CutAndSave(GENERAL[_ana]->ROI[i]->posx, GENERAL[_ana]->ROI[i]->posy, GENERAL[_ana]->ROI[i]->deltax, GENERAL[_ana]->ROI[i]->deltay, GENERAL[_ana]->ROI[i]->image_org);
-            if (SaveAllFiles) {
-                if (GENERAL[_ana]->name == "default") {
-                    GENERAL[_ana]->ROI[i]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
-                }
-                else {
-                    GENERAL[_ana]->ROI[i]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
-                }
-            } 
 
-            GENERAL[_ana]->ROI[i]->image_org->Resize(modelxsize, modelysize, GENERAL[_ana]->ROI[i]->image);
+            caic->CutAndSave(region->posx, region->posy, region->deltax, region->deltay, region->image_org);
+            if (!region->image_org->ImageOkay()) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI crop failed");
+                return false;
+            }
             if (SaveAllFiles) {
                 if (GENERAL[_ana]->name == "default") {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    region->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + region->name + ".jpg"));
+                } else {
+                    region->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + region->name + ".jpg"));
                 }
-                else {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+            }
+
+            region->image_org->Resize(modelxsize, modelysize, region->image);
+            if (!region->image->ImageOkay()) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI resize failed");
+                return false;
+            }
+            if (SaveAllFiles) {
+                if (GENERAL[_ana]->name == "default") {
+                    region->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + region->name + ".jpg"));
+                } else {
+                    region->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + region->name + ".jpg"));
                 }
-            } 
+            }
         }
     }
-
     return true;
 } 
 
 void ClassFlowCNNGeneral::DrawROI(CImageBasis *_zw) {
-    if (_zw->ImageOkay()) { 
+    if (_zw == NULL || !_zw->ImageOkay()) return;
+    { 
         if (CNNType == Analogue || CNNType == Analogue100) {
             int r = 0;
             int g = 255;
