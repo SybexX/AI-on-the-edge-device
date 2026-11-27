@@ -6,6 +6,22 @@
 
 static const char *TAG = "C ROTATE IMG";
 
+class ScopedImageAccess
+{
+    CImageBasis* image;
+    bool locked;
+public:
+    explicit ScopedImageAccess(CImageBasis* value) : image(value), locked(false)
+    {
+        if (image != NULL) locked = image->RGBImageLock() != NULL;
+    }
+    ~ScopedImageAccess()
+    {
+        if (locked) image->RGBImageRelease();
+    }
+    bool isLocked() const { return locked; }
+};
+
 static bool getRotateBufferSize(int width, int height, int channels, size_t* size)
 {
     if (size == NULL || width <= 0 || height <= 0 || channels <= 0) return false;
@@ -41,6 +57,11 @@ CRotateImage::CRotateImage(std::string _name, CImageBasis *_org, CImageBasis *_t
 
 void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
 {
+    ScopedImageAccess sourceAccess(ImageOrg != NULL ? ImageOrg : this);
+    if (!sourceAccess.isLocked()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: unable to lock source image");
+        return;
+    }
     if ((_angle == 0) && !doflip) {  // identity transform, the copy would leave the image unchanged
         return;
     }
@@ -174,6 +195,11 @@ void CRotateImage::Rotate(float _angle, int _centerx, int _centery)
 
 void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
 {
+    ScopedImageAccess sourceAccess(ImageOrg != NULL ? ImageOrg : this);
+    if (!sourceAccess.isLocked()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: unable to lock source image");
+        return;
+    }
     int org_width, org_height;
     float m[2][3];
 
@@ -323,18 +349,33 @@ void CRotateImage::RotateAntiAliasing(float _angle, int _centerx, int _centery)
 
 void CRotateImage::Rotate(float _angle)
 {
+    ScopedImageAccess sourceAccess(ImageOrg != NULL ? ImageOrg : this);
+    if (!sourceAccess.isLocked()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: unable to lock source image");
+        return;
+    }
 //    ESP_LOGD(TAG, "width %d, height %d", width, height);
     Rotate(_angle, width / 2, height / 2);
 }
 
 void CRotateImage::RotateAntiAliasing(float _angle)
 {
+    ScopedImageAccess sourceAccess(ImageOrg != NULL ? ImageOrg : this);
+    if (!sourceAccess.isLocked()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: unable to lock source image");
+        return;
+    }
 //    ESP_LOGD(TAG, "width %d, height %d", width, height);
     RotateAntiAliasing(_angle, width / 2, height / 2);
 }
 
 void CRotateImage::Translate(int _dx, int _dy)
 {
+    ScopedImageAccess sourceAccess(ImageOrg != NULL ? ImageOrg : this);
+    if (!sourceAccess.isLocked()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image transform: unable to lock source image");
+        return;
+    }
     if ((_dx == 0) && (_dy == 0)) {  // identity transform, the copy would leave the image unchanged
         return;
     }
