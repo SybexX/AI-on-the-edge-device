@@ -86,9 +86,39 @@ bool CImageBasis::SetIndepended()
 {
     size_t size = 0;
     if (rgb_image == nullptr || !getImageBufferSize(width, height, channels, &size)) return false;
-    externalImage = false;
+
+    // The current buffer may belong to the camera or to the shared tmpImage
+    // lease. Never just flip the ownership flag: first make an independent copy.
+    uint8_t* independent = static_cast<uint8_t*>(malloc_psram_heap(
+        std::string(TAG) + "->SetIndepended (" + name + ")", size,
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (independent == nullptr) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SetIndepended: PSRAM allocation failed");
+        return false;
+    }
+
+    uint8_t* source = RGBImageLock();
+    if (source == nullptr) {
+        free_psram_heap(std::string(TAG) + "->SetIndepended failed (" + name + ")", independent);
+        return false;
+    }
+    memCopy(source, independent, static_cast<int>(size));
+    RGBImageRelease();
+
+    uint8_t* previous = rgb_image;
+    const bool previousExternal = externalImage;
+    const int previousSize = memsize;
+    const bool previousSharedLease = ownsSharedTempImageLease;
+
+    rgb_image = independent;
     memsize = static_cast<int>(size);
+    externalImage = false;
     ownsSharedTempImageLease = false;
+
+    if (!previousExternal) {
+        releaseOwnedImageBuffer(std::string(TAG) + "->SetIndepended old", name,
+                                previous, previousSize, previousSharedLease);
+    }
     return true;
 }
 
