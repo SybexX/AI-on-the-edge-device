@@ -357,7 +357,7 @@ esp_err_t CCamera::ApplySettings(CameraSettings &settings)
         return ESP_FAIL;
     }
 
-    if (settings.CamXclkFreqMhz < 8 || settings.CamXclkFreqMhz > 40)
+    if (settings.CamXclkFreqMhz < 1 || settings.CamXclkFreqMhz > 20)
     {
         settings.CamXclkFreqMhz = xclk;
     }
@@ -442,7 +442,7 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
         isSupportedFrameSize(frameSize) ? frameSize : static_cast<int>(FRAMESIZE_VGA));
 
     CCstatus.CamXclkFreqMhz = sensorValueOrDefault(
-        static_cast<int>(s->xclk_freq_hz / 1000000U), xclk, 8, 40);
+        static_cast<int>(s->xclk_freq_hz / 1000000U), xclk, 1, 20);
     CCstatus.ImageContrast = sensorValueOrDefault(s->status.contrast, 0, -2, 2);
     CCstatus.ImageBrightness = sensorValueOrDefault(s->status.brightness, 0, -2, 2);
     CCstatus.ImageSaturation = sensorValueOrDefault(s->status.saturation, 0, -2, 2);

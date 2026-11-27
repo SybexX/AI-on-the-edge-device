@@ -849,12 +849,21 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 _host = std::string(_valuechar);
             }
 
+            if (httpd_query_key_value(_query, "xclk", _valuechar, 30) == ESP_OK)
+            {
+                const std::string _xclk = std::string(_valuechar);
+                if (isStringNumeric(_xclk))
+                {
+                    CFstatus.CamXclkFreqMhz = clipInt(std::stoi(_xclk), 20, 1);
+                }
+            }
+
             if (httpd_query_key_value(_query, "waitb", _valuechar, 30) == ESP_OK)
             {
                 std::string _waitb = std::string(_valuechar);
                 if (isStringNumeric(_waitb))
                 {
-                    CFstatus.WaitBeforePicture = std::stoi(_valuechar);
+                    CFstatus.WaitBeforePicture = std::max(0, std::stoi(_valuechar));
                 }
             }
 

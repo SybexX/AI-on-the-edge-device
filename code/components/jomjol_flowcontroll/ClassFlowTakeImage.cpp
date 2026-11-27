@@ -113,14 +113,15 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
             if (isStringNumeric(splitted[1]))
             {
                 int _WaitBeforePicture = std::stoi(splitted[1]);
-                if (_WaitBeforePicture != 0)
-                {
-                    CCstatus.WaitBeforePicture = _WaitBeforePicture;
-                }
-                else
-                {
-                    CCstatus.WaitBeforePicture = 2;
-                }
+                CCstatus.WaitBeforePicture = (_WaitBeforePicture != 0) ? max(0, _WaitBeforePicture) : 2;
+            }
+        }
+
+        else if ((toUpper(splitted[0]) == "CAMXCLKFREQMHZ") && (splitted.size() > 1))
+        {
+            if (isStringNumeric(splitted[1]))
+            {
+                CCstatus.CamXclkFreqMhz = clipInt(std::stoi(splitted[1]), 20, 1);
             }
         }
 
