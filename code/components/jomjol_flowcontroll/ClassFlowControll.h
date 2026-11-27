@@ -71,7 +71,7 @@ public:
 	#endif
 
 	esp_err_t GetJPGStream(std::string _fn, httpd_req_t *req);
-	esp_err_t SendRawJPG(httpd_req_t *req, bool previewCapture);
+	esp_err_t SendRawJPG(httpd_req_t *req);
 
 	std::string doSingleStep(std::string _stepname, std::string _host);
 

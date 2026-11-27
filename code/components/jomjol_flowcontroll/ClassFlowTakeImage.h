@@ -30,7 +30,7 @@ public:
     time_t getTimeImageTaken(void);
     string name() { return "ClassFlowTakeImage"; };
 
-    esp_err_t SendRawJPG(httpd_req_t *req, bool previewCapture);
+    esp_err_t SendRawJPG(httpd_req_t *req);
 
     ~ClassFlowTakeImage(void);
 };

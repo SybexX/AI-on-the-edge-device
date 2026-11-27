@@ -347,19 +347,9 @@ esp_err_t img_tmp_virtual_handler(httpd_req_t *req)
     filetosend = std::string(filename);
     ESP_LOGD(TAG, "File to upload: %s", filetosend.c_str());
 
-    // Only the test_take URL opts into temporary preview settings.
+    // Serve raw.jpg
     if (filetosend == "raw.jpg")
-    {
-        bool previewCapture = false;
-        char query[64] = "";
-        char preview[8] = "";
-        if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
-            httpd_query_key_value(query, "preview", preview, sizeof(preview)) == ESP_OK)
-        {
-            previewCapture = (strcmp(preview, "1") == 0);
-        }
-        return GetRawJPG(req, previewCapture);
-    } 
+        return GetRawJPG(req); 
 
     // Serve alg.jpg, alg_roi.jpg or digit and analog ROIs
     if (ESP_OK == GetJPG(filetosend, req))

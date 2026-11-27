@@ -90,9 +90,9 @@ esp_err_t GetJPG(std::string _filename, httpd_req_t *req)
     return flowctrl.GetJPGStream(_filename, req);
 }
 
-esp_err_t GetRawJPG(httpd_req_t *req, bool previewCapture)
+esp_err_t GetRawJPG(httpd_req_t *req)
 {
-    return flowctrl.SendRawJPG(req, previewCapture);
+    return flowctrl.SendRawJPG(req);
 }
 
 bool isSetupModusActive(void)
@@ -150,6 +150,25 @@ bool doflow(void)
 #endif
 
     return true;
+}
+
+esp_err_t setCCstatusToCFstatus(void)
+{
+    static_cast<CameraSettings &>(CFstatus) =
+        static_cast<const CameraSettings &>(CCstatus);
+    return ESP_OK;
+}
+
+esp_err_t setCFstatusToCCstatus(void)
+{
+    static_cast<CameraSettings &>(CCstatus) =
+        static_cast<const CameraSettings &>(CFstatus);
+    return ESP_OK;
+}
+
+esp_err_t setCFstatusToCam(void)
+{
+    return Camera.ApplySettings(CFstatus);
 }
 
 esp_err_t handler_get_heap(httpd_req_t *req)
@@ -822,16 +841,8 @@ esp_err_t handler_editflow(httpd_req_t *req)
         {
             std::string _host = "";
 
-            // CFstatus is only used as the temporary settings copy for test_take.
-            const bool isTestTake = (_task.compare("test_take") == 0);
-            CameraSettings *settingsTarget = &static_cast<CameraSettings &>(CCstatus);
-            if (isTestTake)
-            {
-                static_cast<CameraSettings &>(CFstatus) =
-                    static_cast<const CameraSettings &>(CCstatus);
-                settingsTarget = &static_cast<CameraSettings &>(CFstatus);
-            }
-            CameraSettings &settings = *settingsTarget;
+            // laden der aktuellen Kameraeinstellungen(CCstatus) in den Zwischenspeicher(CFstatus)
+            setCCstatusToCFstatus(); // CCstatus >>> CFstatus
 
             if (httpd_query_key_value(_query, "host", _valuechar, 30) == ESP_OK)
             {
@@ -843,7 +854,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 std::string _xclk = std::string(_valuechar);
                 if (isStringNumeric(_xclk))
                 {
-                    settings.CamXclkFreqMhz = clipInt(std::stoi(_xclk), 20, 1);
+                    CFstatus.CamXclkFreqMhz = clipInt(std::stoi(_xclk), 20, 1);
                 }
             }
 
@@ -852,7 +863,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 std::string _waitb = std::string(_valuechar);
                 if (isStringNumeric(_waitb))
                 {
-                    settings.WaitBeforePicture = std::max(0, std::stoi(_valuechar));
+                    CFstatus.WaitBeforePicture = std::max(0, std::stoi(_valuechar));
                 }
             }
 
@@ -865,49 +876,49 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     switch (_aecgc_)
                     {
                         case 1:
-                            settings.ImageGainceiling = GAINCEILING_4X; 
+                            CFstatus.ImageGainceiling = GAINCEILING_4X; 
                             break;
                         case 2:
-                            settings.ImageGainceiling = GAINCEILING_8X; 
+                            CFstatus.ImageGainceiling = GAINCEILING_8X; 
                             break;
                         case 3:
-                            settings.ImageGainceiling = GAINCEILING_16X; 
+                            CFstatus.ImageGainceiling = GAINCEILING_16X; 
                             break;
                         case 4:
-                            settings.ImageGainceiling = GAINCEILING_32X; 
+                            CFstatus.ImageGainceiling = GAINCEILING_32X; 
                             break;
                         case 5:
-                            settings.ImageGainceiling = GAINCEILING_64X; 
+                            CFstatus.ImageGainceiling = GAINCEILING_64X; 
                             break;
                         case 6:
-                            settings.ImageGainceiling = GAINCEILING_128X; 
+                            CFstatus.ImageGainceiling = GAINCEILING_128X; 
                             break;
                         default:
-                            settings.ImageGainceiling = GAINCEILING_2X;
+                            CFstatus.ImageGainceiling = GAINCEILING_2X;
                     }
                 }
                 else
                 {
                     if (_aecgc == "X4") {
-                        settings.ImageGainceiling = GAINCEILING_4X;
+                        CFstatus.ImageGainceiling = GAINCEILING_4X;
                     }
                     else if (_aecgc == "X8") {
-                        settings.ImageGainceiling = GAINCEILING_8X;
+                        CFstatus.ImageGainceiling = GAINCEILING_8X;
                     }
                     else if (_aecgc == "X16") {
-                        settings.ImageGainceiling = GAINCEILING_16X;
+                        CFstatus.ImageGainceiling = GAINCEILING_16X;
                     }
                     else if (_aecgc == "X32") {
-                        settings.ImageGainceiling = GAINCEILING_32X;
+                        CFstatus.ImageGainceiling = GAINCEILING_32X;
                     }
                     else if (_aecgc == "X64") {
-                        settings.ImageGainceiling = GAINCEILING_64X;
+                        CFstatus.ImageGainceiling = GAINCEILING_64X;
                     }
                     else if (_aecgc == "X128") {
-                        settings.ImageGainceiling = GAINCEILING_128X;
+                        CFstatus.ImageGainceiling = GAINCEILING_128X;
                     }
                     else {
-                        settings.ImageGainceiling = GAINCEILING_2X;
+                        CFstatus.ImageGainceiling = GAINCEILING_2X;
                     }
                 }
             }
@@ -918,7 +929,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_qual))
                 {
                     int _qual_ = std::stoi(_valuechar);
-                    settings.ImageQuality = clipInt(_qual_, 63, 6);
+                    CFstatus.ImageQuality = clipInt(_qual_, 63, 6);
                 }
             }
 
@@ -928,7 +939,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_bri))
                 {
                     int _bri_ = std::stoi(_valuechar);
-                    settings.ImageBrightness = clipInt(_bri_, 2, -2);
+                    CFstatus.ImageBrightness = clipInt(_bri_, 2, -2);
                 }
             }
 
@@ -938,7 +949,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_con))
                 {
                     int _con_ = std::stoi(_valuechar);
-                    settings.ImageContrast = clipInt(_con_, 2, -2);
+                    CFstatus.ImageContrast = clipInt(_con_, 2, -2);
                 }
             }
 
@@ -948,7 +959,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_sat))
                 {
                     int _sat_ = std::stoi(_valuechar);
-                    settings.ImageSaturation = clipInt(_sat_, 2, -2);
+                    CFstatus.ImageSaturation = clipInt(_sat_, 2, -2);
                 }
             }
 
@@ -960,11 +971,11 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     int _shp_ = std::stoi(_valuechar);
                     if (CCstatus.CamSensor_id == OV2640_PID)
                     {
-                        settings.ImageSharpness = clipInt(_shp_, 2, -2);
+                        CFstatus.ImageSharpness = clipInt(_shp_, 2, -2);
                     }
                     else
                     {
-                        settings.ImageSharpness = clipInt(_shp_, 3, -3);
+                        CFstatus.ImageSharpness = clipInt(_shp_, 3, -3);
                     }
                 }
             }
@@ -972,7 +983,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
             if (httpd_query_key_value(_query, "ashp", _valuechar, 30) == ESP_OK)
             {
                 std::string _ashp = std::string(_valuechar);
-                settings.ImageAutoSharpness = alphanumericToBoolean(_ashp);
+                CFstatus.ImageAutoSharpness = alphanumericToBoolean(_ashp);
             }
 
             if (httpd_query_key_value(_query, "spe", _valuechar, 30) == ESP_OK)
@@ -981,30 +992,30 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_spe))
                 {
                     int _spe_ = std::stoi(_valuechar);
-                    settings.ImageSpecialEffect = clipInt(_spe_, 6, 0);
+                    CFstatus.ImageSpecialEffect = clipInt(_spe_, 6, 0);
                 }
                 else
                 {
                     if (_spe == "negative") {
-                        settings.ImageSpecialEffect = 1;
+                        CFstatus.ImageSpecialEffect = 1;
                     }
                     else if (_spe == "grayscale") {
-                        settings.ImageSpecialEffect = 2;
+                        CFstatus.ImageSpecialEffect = 2;
                     }
                     else if (_spe == "red") {
-                        settings.ImageSpecialEffect = 3;
+                        CFstatus.ImageSpecialEffect = 3;
                     }
                     else if (_spe == "green") {
-                        settings.ImageSpecialEffect = 4;
+                        CFstatus.ImageSpecialEffect = 4;
                     }
                     else if (_spe == "blue") {
-                        settings.ImageSpecialEffect = 5;
+                        CFstatus.ImageSpecialEffect = 5;
                     }
                     else if (_spe == "retro") {
-                        settings.ImageSpecialEffect = 6;
+                        CFstatus.ImageSpecialEffect = 6;
                     }
                     else {
-                        settings.ImageSpecialEffect = 0;
+                        CFstatus.ImageSpecialEffect = 0;
                     }
                 }
             }
@@ -1015,24 +1026,24 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_wbm))
                 {
                     int _wbm_ = std::stoi(_valuechar);
-                    settings.ImageWbMode = clipInt(_wbm_, 4, 0);
+                    CFstatus.ImageWbMode = clipInt(_wbm_, 4, 0);
                 }
                 else
                 {
                     if (_wbm == "sunny") {
-                        settings.ImageWbMode = 1;
+                        CFstatus.ImageWbMode = 1;
                     }
                     else if (_wbm == "cloudy") {
-                        settings.ImageWbMode = 2;
+                        CFstatus.ImageWbMode = 2;
                     }
                     else if (_wbm == "office") {
-                        settings.ImageWbMode = 3;
+                        CFstatus.ImageWbMode = 3;
                     }
                     else if (_wbm == "home") {
-                        settings.ImageWbMode = 4;
+                        CFstatus.ImageWbMode = 4;
                     }
                     else {
-                        settings.ImageWbMode = 0;
+                        CFstatus.ImageWbMode = 0;
                     }
                 }
             }
@@ -1040,25 +1051,25 @@ esp_err_t handler_editflow(httpd_req_t *req)
             if (httpd_query_key_value(_query, "awb", _valuechar, 30) == ESP_OK)
             {
                 std::string _awb = std::string(_valuechar);
-                settings.ImageAwb = alphanumericToBoolean(_awb);
+                CFstatus.ImageAwb = alphanumericToBoolean(_awb);
             }
 
             if (httpd_query_key_value(_query, "awbg", _valuechar, 30) == ESP_OK)
             {
                 std::string _awbg = std::string(_valuechar);
-                settings.ImageAwbGain = alphanumericToBoolean(_awbg);
+                CFstatus.ImageAwbGain = alphanumericToBoolean(_awbg);
             }
 
             if (httpd_query_key_value(_query, "aec", _valuechar, 30) == ESP_OK)
             {
                 std::string _aec = std::string(_valuechar);
-                settings.ImageAec = alphanumericToBoolean(_aec);
+                CFstatus.ImageAec = alphanumericToBoolean(_aec);
             }
 
             if (httpd_query_key_value(_query, "aec2", _valuechar, 30) == ESP_OK)
             {
                 std::string _aec2 = std::string(_valuechar);
-                settings.ImageAec2 = alphanumericToBoolean(_aec2);
+                CFstatus.ImageAec2 = alphanumericToBoolean(_aec2);
             }
 
             if (httpd_query_key_value(_query, "ael", _valuechar, 30) == ESP_OK)
@@ -1069,11 +1080,11 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     int _ael_ = std::stoi(_valuechar);
                     if (CCstatus.CamSensor_id == OV2640_PID)
                     {
-                        settings.ImageAeLevel = clipInt(_ael_, 2, -2);
+                        CFstatus.ImageAeLevel = clipInt(_ael_, 2, -2);
                     }
                     else
                     {
-                        settings.ImageAeLevel = clipInt(_ael_, 5, -5);
+                        CFstatus.ImageAeLevel = clipInt(_ael_, 5, -5);
                     }
                 }
             }
@@ -1084,14 +1095,14 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_aecv))
                 {
                     int _aecv_ = std::stoi(_valuechar);
-                    settings.ImageAecValue = clipInt(_aecv_, 1200, 0);
+                    CFstatus.ImageAecValue = clipInt(_aecv_, 1200, 0);
                 }
             }
 
             if (httpd_query_key_value(_query, "agc", _valuechar, 30) == ESP_OK)
             {
                 std::string _agc = std::string(_valuechar);
-                settings.ImageAgc = alphanumericToBoolean(_agc);
+                CFstatus.ImageAgc = alphanumericToBoolean(_agc);
             }
 
             if (httpd_query_key_value(_query, "agcg", _valuechar, 30) == ESP_OK)
@@ -1100,50 +1111,50 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_agcg))
                 {
                     int _agcg_ = std::stoi(_valuechar);
-                    settings.ImageAgcGain = clipInt(_agcg_, 30, 0);
+                    CFstatus.ImageAgcGain = clipInt(_agcg_, 30, 0);
                 }
             }
 
             if (httpd_query_key_value(_query, "bpc", _valuechar, 30) == ESP_OK)
             {
                 std::string _bpc = std::string(_valuechar);
-                settings.ImageBpc = alphanumericToBoolean(_bpc);
+                CFstatus.ImageBpc = alphanumericToBoolean(_bpc);
             }
 
             if (httpd_query_key_value(_query, "wpc", _valuechar, 30) == ESP_OK)
             {
                 std::string _wpc = std::string(_valuechar);
-                settings.ImageWpc = alphanumericToBoolean(_wpc);
+                CFstatus.ImageWpc = alphanumericToBoolean(_wpc);
             }
 
             if (httpd_query_key_value(_query, "rgma", _valuechar, 30) == ESP_OK)
             {
                 std::string _rgma = std::string(_valuechar);
-                settings.ImageRawGma = alphanumericToBoolean(_rgma);
+                CFstatus.ImageRawGma = alphanumericToBoolean(_rgma);
             }
 
             if (httpd_query_key_value(_query, "lenc", _valuechar, 30) == ESP_OK)
             {
                 std::string _lenc = std::string(_valuechar);
-                settings.ImageLenc = alphanumericToBoolean(_lenc);
+                CFstatus.ImageLenc = alphanumericToBoolean(_lenc);
             }
 
             if (httpd_query_key_value(_query, "mirror", _valuechar, 30) == ESP_OK)
             {
                 std::string _mirror = std::string(_valuechar);
-                settings.ImageHmirror = alphanumericToBoolean(_mirror);
+                CFstatus.ImageHmirror = alphanumericToBoolean(_mirror);
             }
 
             if (httpd_query_key_value(_query, "flip", _valuechar, 30) == ESP_OK)
             {
                 std::string _flip = std::string(_valuechar);
-                settings.ImageVflip = alphanumericToBoolean(_flip);
+                CFstatus.ImageVflip = alphanumericToBoolean(_flip);
             }
 
             if (httpd_query_key_value(_query, "dcw", _valuechar, 30) == ESP_OK)
             {
                 std::string _dcw = std::string(_valuechar);
-                settings.ImageDcw = alphanumericToBoolean(_dcw);
+                CFstatus.ImageDcw = alphanumericToBoolean(_dcw);
             }
 
             if (httpd_query_key_value(_query, "den", _valuechar, 30) == ESP_OK)
@@ -1154,11 +1165,11 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     int _ImageDenoiseLevel = std::stoi(_valuechar);
                     if (CCstatus.CamSensor_id == OV2640_PID)
                     {
-                        settings.ImageDenoiseLevel = 0;
+                        CFstatus.ImageDenoiseLevel = 0;
                     }
                     else
                     {
-                        settings.ImageDenoiseLevel = clipInt(_ImageDenoiseLevel, 8, 0);
+                        CFstatus.ImageDenoiseLevel = clipInt(_ImageDenoiseLevel, 8, 0);
                     }
                 }
             }
@@ -1166,7 +1177,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
             if (httpd_query_key_value(_query, "zoom", _valuechar, 30) == ESP_OK)
             {
                 std::string _zoom = std::string(_valuechar);
-                settings.ImageZoomEnabled = alphanumericToBoolean(_zoom);
+                CFstatus.ImageZoomEnabled = alphanumericToBoolean(_zoom);
             }
 
             if (httpd_query_key_value(_query, "zoomx", _valuechar, 30) == ESP_OK)
@@ -1177,15 +1188,15 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     int _ImageZoomOffsetX = std::stoi(_valuechar);
                     if (CCstatus.CamSensor_id == OV2640_PID)
                     {
-                        settings.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 480, -480);
+                        CFstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 480, -480);
                     }
                     else if (CCstatus.CamSensor_id == OV3660_PID)
                     {
-                        settings.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 704, -704);
+                        CFstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 704, -704);
                     }
                     else if (CCstatus.CamSensor_id == OV5640_PID)
                     {
-                        settings.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 960, -960);
+                        CFstatus.ImageZoomOffsetX = clipInt(_ImageZoomOffsetX, 960, -960);
                     }
                 }
             }
@@ -1198,15 +1209,15 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     int _ImageZoomOffsetY = std::stoi(_valuechar);
                     if (CCstatus.CamSensor_id == OV2640_PID)
                     {
-                        settings.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 360, -360);
+                        CFstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 360, -360);
                     }
                     else if (CCstatus.CamSensor_id == OV3660_PID)
                     {
-                        settings.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 528, -528);
+                        CFstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 528, -528);
                     }
                     else if (CCstatus.CamSensor_id == OV5640_PID)
                     {
-                        settings.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 720, -720);
+                        CFstatus.ImageZoomOffsetY = clipInt(_ImageZoomOffsetY, 720, -720);
                     }
                 }
             }
@@ -1219,15 +1230,15 @@ esp_err_t handler_editflow(httpd_req_t *req)
                     int _ImageZoomSize = std::stoi(_valuechar);
                     if (CCstatus.CamSensor_id == OV2640_PID)
                     {
-                        settings.ImageZoomSize = clipInt(_ImageZoomSize, 29, 0);
+                        CFstatus.ImageZoomSize = clipInt(_ImageZoomSize, 29, 0);
                     }
                     else if (CCstatus.CamSensor_id == OV3660_PID)
                     {
-                        settings.ImageZoomSize = clipInt(_ImageZoomSize, 43, 0);
+                        CFstatus.ImageZoomSize = clipInt(_ImageZoomSize, 43, 0);
                     }
                     else if (CCstatus.CamSensor_id == OV5640_PID)
                     {
-                        settings.ImageZoomSize = clipInt(_ImageZoomSize, 59, 0);
+                        CFstatus.ImageZoomSize = clipInt(_ImageZoomSize, 59, 0);
                     }
                 }
             }
@@ -1238,18 +1249,18 @@ esp_err_t handler_editflow(httpd_req_t *req)
                 if (isStringNumeric(_ledi))
                 {
                     int _ImageLedIntensity = std::stoi(_valuechar);
-                    settings.ImageLedIntensity = Camera.SetLEDIntensity(_ImageLedIntensity);
+                    CFstatus.ImageLedIntensity = Camera.SetLEDIntensity(_ImageLedIntensity);
                 }
             }
 
-            if (!isTestTake)
+            if (_task.compare("cam_settings") == 0)
             {
-                // Saved camera settings are committed in CCstatus.
-                if (Camera.setSensorDatenFromCCstatus() != ESP_OK)
-                {
-                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not apply committed camera settings");
-                    return ESP_FAIL;
-                }
+                // wird aufgerufen, wenn das Referenzbild + Kameraeinstellungen gespeichert wurden
+                setCFstatusToCCstatus(); // CFstatus >>> CCstatus
+                CFstatus.previewCapturePending = false;
+
+                // Kameraeinstellungen wurden verädert
+                CFstatus.changedCameraSettings = true;
 
                 ESP_LOGD(TAG, "Cam Settings set");
                 std::string _zw = "CamSettingsSet";
@@ -1258,22 +1269,19 @@ esp_err_t handler_editflow(httpd_req_t *req)
             }
             else
             {
-                // Only test_take applies temporary camera settings.
-                if (Camera.ApplyPreviewSettings(settings) != ESP_OK)
+                // wird aufgerufen, wenn ein neues Referenzbild erstellt oder aktualisiert wurde
+                // CFstatus >>> Kamera
+                if (setCFstatusToCam() != ESP_OK)
                 {
                     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not apply temporary camera settings");
                     return ESP_FAIL;
                 }
 
+                CFstatus.changedCameraSettings = true;
+                CFstatus.previewCapturePending = true;
+
                 ESP_LOGD(TAG, "test_take - vor TakeImage");
                 std::string image_temp = flowctrl.doSingleStep("[TakeImage]", _host);
-                const std::string rawImagePath = "/img_tmp/raw.jpg";
-                const std::size_t rawImagePosition = image_temp.find(rawImagePath);
-                if (rawImagePosition != std::string::npos)
-                {
-                    image_temp.replace(rawImagePosition, rawImagePath.length(),
-                                       rawImagePath + "?preview=1");
-                }
                 httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
                 httpd_resp_send(req, image_temp.c_str(), image_temp.length());
             }
