@@ -383,7 +383,13 @@ void CImageBasis::CreateEmptyImage(int _width, int _height, int _channels)
         LogFile.WriteHeapInfo("CreateEmptyImage");
         return;
     }
-    if (rgb_image != nullptr && !externalImage) stbi_image_free(rgb_image);
+    if (rgb_image != nullptr && !externalImage) {
+        if (memsize == 0) {
+            stbi_image_free(rgb_image);
+        } else {
+            free_psram_heap(std::string(TAG) + "->CImageBasis (" + name + ", " + std::to_string(memsize) + ")", rgb_image);
+        }
+    }
     rgb_image = newImage;
     width = _width; height = _height; channels = _channels; bpp = _channels;
     memsize = static_cast<int>(newSize);
@@ -407,8 +413,13 @@ void CImageBasis::LoadFromMemory(stbi_uc *_buffer, int len)
 {
     RGBImageLock();
     if (rgb_image != NULL && !externalImage) {
-        if (name == "tmpImage" && memsize > 0) psram_free_shared_temp_image_memory();
-        else stbi_image_free(rgb_image);
+        if (name == "tmpImage" && memsize > 0) {
+            psram_free_shared_temp_image_memory();
+        } else if (memsize == 0) {
+            stbi_image_free(rgb_image);
+        } else {
+            free_psram_heap(std::string(TAG) + "->CImageBasis (" + name + ", " + std::to_string(memsize) + ")", rgb_image);
+        }
     }
     rgb_image = stbi_load_from_memory(_buffer, len, &width, &height, &channels, STBI_rgb);
     memsize = 0;
