@@ -774,49 +774,42 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
     uint8_t *buf = NULL;
     size_t buf_len = 0;
     bool converted = false;
+    bool captureOkay = false;
 
-    if (ftype.compare("BMP") == 0)
-    {
-        frame2bmp(fb, &buf, &buf_len);
+    if (ftype == "BMP") {
         converted = true;
-    }
-
-    if (ftype.compare("JPG") == 0)
-    {
-        if (fb->format != PIXFORMAT_JPEG)
-        {
-            bool jpeg_converted = frame2jpg(fb, CCstatus.ImageQuality, &buf, &buf_len);
-            converted = true;
-
-            if (!jpeg_converted)
-            {
-                ESP_LOGE(TAG, "JPEG compression failed");
-            }
-        }
-        else
-        {
+        captureOkay = frame2bmp(fb, &buf, &buf_len) && buf != NULL && buf_len > 0;
+    } else if (ftype == "JPG") {
+        if (fb->format == PIXFORMAT_JPEG) {
             buf_len = fb->len;
             buf = fb->buf;
+            captureOkay = (buf != NULL && buf_len > 0);
+        } else {
+            converted = true;
+            captureOkay = frame2jpg(fb, CCstatus.ImageQuality, &buf, &buf_len) &&
+                          buf != NULL && buf_len > 0;
+            if (!captureOkay) ESP_LOGE(TAG, "JPEG compression failed");
         }
     }
 
-    FILE *fp = fopen(nm.c_str(), "wb");
+    if (captureOkay) {
+        FILE *fp = fopen(nm.c_str(), "wb");
+        if (fp == NULL) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToFile: Failed to open file " + nm);
+            captureOkay = false;
+        } else {
+            const size_t written = fwrite(buf, 1, buf_len, fp);
+            const int closeResult = fclose(fp);
+            if (written != buf_len || closeResult != 0) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToFile: incomplete write to " + nm);
+                captureOkay = false;
+            }
+        }
+    } else {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToFile: unsupported image format or conversion failed");
+    }
 
-    if (fp == NULL)
-    {
-        // If an error occurs during the file creation
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToFile: Failed to open file " + nm);
-    }
-    else
-    {
-        fwrite(buf, sizeof(uint8_t), buf_len, fp);
-        fclose(fp);
-    }
-
-    if (converted)
-    {
-        free(buf);
-    }
+    if (converted && buf != NULL) free(buf);
 
     esp_camera_fb_return(fb);
 
@@ -825,7 +818,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         LightOnOff(false); // Flash-LED off
     }
 
-    return ESP_OK;
+    return captureOkay ? ESP_OK : ESP_FAIL;
 }
 
 esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)

@@ -211,6 +211,8 @@ bool CAlignAndCutImage::CutAndSave(int x1, int y1, int dx, int dy, CImageBasis *
     if (!getCutRectangle(width, height, x1, y1, dx, dy, &x2, &y2)) return false;
     const int cropWidth = x2 - x1;
     const int cropHeight = y2 - y1;
+    size_t cropBufferSize = 0;
+    if (!getCutBufferSize(cropWidth, cropHeight, channels, &cropBufferSize)) return false;
     if (_target->height != cropHeight || _target->width != cropWidth ||
         _target->channels != channels || !_target->ImageOkay()) {
         ESP_LOGD(TAG, "CAlignAndCutImage::CutAndSave - Image size does not match!");
