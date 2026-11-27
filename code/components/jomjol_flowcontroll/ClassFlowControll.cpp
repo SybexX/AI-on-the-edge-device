@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 
 #include <sys/stat.h>
+#include <new>
 
 #ifdef __cplusplus
 extern "C" {
@@ -839,26 +840,22 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
                 return ESP_FAIL;
             }
 
-            _send = new CImageBasis("alg_roi", flowalignment->ImageBasis);
-			
-            if (_send->ImageOkay()) {
-                if (flowalignment) { flowalignment->DrawRef(_send); }
-                if (flowdigit) { flowdigit->DrawROI(_send); }
-                if (flowanalog) { flowanalog->DrawROI(_send); }
-                _sendDelete = true; // delete temporary _send element after sending
+            if (flowalignment->ImageBasis == NULL || !flowalignment->ImageBasis->ImageOkay()) {
+                httpd_resp_send(req, NULL, 0);
+                return ESP_FAIL;
             }
-            else {
+            _send = new (std::nothrow) CImageBasis("alg_roi", flowalignment->ImageBasis);
+
+            if (_send != NULL && _send->ImageOkay()) {
+                flowalignment->DrawRef(_send);
+                if (flowdigit) flowdigit->DrawROI(_send);
+                if (flowanalog) flowanalog->DrawROI(_send);
+                _sendDelete = true;
+            } else {
                 LogFile.WriteToFile(ESP_LOG_WARN, TAG, "ClassFlowControll::GetJPGStream: Not enough memory to create alg_roi.jpg -> alg.jpg is going to be served!");
                 delete _send;
-                _send = NULL;
-
-                if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
-                    _send = flowalignment->ImageBasis;
-                }
-                else {
-                    httpd_resp_send(req, NULL, 0);
-                    return ESP_OK;
-                }
+                _send = flowalignment->ImageBasis;
+                _sendDelete = false;
             }
         #endif
     }

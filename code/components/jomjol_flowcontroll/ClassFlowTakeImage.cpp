@@ -34,23 +34,21 @@ esp_err_t ClassFlowTakeImage::camera_capture(void)
     return ESP_OK;
 }
 
-void ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
+bool ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
 {
-    // in case the image is flipped, it must be reset here //
-    rawImage->width = CCstatus.ImageWidth;
-    rawImage->height = CCstatus.ImageHeight;
+    if (rawImage == NULL || !rawImage->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image buffer is unavailable");
+        return false;
+    }
 
     ESP_LOGD(TAG, "flash_duration: %d", flash_duration);
-
-    Camera.CaptureToBasisImage(rawImage, flash_duration);
+    if (Camera.CaptureToBasisImage(rawImage, flash_duration) != ESP_OK) return false;
 
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    if (CCstatus.SaveAllFiles)
-    {
-        rawImage->SaveToFile(namerawimage);
-    }
+    if (CCstatus.SaveAllFiles) rawImage->SaveToFile(namerawimage);
+    return true;
 }
 
 void ClassFlowTakeImage::SetInitialParameter(void)
@@ -518,8 +516,19 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
     Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
     Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
 
-    rawImage = new CImageBasis("rawImage");
+    delete rawImage;
+    rawImage = new (std::nothrow) CImageBasis("rawImage");
+    if (rawImage == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate raw image object");
+        return false;
+    }
     rawImage->CreateEmptyImage(CCstatus.ImageWidth, CCstatus.ImageHeight, 3);
+    if (!rawImage->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate raw image PSRAM buffer");
+        delete rawImage;
+        rawImage = NULL;
+        return false;
+    }
 
     return true;
 }
@@ -567,7 +576,7 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
         CFstatus.changedCameraSettings = false;
     }
 
-    takePictureWithFlash(flash_duration);
+    const bool captured = takePictureWithFlash(flash_duration);
 
 #ifdef WIFITURNOFF
     esp_wifi_start();
@@ -576,6 +585,12 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After takePictureWithFlash");
 #endif
+
+    if (!captured) {
+        if (sharedMemoryLeaseAcquired) psram_deinit_shared_memory_for_take_image_step();
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image capture failed; aborting this flow round");
+        return false;
+    }
 
     LogImage(logPath, "raw", NULL, NULL, zwtime, rawImage);
 
@@ -610,7 +625,11 @@ ImageData *ClassFlowTakeImage::SendRawImage(void)
     }
 
     const int flash_duration = static_cast<int>(CCstatus.WaitBeforePicture * 1000);
-    Camera.CaptureToBasisImage(zw, flash_duration);
+    if (Camera.CaptureToBasisImage(zw, flash_duration) != ESP_OK) {
+        delete zw;
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SendRawImage: camera capture failed");
+        return NULL;
+    }
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 

@@ -73,7 +73,15 @@ bool CAlignAndCutImage::Align(RefInfo *_temp1, RefInfo *_temp2)
     int r0_x, r0_y, r1_x, r1_y;
     bool isSimilar1, isSimilar2;
 
-    CFindTemplate* ft = new CFindTemplate("align", rgb_image, channels, width, height, bpp);
+    if (_temp1 == NULL || _temp2 == NULL || rgb_image == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Align: source image or reference is unavailable");
+        return false;
+    }
+    CFindTemplate* ft = new (std::nothrow) CFindTemplate("align", rgb_image, channels, width, height, bpp);
+    if (ft == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Align: unable to allocate template matcher");
+        return false;
+    }
 
     r0_x = _temp1->target_x;
     r0_y = _temp1->target_y;
@@ -245,5 +253,7 @@ CImageBasis* CAlignAndCutImage::CutAndSave(int x1, int y1, int dx, int dy)
         free_psram_heap(std::string(TAG) + "->odata (invalid result)", output);
         return NULL;
     }
+    // SetIndepended copied the externally-owned crop into its own managed PSRAM block.
+    free_psram_heap(std::string(TAG) + "->odata (transferred)", output);
     return result;
 }

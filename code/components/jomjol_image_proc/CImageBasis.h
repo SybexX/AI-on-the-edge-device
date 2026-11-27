@@ -92,7 +92,7 @@ class CImageBasis
         void Resize(int _new_dx, int _new_dy, CImageBasis *_target);        
         void crop_image(unsigned short cropLeft, unsigned short cropRight, unsigned short cropTop, unsigned short cropBottom);
 
-        void LoadFromMemory(stbi_uc *_buffer, int len);
+        bool LoadFromMemory(stbi_uc *_buffer, int len);
 
         ImageData* writeToMemoryAsJPG(const int quality = 90);
         void writeToMemoryAsJPG(ImageData* ii, const int quality = 90);

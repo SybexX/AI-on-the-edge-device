@@ -73,7 +73,7 @@ class CCamera
 {
 protected:
     void ledc_init(void);
-    bool loadNextDemoImage(camera_fb_t *fb);
+    bool loadNextDemoImage(uint8_t **data, size_t *length);
     long GetFileSize(std::string filename);
     void SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip);
     void SetImageWidthHeightFromResolution(framesize_t resol);

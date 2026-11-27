@@ -38,6 +38,24 @@ ClassFlowCNNGeneral::ClassFlowCNNGeneral(ClassFlowAlignment *_flowalign, t_CNNTy
     imagesRetention = 5;
 }
 
+ClassFlowCNNGeneral::~ClassFlowCNNGeneral()
+{
+    for (general* sequence : GENERAL) {
+        if (sequence == NULL) continue;
+        for (roi* region : sequence->ROI) {
+            if (region == NULL) continue;
+            delete region->image;
+            region->image = NULL;
+            delete region->image_org;
+            region->image_org = NULL;
+            delete region;
+        }
+        sequence->ROI.clear();
+        delete sequence;
+    }
+    GENERAL.clear();
+}
+
 string ClassFlowCNNGeneral::getReadout(int _analog = 0, bool _extendedResolution, int prev, float _before_narrow_Analog, float AnalogToDigitTransitionStart, bool ContinuousLastDigit) {
     string result = "";    
 
@@ -387,6 +405,11 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE* pfile, string& aktparamgraph) {
         
         if (splitted.size() >= 5) {
             general* _analog = GetGENERAL(splitted[0], true);
+            if (_analog == NULL || _analog->ROI.empty()) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to create ROI " + splitted[0]);
+                disabled = true;
+                return false;
+            }
             roi* neuroi = _analog->ROI[_analog->ROI.size()-1];
             neuroi->posx = std::stoi(splitted[1]);
             neuroi->posy = std::stoi(splitted[2]);
@@ -416,10 +439,20 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE* pfile, string& aktparamgraph) {
 
     for (int _ana = 0; _ana < GENERAL.size(); ++_ana) {
         for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i) {
-            GENERAL[_ana]->ROI[i]->image = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name, 
+            GENERAL[_ana]->ROI[i]->image = new (std::nothrow) CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name,
                     modelxsize, modelysize, modelchannel);
-            GENERAL[_ana]->ROI[i]->image_org = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name + " original",
+            GENERAL[_ana]->ROI[i]->image_org = new (std::nothrow) CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name + " original",
                     GENERAL[_ana]->ROI[i]->deltax, GENERAL[_ana]->ROI[i]->deltay, 3);
+            if (GENERAL[_ana]->ROI[i]->image == NULL || GENERAL[_ana]->ROI[i]->image_org == NULL ||
+                !GENERAL[_ana]->ROI[i]->image->ImageOkay() || !GENERAL[_ana]->ROI[i]->image_org->ImageOkay()) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate ROI image buffers for " + GENERAL[_ana]->ROI[i]->name);
+                delete GENERAL[_ana]->ROI[i]->image;
+                GENERAL[_ana]->ROI[i]->image = NULL;
+                delete GENERAL[_ana]->ROI[i]->image_org;
+                GENERAL[_ana]->ROI[i]->image_org = NULL;
+                disabled = true;
+                return false;
+            }
         }
     }
 
@@ -463,14 +496,27 @@ general* ClassFlowCNNGeneral::GetGENERAL(string _name, bool _create = true) {
     }
 
     if (_ret == NULL) {
-        _ret = new general;
+        _ret = new (std::nothrow) general;
+        if (_ret == NULL) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate GENERAL sequence");
+            return NULL;
+        }
         _ret->name = _analog;
         GENERAL.push_back(_ret);
     }
 
-    roi* neuroi = new roi;
+    roi* neuroi = new (std::nothrow) roi;
+    if (neuroi == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate ROI descriptor");
+        return NULL;
+    }
+    neuroi->image = NULL;
+    neuroi->image_org = NULL;
+    neuroi->result_float = -1;
+    neuroi->result_klasse = -1;
+    neuroi->isReject = true;
+    neuroi->CCW = false;
     neuroi->name = _roi;
-
     _ret->ROI.push_back(neuroi);
 
     ESP_LOGD(TAG, "GetGENERAL - GENERAL %s - roi %s - CCW: %d", _analog.c_str(), _roi.c_str(), neuroi->CCW);

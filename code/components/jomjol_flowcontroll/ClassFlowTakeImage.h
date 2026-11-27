@@ -16,7 +16,7 @@ protected:
     string namerawimage;
 
     esp_err_t camera_capture(void);
-    void takePictureWithFlash(int flash_duration);
+    bool takePictureWithFlash(int flash_duration);
 
     void SetInitialParameter(void);
 

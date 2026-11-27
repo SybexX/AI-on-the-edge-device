@@ -21,6 +21,8 @@
 #include <nvs_flash.h>
 #include <sys/param.h>
 #include <string.h>
+#include <limits.h>
+#include <new>
 #include <sys/stat.h>
 
 #include "freertos/FreeRTOS.h"
@@ -633,105 +635,87 @@ static size_t jpg_encode_stream(void *arg, size_t index, const void *data, size_
 
 esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
 {
+    if (_Image == NULL || !_Image->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: target image is unavailable");
+        return ESP_FAIL;
+    }
+
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("CaptureToBasisImage - Start");
 #endif
 
-    _Image->EmptyImage(); // Delete previous stored raw image -> black image
-
-    LEDOnOff(true); // Status-LED on
-
-    if (delay > 0)
-    {
-        LightOnOff(true); // Flash-LED on
-        const TickType_t xDelay = delay / portTICK_PERIOD_MS;
-        vTaskDelay(xDelay);
+    LEDOnOff(true);
+    if (delay > 0) {
+        LightOnOff(true);
+        vTaskDelay(pdMS_TO_TICKS(delay));
     }
 
-#ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("CaptureToBasisImage - After LightOn");
-#endif
-
+    camera_fb_t *warmup = esp_camera_fb_get();
+    if (warmup != NULL) esp_camera_fb_return(warmup);
     camera_fb_t *fb = esp_camera_fb_get();
-    esp_camera_fb_return(fb);
-    fb = esp_camera_fb_get();
-
-    if (!fb)
-    {
-        LEDOnOff(false);   // Status-LED off
-        LightOnOff(false); // Flash-LED off
-
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "is not working anymore (CaptureToBasisImage) - most probably caused "
-                                                "by a hardware problem (instablility, ...). System will reboot.");
-        doReboot();
-
+    if (fb == NULL) {
+        LEDOnOff(false);
+        LightOnOff(false);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: camera capture failed");
         return ESP_FAIL;
     }
 
-    if (CCstatus.DemoMode)
-    {
-        // Use images stored on SD-Card instead of camera image
-        /* Replace Framebuffer with image from SD-Card */
-        loadNextDemoImage(fb);
+    uint8_t *frameData = fb->buf;
+    size_t frameLength = fb->len;
+    if (CCstatus.DemoMode && !loadNextDemoImage(&frameData, &frameLength)) {
+        esp_camera_fb_return(fb);
+        LEDOnOff(false);
+        LightOnOff(false);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: could not load demo image");
+        return ESP_FAIL;
     }
 
-    CImageBasis *tmpImage = new CImageBasis("tmpImage");
-
-    if (tmpImage)
-    {
-        tmpImage->LoadFromMemory(fb->buf, fb->len);
-    }
-    else
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: Can't allocate tmpImage");
-    }
-
+    CImageBasis *tmpImage = new (std::nothrow) CImageBasis("tmpImage");
+    bool decoded = tmpImage != NULL && frameLength <= static_cast<size_t>(INT_MAX) &&
+                   tmpImage->LoadFromMemory(frameData, static_cast<int>(frameLength));
     esp_camera_fb_return(fb);
 
-#ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("CaptureToBasisImage - After fb_get");
-#endif
+    LEDOnOff(false);
+    if (delay > 0) LightOnOff(false);
 
-    LEDOnOff(false); // Status-LED off
-
-    if (delay > 0)
-    {
-        LightOnOff(false); // Flash-LED off
+    if (!decoded || tmpImage == NULL || !tmpImage->ImageOkay()) {
+        delete tmpImage;
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: JPEG decode failed");
+        LogFile.WriteHeapInfo("CaptureToBasisImage decode");
+        return ESP_FAIL;
     }
 
-    //    TickType_t xDelay = 1000 / portTICK_PERIOD_MS;
-    //    vTaskDelay( xDelay );  // wait for power to recover
-
-#ifdef DEBUG_DETAIL_ON
-    LogFile.WriteHeapInfo("CaptureToBasisImage - After LoadFromMemory");
-#endif
-
-    if (tmpImage == NULL)
-    {
-        return ESP_OK;
+    size_t expectedBytes = 0;
+    if (_Image->width != tmpImage->width || _Image->height != tmpImage->height ||
+        _Image->channels != tmpImage->channels || tmpImage->channels != 3 ||
+        tmpImage->width <= 0 || tmpImage->height <= 0 ||
+        static_cast<size_t>(tmpImage->width) > SIZE_MAX / static_cast<size_t>(tmpImage->height) ||
+        static_cast<size_t>(tmpImage->width) * static_cast<size_t>(tmpImage->height) > SIZE_MAX / 3U) {
+        delete tmpImage;
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: decoded dimensions do not match target image");
+        return ESP_FAIL;
+    }
+    expectedBytes = static_cast<size_t>(tmpImage->width) * static_cast<size_t>(tmpImage->height) * 3U;
+    if (expectedBytes > static_cast<size_t>(INT_MAX)) {
+        delete tmpImage;
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: decoded image is too large");
+        return ESP_FAIL;
     }
 
-    int channels = 3;
-    int width = CCstatus.ImageWidth;
-    int height = CCstatus.ImageHeight;
-
-#ifdef DEBUG_DETAIL_ON
-    std::string _zw = "Targetimage: " + std::to_string((int)_Image->rgb_image) + " Size: " + std::to_string(_Image->width) + ", " + std::to_string(_Image->height);
-    _zw = _zw + " tmpImage: " + std::to_string((int)tmpImage->rgb_image) + " Size: " + std::to_string(tmpImage->width) + ", " + std::to_string(tmpImage->height);
-    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, _zw);
-#endif
-
-    // Both images are packed RGB888 with the same dimensions: copy the whole frame at once
-    // (the former per-pixel, column-by-column loop took ~2 s on an ESP32-CAM)
-    memcpy(_Image->rgb_image, tmpImage->rgb_image, width * height * channels);
-
+    uint8_t *source = tmpImage->RGBImageLock();
+    if (source == NULL) {
+        delete tmpImage;
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: decoded image lock failed");
+        return ESP_FAIL;
+    }
+    const bool copied = _Image->CopyFromMemory(source, static_cast<int>(expectedBytes));
+    tmpImage->RGBImageRelease();
     delete tmpImage;
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("CaptureToBasisImage - Done");
 #endif
-
-    return ESP_OK;
+    return copied ? ESP_OK : ESP_FAIL;
 }
 
 esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
@@ -880,12 +864,16 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
     {
         if (CCstatus.DemoMode)
         {
-            // Use images stored on SD-Card instead of camera image
             LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Using Demo image!");
-            /* Replace Framebuffer with image from SD-Card */
-            loadNextDemoImage(fb);
-
-            res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+            uint8_t *demoData = NULL;
+            size_t demoLength = 0;
+            if (loadNextDemoImage(&demoData, &demoLength)) {
+                fb_len = demoLength;
+                res = httpd_resp_send(req, (const char *)demoData, demoLength);
+            } else {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToHTTP: could not load demo image");
+                res = ESP_FAIL;
+            }
         }
         else
         {
@@ -1213,11 +1201,16 @@ void CCamera::useDemoMode(void)
     CCstatus.DemoMode = true;
 }
 
-bool CCamera::loadNextDemoImage(camera_fb_t *fb)
+bool CCamera::loadNextDemoImage(uint8_t **data, size_t *length)
 {
-    if (fb == NULL || demoImage == NULL || demoFiles.empty()) return false;
-    const std::string filename = "/sdcard/demo/" + demoFiles[static_cast<size_t>(getCountFlowRounds()) % demoFiles.size()];
+    if (data == NULL || length == NULL || demoImage == NULL || demoFiles.empty()) return false;
+    *data = NULL;
+    *length = 0;
+
+    const size_t index = static_cast<size_t>(getCountFlowRounds()) % demoFiles.size();
+    const std::string filename = "/sdcard/demo/" + demoFiles[index];
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Using " + filename + " as demo image");
+
     FILE *fp = fopen(filename.c_str(), "rb");
     if (fp == NULL) return false;
     const long fileSize = GetFileSize(filename);
@@ -1227,12 +1220,15 @@ bool CCamera::loadNextDemoImage(camera_fb_t *fb)
         return false;
     }
     const size_t readBytes = fread(demoImage, 1, static_cast<size_t>(fileSize), fp);
+    const bool readOkay = (readBytes == static_cast<size_t>(fileSize)) && (ferror(fp) == 0);
     fclose(fp);
-    if (readBytes != static_cast<size_t>(fileSize)) return false;
-    fb->buf = demoImage;
-    fb->len = static_cast<int>(readBytes);
+    if (!readOkay) return false;
+
+    *data = demoImage;
+    *length = readBytes;
     return true;
 }
+
 
 long CCamera::GetFileSize(std::string filename)
 {
