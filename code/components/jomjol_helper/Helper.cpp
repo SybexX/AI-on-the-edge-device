@@ -92,10 +92,6 @@ size_t getESPHeapSize()
 	return heap_caps_get_free_size(MALLOC_CAP_8BIT);
 }
 
-size_t getInternalESPHeapSize()
-{
-	return heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-}
 
 string getSDCardPartitionSize()
 {
@@ -180,139 +176,12 @@ string getSDCardSectorSize()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-bool copy_string(char *dst, size_t dst_size, const char *src)
-{
-	if (dst == nullptr || src == nullptr || dst_size == 0)
-	{
-		return false;
-	}
 
-	size_t len = strlen(src);
 
-	if (len >= dst_size)
-	{
-		dst[0] = '\0';
-		return false; // Target too small
-	}
 
-	memcpy(dst, src, len + 1);
-	return true;
-}
 
-void mem_copy(uint8_t *_target, uint8_t *_source, int _size)
-{
-	if ((_target != nullptr) && (_source != nullptr) && (_size > 0))
-	{
-		uint8_t *dst = _target;
-		uint8_t *src = _source;
 
-		for (int i = 0; i < _size; ++i)
-		{
-			*dst++ = *src++;
-		}
-	}
-}
 
-void mem_copy32(void *_target, const void *_source, size_t _size)
-{
-	if ((_target != nullptr) && (_source != nullptr) && (_size > 0))
-	{
-		uint32_t *d32 = (uint32_t *)_target;
-		const uint32_t *s32 = (const uint32_t *)_source;
-
-		size_t words = _size / 4;
-
-		for (size_t i = 0; i < words; i++)
-		{
-			d32[i] = s32[i];
-		}
-
-		// Copy remaining bytes
-		uint8_t *d8 = (uint8_t *)(d32 + words);
-		const uint8_t *s8 = (const uint8_t *)(s32 + words);
-
-		for (size_t i = 0; i < (_size % 4); i++)
-		{
-			d8[i] = s8[i];
-		}
-	}
-}
-
-float fast_atan2(float y, float x)
-{
-	float abs_y = fabs(y) + 1e-10;
-	float r = (x - abs_y) / (x + abs_y);
-	float angle = 0.78539816339 - 0.78539816339 * r;
-	return (y < 0) ? -angle : angle;
-}
-
-double pow10_double(int pot)
-{
-	static const double pow10_table[] = {
-		1.0,
-		10.0,
-		100.0,
-		1000.0,
-		10000.0,
-		100000.0,
-		1000000.0,
-		10000000.0,
-		100000000.0,
-		1000000000.0};
-
-	if (pot >= 0 && pot < (int)(sizeof(pow10_table) / sizeof(pow10_table[0])))
-	{
-		return pow10_table[pot];
-	}
-
-	// Fallback if pot is larger
-	double result = 1.0;
-	for (int i = 0; i < pot; ++i)
-	{
-		result *= 10.0;
-	}
-
-	return result;
-}
-
-uint32_t pow10_int(int pot)
-{
-	// Lookup table for small exponents 0-9
-	static const uint32_t table[] = {
-		1,		   // 10^0
-		10,		   // 10^1
-		100,	   // 10^2
-		1000,	   // 10^3
-		10000,	   // 10^4
-		100000,	   // 10^5
-		1000000,   // 10^6
-		10000000,  // 10^7
-		100000000, // 10^8
-		1000000000 // 10^9
-	};
-
-	if (pot >= 0 && pot < (int)(sizeof(table) / sizeof(table[0])))
-	{
-		return table[pot];
-	}
-
-	// Fallback for larger pot
-	uint32_t result = 1;
-	for (int i = 0; i < pot; ++i)
-	{
-		result *= 10;
-	}
-
-	return result;
-}
-
-void memCopyGen(uint8_t *_source, uint8_t *_target, int _size)
-{
-	for (int i = 0; i < _size; ++i)
-	{
-		*(_target + i) = *(_source + i);
-	}
-}
 
 std::string FormatFileName(std::string input)
 {
@@ -545,20 +414,6 @@ bool FileExists(string filename)
 	return true;
 }
 
-bool FolderExists(string foldername)
-{
-	DIR *fpSourceFolder = opendir(foldername.c_str());
-
-	// Sourcefolder does not exist
-	if (!fpSourceFolder)
-	{
-		return false;
-	}
-
-	closedir(fpSourceFolder);
-
-	return true;
-}
 
 bool DeleteFile(string filename)
 {
@@ -1194,16 +1049,6 @@ string RundeOutput(double _in, int _anzNachkomma)
 	return stream.str();
 }
 
-string getMac(void)
-{
-	uint8_t macInt[6];
-	char macFormated[6 * 2 + 5 + 1]; // AA:BB:CC:DD:EE:FF
-
-	esp_read_mac(macInt, ESP_MAC_WIFI_STA);
-	sprintf(macFormated, "%02X:%02X:%02X:%02X:%02X:%02X", macInt[0], macInt[1], macInt[2], macInt[3], macInt[4], macInt[5]);
-
-	return macFormated;
-}
 
 void setSystemStatusFlag(SystemStatusFlag_t flag)
 {
