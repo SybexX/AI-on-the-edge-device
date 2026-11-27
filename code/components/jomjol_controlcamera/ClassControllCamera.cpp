@@ -422,13 +422,20 @@ esp_err_t CCamera::ApplyPreviewSettings(const CameraSettings &settings)
     ScopedCameraLock cameraLock(m_cameraMutex);
     if (!cameraLock.acquired()) return ESP_ERR_TIMEOUT;
     CameraSettings previewSettings = settings;
+    // Mark the hardware as temporary before applying: ApplySettings may fail after
+    // changing some sensor registers, so the next normal operation must still restore CCstatus.
+    m_temporarySettingsActive = true;
     const esp_err_t result = ApplySettings(previewSettings);
     if (result == ESP_OK)
     {
-        m_temporarySettingsActive = true;
         m_previewCapturePending = true;
         const int waitSeconds = std::max(0, settings.WaitBeforePicture);
         m_previewCaptureDelayMs = waitSeconds > INT_MAX / 1000 ? INT_MAX : waitSeconds * 1000;
+    }
+    else
+    {
+        m_previewCapturePending = false;
+        m_previewCaptureDelayMs = 0;
     }
     return result;
 }
