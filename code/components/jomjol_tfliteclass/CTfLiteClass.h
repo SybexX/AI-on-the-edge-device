@@ -43,7 +43,6 @@ class CTfLiteClass
         ~CTfLiteClass();        
         bool LoadModel(std::string _fn);
         bool MakeAllocate();
-        void GetInputTensorSize();
         bool LoadInputImageBasis(CImageBasis *rs);
         void Invoke();
         bool LastInvokeSucceeded() const { return lastInvokeSucceeded; }

@@ -36,16 +36,6 @@ int LocalTimeToUTCOffsetSeconds;
 
 
 
-std::string ConvertTimeToString(time_t _time, const char * frm)
-{
-    struct tm timeinfo;
-    char strftime_buf[64];
-    localtime_r(&_time, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), frm, &timeinfo);
-
-    std::string result(strftime_buf);
-    return result;
-}
 
 
 std::string getCurrentTimeString(const char * frm)

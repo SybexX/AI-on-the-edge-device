@@ -112,11 +112,6 @@ void CImageBasis::RGBImageRelease()
 }
 
 
-uint8_t * CImageBasis::RGBImageGet()
-{
-    // Compatibility accessor only. Callers must hold RGBImageLock() while using this pointer.
-    return rgb_image;
-}
 
 bool CImageBasis::SetIndepended()
 {
@@ -281,21 +276,6 @@ bool CImageBasis::CopyFromMemory(uint8_t* _source, int _size)
 }
 
 
-uint8_t CImageBasis::GetPixelColor(int x, int y, int ch)
-{
-    size_t imageSize = 0;
-    if (rgb_image == nullptr || !isInImage(x, y) || ch < 0 || ch >= channels ||
-        !getImageBufferSize(width, height, channels, &imageSize)) return 0;
-    uint8_t* image = RGBImageLock();
-    if (image == nullptr) return 0;
-    const size_t offset = static_cast<size_t>(channels) *
-        (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x));
-    uint8_t value = 0;
-    if (offset <= imageSize && static_cast<size_t>(ch) < imageSize - offset)
-        value = image[offset + static_cast<size_t>(ch)];
-    RGBImageRelease();
-    return value;
-}
 
 
 void CImageBasis::memCopy(uint8_t* _source, uint8_t* _target, int _size)

@@ -28,20 +28,12 @@ extern "C" {
 
     void Restart();
     char *GetChipModel();
-    uint8_t GetChipCoreCount();
-    uint16_t GetChipRevision();
-    uint32_t  GetChipfeatures();
+
     uint32_t GetFreeHeap();
     uint32_t GetLeastHeapFreeSinceBoot();
 
     std::string get_device_info();
 
-    size_t getFreeMemoryInternal();
-    size_t getFreeMemorySPIRAM();
-    size_t getLargestFreeBlockInternal();
-    size_t getLargestFreeBlockSPIRAM();
-    size_t getMinEverFreeMemInternal();
-    size_t getMinEverFreeMemSPIRAM();
     #ifdef USE_HIMEM_IF_AVAILABLE
         size_t getHimemTotSpace();
         size_t getHimemFreeSpace();

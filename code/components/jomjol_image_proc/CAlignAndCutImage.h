@@ -21,7 +21,6 @@ class CAlignAndCutImage : public CImageBasis
         void CutAndSave(std::string _template1, int x1, int y1, int dx, int dy);
         CImageBasis* CutAndSave(int x1, int y1, int dx, int dy);
         bool CutAndSave(int x1, int y1, int dx, int dy, CImageBasis *_target);
-        void GetRefSize(int *ref_dx, int *ref_dy);
 };
 
 #endif //CALIGNANDCUTIMAGE_H

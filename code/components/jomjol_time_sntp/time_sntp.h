@@ -17,8 +17,6 @@
 #include "esp_sntp.h"
 
 std::string getCurrentTimeString(const char * frm);
-std::string ConvertTimeToString(time_t _time, const char * frm);
-
 
 bool getTimeIsSet(void);
 bool getTimeWasNotSetAtBoot(void);

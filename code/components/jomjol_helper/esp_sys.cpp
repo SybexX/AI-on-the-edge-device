@@ -57,23 +57,8 @@ char* GetChipModel(){
     return (char*)"Chip Unknown";
 }
 
-uint8_t GetChipCoreCount() {
-    esp_chip_info_t chipInfo;
-    esp_chip_info(&chipInfo);
-    return chipInfo.cores;
-}
 
-uint16_t GetChipRevision() {
-    esp_chip_info_t chipInfo;
-    esp_chip_info(&chipInfo);
-    return chipInfo.revision;
-}
 
-uint32_t  GetChipfeatures() {
-    esp_chip_info_t chipInfo;
-    esp_chip_info(&chipInfo);
-    return chipInfo.features;
-}
 
 
 uint32_t GetFreeHeap() {
@@ -136,31 +121,13 @@ std::string get_device_info()
 }
 
 
-size_t getFreeMemoryInternal(){ //Current Free Memory
-    return heap_caps_get_free_size(MALLOC_CAP_8BIT) - heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-}
-
-size_t getFreeMemorySPIRAM(){ //Current Free Memory
-    return heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-}
 
 
-size_t getLargestFreeBlockInternal(){ //Largest Free Block
-    return heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-}
-
-size_t getLargestFreeBlockSPIRAM(){ //Largest Free Block
-    return heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
-}
 
 
-size_t getMinEverFreeMemInternal(){ //Min. Ever Free Size
-    return heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-}
 
-size_t getMinEverFreeMemSPIRAM(){ //Min. Ever Free Size
-    return heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
-}
+
+
 
 #ifdef USE_HIMEM_IF_AVAILABLE
     size_t getHimemTotSpace(){ 

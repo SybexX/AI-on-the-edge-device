@@ -75,13 +75,6 @@ CAlignAndCutImage::CAlignAndCutImage(std::string _name, CImageBasis *_org, CImag
     ImageTMP = _temp;
 }
 
-void CAlignAndCutImage::GetRefSize(int *ref_dx, int *ref_dy)
-{
-    ref_dx[0] = t0_dx;
-    ref_dy[0] = t0_dy;
-    ref_dx[1] = t1_dx;
-    ref_dy[1] = t1_dy;
-}
 
 bool CAlignAndCutImage::Align(RefInfo *_temp1, RefInfo *_temp2)
 {

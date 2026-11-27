@@ -60,7 +60,6 @@ class CImageBasis
 
         uint8_t * RGBImageLock(int _waitmaxsec = 60);
         void RGBImageRelease();
-        uint8_t * RGBImageGet();
 
         int getWidth(){return this->width;};   
         int getHeight(){return this->height;};   
@@ -99,7 +98,6 @@ class CImageBasis
 
         esp_err_t SendJPGtoHTTP(httpd_req_t *req, const int quality = 90);   
 
-        uint8_t GetPixelColor(int x, int y, int ch);
 
         ~CImageBasis();
 

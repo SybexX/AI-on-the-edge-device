@@ -277,14 +277,6 @@ bool CTfLiteClass::MakeAllocate()
 }
 
 
-void CTfLiteClass::GetInputTensorSize()
-{
-#ifdef DEBUG_DETAIL_ON    
-    float *zw = this->input;
-    int test = sizeof(zw);
-    ESP_LOGD(TAG, "Input Tensor Dimension: %d", test);
-#endif
-}
 
 
 long CTfLiteClass::GetFileSize(std::string filename)

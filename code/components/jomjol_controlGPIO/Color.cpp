@@ -143,15 +143,6 @@ Rgb& Rgb::operator-=(const Rgb& in) {
     return *this;
 }
 
-Rgb& Rgb::blend(const Rgb& in) {
-    unsigned int inAlpha = in.a * (255 - a);
-    unsigned int alpha = a + inAlpha;
-    r = iRgbSqrt(((r * r * a) + (in.r * in.r * inAlpha)) / alpha);
-    g = iRgbSqrt(((g * g * a) + (in.g * in.g * inAlpha)) / alpha);
-    b = iRgbSqrt(((b * b * a) + (in.b * in.b * inAlpha)) / alpha);
-    a = alpha;
-    return *this;
-}
 
 Hsv::Hsv(const Rgb& r) {
     int min = std::min(r.r, std::min(r.g, r.b));
