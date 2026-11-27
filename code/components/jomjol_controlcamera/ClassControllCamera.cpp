@@ -80,8 +80,8 @@ static camera_config_t camera_config = {
     .pin_pwdn = CAM_PIN_PWDN,
     .pin_reset = CAM_PIN_RESET,
     .pin_xclk = CAM_PIN_XCLK,
-    .pin_sscb_sda = CAM_PIN_SIOD,
-    .pin_sscb_scl = CAM_PIN_SIOC,
+    .pin_sccb_sda = CAM_PIN_SIOD,
+    .pin_sccb_scl = CAM_PIN_SIOC,
 
     .pin_d7 = CAM_PIN_D7,
     .pin_d6 = CAM_PIN_D6,
@@ -106,6 +106,7 @@ static camera_config_t camera_config = {
     .fb_count = 1,                     // if more than one, i2s runs in continuous mode. Use only with JPEG
     .fb_location = CAMERA_FB_IN_PSRAM, /*!< The location where the frame buffer will be allocated */
     .grab_mode = CAMERA_GRAB_LATEST,   // only from new esp32cam version
+    .sccb_i2c_port = 0,               // unused when the SCCB pins are configured above
 };
 
 typedef struct
@@ -959,7 +960,8 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
     if (!cameraLock.acquired())
     {
         ESP_LOGW(TAG, "CaptureToHTTP: camera mutex unavailable");
-        httpd_resp_send_err(req, HTTPD_503_SERVICE_UNAVAILABLE, "Camera is busy");
+        httpd_resp_set_status(req, "503 Service Unavailable");
+        httpd_resp_send(req, "Camera is busy", HTTPD_RESP_USE_STRLEN);
         return ESP_ERR_TIMEOUT;
     }
 

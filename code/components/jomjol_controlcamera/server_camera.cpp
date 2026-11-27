@@ -264,10 +264,16 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
         const esp_err_t result = Camera.CaptureToFile(fn, delay);
         if (result != ESP_OK)
         {
-            const char *errorStatus = result == ESP_ERR_TIMEOUT
-                                          ? HTTPD_503_SERVICE_UNAVAILABLE
-                                          : HTTPD_500_INTERNAL_SERVER_ERROR;
-            httpd_resp_send_err(req, errorStatus, "Image capture or file save failed");
+            if (result == ESP_ERR_TIMEOUT)
+            {
+                httpd_resp_set_status(req, "503 Service Unavailable");
+                httpd_resp_send(req, "Camera is busy", HTTPD_RESP_USE_STRLEN);
+            }
+            else
+            {
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                                    "Image capture or file save failed");
+            }
             return result;
         }
 
