@@ -851,7 +851,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
 
             if (httpd_query_key_value(_query, "xclk", _valuechar, 30) == ESP_OK)
             {
-                const std::string _xclk = std::string(_valuechar);
+                std::string _xclk = std::string(_valuechar);
                 if (isStringNumeric(_xclk))
                 {
                     CFstatus.CamXclkFreqMhz = clipInt(std::stoi(_xclk), 20, 1);
