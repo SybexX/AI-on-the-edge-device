@@ -1,6 +1,7 @@
 #include <string>
 #include <limits.h>
 #include "CRotateImage.h"
+#include "ClassLogFile.h"
 #include "psram.h"
 
 static const char *TAG = "C ROTATE IMG";
