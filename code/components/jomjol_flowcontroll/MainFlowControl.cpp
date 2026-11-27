@@ -1248,6 +1248,7 @@ esp_err_t handler_editflow(httpd_req_t *req)
             {
                 // wird aufgerufen, wenn das Referenzbild + Kameraeinstellungen gespeichert wurden
                 setCFstatusToCCstatus(); // CFstatus >>> CCstatus
+                CFstatus.previewCapturePending = false;
 
                 // Kameraeinstellungen wurden verädert
                 CFstatus.changedCameraSettings = true;
@@ -1261,13 +1262,14 @@ esp_err_t handler_editflow(httpd_req_t *req)
             {
                 // wird aufgerufen, wenn ein neues Referenzbild erstellt oder aktualisiert wurde
                 // CFstatus >>> Kamera
-                setCFstatusToCam();
+                if (setCFstatusToCam() != ESP_OK)
+                {
+                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not apply temporary camera settings");
+                    return ESP_FAIL;
+                }
 
-                Camera.SetQualityZoomSize(CFstatus.ImageQuality, CFstatus.ImageFrameSize, CFstatus.ImageZoomEnabled, CFstatus.ImageZoomOffsetX, CFstatus.ImageZoomOffsetY, CFstatus.ImageZoomSize, CFstatus.ImageVflip);
-                // Camera.SetZoomSize(CFstatus.ImageZoomEnabled, CFstatus.ImageZoomOffsetX, CFstatus.ImageZoomOffsetY, CFstatus.ImageZoomSize, CFstatus.ImageVflip);
-
-                // Kameraeinstellungen wurden verädert
                 CFstatus.changedCameraSettings = true;
+                CFstatus.previewCapturePending = true;
 
                 ESP_LOGD(TAG, "test_take - vor TakeImage");
                 std::string image_temp = flowctrl.doSingleStep("[TakeImage]", _host);

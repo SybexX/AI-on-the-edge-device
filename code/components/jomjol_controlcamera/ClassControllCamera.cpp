@@ -58,6 +58,36 @@ CCamera Camera;
 
 static const char *TAG = "CAM";
 
+static int sensorValueOrDefault(int value, int fallback, int minimum, int maximum)
+{
+    return (value < minimum || value > maximum) ? fallback : value;
+}
+
+static int sensorBooleanOrDefault(int value, int fallback)
+{
+    return (value == 0 || value == 1) ? value : fallback;
+}
+
+static bool isSupportedFrameSize(int value)
+{
+    switch (static_cast<framesize_t>(value))
+    {
+    case FRAMESIZE_QVGA:
+    case FRAMESIZE_VGA:
+    case FRAMESIZE_SVGA:
+    case FRAMESIZE_XGA:
+    case FRAMESIZE_HD:
+    case FRAMESIZE_SXGA:
+    case FRAMESIZE_UXGA:
+    case FRAMESIZE_QXGA:
+    case FRAMESIZE_WQXGA:
+    case FRAMESIZE_QSXGA:
+        return true;
+    default:
+        return false;
+    }
+}
+
 /* Camera live stream */
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
@@ -149,10 +179,12 @@ CCamera::CCamera(void)
     ESP_LOGD(TAG, "CreateClassCamera");
 #endif
 
-	CCstatus.ImageQuality = camera_config.jpeg_quality;
+    CCstatus.ImageQuality = camera_config.jpeg_quality;
     CCstatus.ImageFrameSize = camera_config.frame_size;
-	SetLEDIntensity(LedIntensity);
+    CCstatus.CamXclkFreqMhz = xclk;
+    CCstatus.ImageLedIntensity = SetLEDIntensity(LedIntensity);
     CCstatus.WaitBeforePicture = 2;
+    SetImageWidthHeightFromResolution(CCstatus);
 
     ledc_init();
 }
@@ -304,7 +336,12 @@ esp_err_t CCamera::setSensorDatenFromCCstatus(void)
     return ApplySettings(CCstatus);
 }
 
-esp_err_t CCamera::ApplySettings(const CameraSettings &settings)
+esp_err_t CCamera::setSensorDatenFromCCstatus(void)
+{
+    return ApplySettings(CCstatus);
+}
+
+esp_err_t CCamera::ApplySettings(CameraSettings &settings)
 {
     ScopedCameraLock cameraLock(m_cameraMutex);
     if (!cameraLock.acquired())
@@ -321,40 +358,71 @@ esp_err_t CCamera::ApplySettings(const CameraSettings &settings)
     sensor_t *s = esp_camera_sensor_get();
     if (s == NULL)
     {
-        ESP_LOGE(TAG, "ApplySettings: failed to get camera sensor");
+        ESP_LOGE(TAG, "ApplySettings: camera sensor unavailable");
         return ESP_FAIL;
     }
 
-    // One implementation handles committed and temporary preview settings.
-    s->set_framesize(s, settings.ImageFrameSize);
+    if (settings.CamXclkFreqMhz < 8 || settings.CamXclkFreqMhz > 40)
+    {
+        settings.CamXclkFreqMhz = xclk;
+    }
+    SetImageWidthHeightFromResolution(settings);
+
+    int firstError = s->set_xclk(s, camera_config.ledc_timer, settings.CamXclkFreqMhz);
+    const auto recordError = [&firstError](int result)
+    {
+        if (firstError == 0 && result != 0) firstError = result;
+    };
+
+    recordError(s->set_framesize(s, settings.ImageFrameSize));
     SetCamContrastBrightness(s, settings.ImageContrast, settings.ImageBrightness);
-    s->set_saturation(s, settings.ImageSaturation);
-    s->set_quality(s, settings.ImageQuality);
-    const int gainResult = SetCamGainceiling(s, settings.ImageGainceiling);
+    recordError(s->set_saturation(s, settings.ImageSaturation));
+    recordError(s->set_quality(s, settings.ImageQuality));
+    recordError(SetCamGainceiling(s, settings.ImageGainceiling));
 
-    s->set_gain_ctrl(s, settings.ImageAgc);
-    s->set_exposure_ctrl(s, settings.ImageAec);
-    s->set_hmirror(s, settings.ImageHmirror);
-    s->set_vflip(s, settings.ImageVflip);
-    s->set_whitebal(s, settings.ImageAwb);
-    s->set_aec2(s, settings.ImageAec2);
-    s->set_aec_value(s, settings.ImageAecValue);
+    recordError(s->set_gain_ctrl(s, settings.ImageAgc));
+    recordError(s->set_exposure_ctrl(s, settings.ImageAec));
+    recordError(s->set_hmirror(s, settings.ImageHmirror));
+    recordError(s->set_vflip(s, settings.ImageVflip));
+    recordError(s->set_whitebal(s, settings.ImageAwb));
+    recordError(s->set_aec2(s, settings.ImageAec2));
+    recordError(s->set_aec_value(s, settings.ImageAecValue));
     SetCamSpecialEffect(s, settings.ImageSpecialEffect);
-    s->set_wb_mode(s, settings.ImageWbMode);
-    s->set_ae_level(s, settings.ImageAeLevel);
+    recordError(s->set_wb_mode(s, settings.ImageWbMode));
+    recordError(s->set_ae_level(s, settings.ImageAeLevel));
 
-    s->set_dcw(s, settings.ImageDcw);
-    s->set_bpc(s, settings.ImageBpc);
-    s->set_wpc(s, settings.ImageWpc);
-    s->set_awb_gain(s, settings.ImageAwbGain);
-    s->set_agc_gain(s, settings.ImageAgcGain);
-    s->set_raw_gma(s, settings.ImageRawGma);
-    s->set_lenc(s, settings.ImageLenc);
+    recordError(s->set_dcw(s, settings.ImageDcw));
+    recordError(s->set_bpc(s, settings.ImageBpc));
+    recordError(s->set_wpc(s, settings.ImageWpc));
+    recordError(s->set_awb_gain(s, settings.ImageAwbGain));
+    recordError(s->set_agc_gain(s, settings.ImageAgcGain));
+    recordError(s->set_raw_gma(s, settings.ImageRawGma));
+    recordError(s->set_lenc(s, settings.ImageLenc));
     SetCamSharpness(settings.ImageAutoSharpness, settings.ImageSharpness);
-    s->set_denoise(s, settings.ImageDenoiseLevel);
+    recordError(s->set_denoise(s, settings.ImageDenoiseLevel));
 
+    const esp_err_t geometryResult = SetQualityZoomSize(settings);
+    if (geometryResult != ESP_OK) return geometryResult;
+
+    LedIntensity = min(8191, max(0, settings.ImageLedIntensity));
     vTaskDelay(pdMS_TO_TICKS(100));
-    return gainResult == 0 ? ESP_OK : ESP_FAIL;
+    return firstError == 0 ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t CCamera::RestoreCommittedSettingsIfNeeded(bool preserveTemporaryCapture)
+{
+    if (!CFstatus.changedCameraSettings || preserveTemporaryCapture)
+    {
+        return ESP_OK;
+    }
+
+    const esp_err_t result = ApplySettings(CCstatus);
+    if (result == ESP_OK)
+    {
+        CFstatus.changedCameraSettings = false;
+        CFstatus.previewCapturePending = false;
+    }
+    return result;
 }
 
 esp_err_t CCamera::getSensorDatenToCCstatus(void)
@@ -367,51 +435,55 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
     }
 
     sensor_t *s = esp_camera_sensor_get();
-
-    if (s != NULL)
+    if (s == NULL)
     {
-        CCstatus.CamSensor_id = s->id.PID;
-
-        CCstatus.ImageFrameSize = (framesize_t)s->status.framesize;
-		
-        CCstatus.ImageContrast = s->status.contrast;
-        CCstatus.ImageBrightness = s->status.brightness;
-        CCstatus.ImageSaturation = s->status.saturation;
-		
-        CCstatus.ImageQuality = s->status.quality;
-		
-        CCstatus.ImageGainceiling = (gainceiling_t)s->status.gainceiling;
-
-        CCstatus.ImageAgc = s->status.agc;
-        CCstatus.ImageAec = s->status.aec;
-        CCstatus.ImageHmirror = s->status.hmirror;
-        CCstatus.ImageVflip = s->status.vflip;
-		
-        CCstatus.ImageAwb = s->status.awb;
-        CCstatus.ImageAec2 = s->status.aec2;
-        CCstatus.ImageAecValue = s->status.aec_value;
-        CCstatus.ImageSpecialEffect = s->status.special_effect;
-        CCstatus.ImageWbMode = s->status.wb_mode;
-        CCstatus.ImageAeLevel = s->status.ae_level;
-		
-        CCstatus.ImageDcw = s->status.dcw;
-        CCstatus.ImageBpc = s->status.bpc;
-        CCstatus.ImageWpc = s->status.wpc;
-        CCstatus.ImageAwbGain = s->status.awb_gain;
-        CCstatus.ImageAgcGain = s->status.agc_gain;
-		
-        CCstatus.ImageRawGma = s->status.raw_gma;
-        CCstatus.ImageLenc = s->status.lenc;
-
-        // CCstatus.ImageSharpness = s->status.sharpness; // gibt -1 zurück, da es nicht unterstützt wird
-        CCstatus.ImageDenoiseLevel = s->status.denoise;
-
-        return ESP_OK;
-    }
-    else
-    {
+        ESP_LOGE(TAG, "getSensorDatenToCCstatus: camera sensor unavailable");
         return ESP_FAIL;
     }
+
+    CCstatus.CamSensor_id = s->id.PID;
+    const int frameSize = static_cast<int>(s->status.framesize);
+    CCstatus.ImageFrameSize = static_cast<framesize_t>(
+        isSupportedFrameSize(frameSize) ? frameSize : static_cast<int>(FRAMESIZE_VGA));
+
+    CCstatus.CamXclkFreqMhz = sensorValueOrDefault(
+        static_cast<int>(s->xclk_freq_hz / 1000000U), xclk, 8, 40);
+    CCstatus.ImageContrast = sensorValueOrDefault(s->status.contrast, 0, -2, 2);
+    CCstatus.ImageBrightness = sensorValueOrDefault(s->status.brightness, 0, -2, 2);
+    CCstatus.ImageSaturation = sensorValueOrDefault(s->status.saturation, 0, -2, 2);
+    CCstatus.ImageQuality = sensorValueOrDefault(s->status.quality, 12, 6, 63);
+    CCstatus.ImageGainceiling = static_cast<gainceiling_t>(
+        sensorValueOrDefault(static_cast<int>(s->status.gainceiling), 1, 1, 6));
+
+    CCstatus.ImageAgc = sensorBooleanOrDefault(s->status.agc, 1);
+    CCstatus.ImageAec = sensorBooleanOrDefault(s->status.aec, 1);
+    CCstatus.ImageHmirror = sensorBooleanOrDefault(s->status.hmirror, 0);
+    CCstatus.ImageVflip = sensorBooleanOrDefault(s->status.vflip, 0);
+    CCstatus.ImageAwb = sensorBooleanOrDefault(s->status.awb, 1);
+    CCstatus.ImageAec2 = sensorBooleanOrDefault(s->status.aec2, 1);
+    CCstatus.ImageAecValue = sensorValueOrDefault(s->status.aec_value, 600, 0, 1200);
+    CCstatus.ImageSpecialEffect = sensorValueOrDefault(s->status.special_effect, 0, 0, 6);
+    CCstatus.ImageWbMode = sensorValueOrDefault(s->status.wb_mode, 0, 0, 4);
+    CCstatus.ImageAeLevel = (CCstatus.CamSensor_id == OV2640_PID)
+        ? sensorValueOrDefault(s->status.ae_level, 0, -2, 2)
+        : sensorValueOrDefault(s->status.ae_level, 0, -5, 5);
+
+    CCstatus.ImageDcw = sensorBooleanOrDefault(s->status.dcw, 1);
+    CCstatus.ImageBpc = sensorBooleanOrDefault(s->status.bpc, 1);
+    CCstatus.ImageWpc = sensorBooleanOrDefault(s->status.wpc, 1);
+    CCstatus.ImageAwbGain = sensorBooleanOrDefault(s->status.awb_gain, 1);
+    CCstatus.ImageAgcGain = sensorValueOrDefault(s->status.agc_gain, 8, 0, 30);
+    CCstatus.ImageRawGma = sensorBooleanOrDefault(s->status.raw_gma, 1);
+    CCstatus.ImageLenc = sensorBooleanOrDefault(s->status.lenc, 1);
+    CCstatus.ImageSharpness = (CCstatus.CamSensor_id == OV2640_PID)
+        ? sensorValueOrDefault(s->status.sharpness, 0, -2, 2)
+        : sensorValueOrDefault(s->status.sharpness, 0, -3, 3);
+    CCstatus.ImageDenoiseLevel = (CCstatus.CamSensor_id == OV2640_PID)
+        ? 0 : sensorValueOrDefault(s->status.denoise, 0, 0, 8);
+
+    CCstatus.ImageLedIntensity = min(8191, max(0, LedIntensity));
+    SetImageWidthHeightFromResolution(CCstatus);
+    return ESP_OK;
 }
 
 // on the OV5640, gainceiling must be set with the real value (x2>>>gainceilingLevel = 2, .... x128>>>gainceilingLevel = 128)
@@ -532,10 +604,12 @@ void CCamera::SetCamContrastBrightness(sensor_t *s, int _contrast, int _brightne
 // - if imageSize = 0 then the image is not zoomed
 // - if imageSize = max value, then the image is fully zoomed in
 // - a zoom step is >>> Width + 32 px / Height + 24 px
-void CCamera::SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, int &imageWidth, int &imageHeight, int &zoomOffsetX, int &zoomOffsetY)
+void CCamera::SanitizeZoomParams(const CameraSettings &settings, int imageSize,
+                                   int frameSizeX, int frameSizeY, int &imageWidth, int &imageHeight,
+                                   int &zoomOffsetX, int &zoomOffsetY)
 {
-    imageWidth = min(frameSizeX, max(1, CCstatus.ImageWidth + imageSize * 32));
-    imageHeight = min(frameSizeY, max(1, CCstatus.ImageHeight + imageSize * 24));
+    imageWidth = min(frameSizeX, max(1, settings.ImageWidth + imageSize * 32));
+    imageHeight = min(frameSizeY, max(1, settings.ImageHeight + imageSize * 24));
 
     const int availableX = max(0, frameSizeX - imageWidth);
     const int availableY = max(0, frameSizeY - imageHeight);
@@ -546,100 +620,78 @@ void CCamera::SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, 
     zoomOffsetY = halfY + min(halfY, max(-halfY, zoomOffsetY));
 }
 
-void CCamera::SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip)
+esp_err_t CCamera::SetZoomSize(const CameraSettings &settings)
 {
     ScopedCameraLock cameraLock(m_cameraMutex);
-    if (!cameraLock.acquired())
-    {
-        ESP_LOGW(TAG, "SetZoomSize: camera mutex unavailable");
-        return;
-    }
+    if (!cameraLock.acquired()) return ESP_ERR_TIMEOUT;
 
     sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) return ESP_FAIL;
 
-    if (s != NULL)
+    if (!settings.ImageZoomEnabled)
     {
-        if (zoomEnabled)
-        {
-            int _imageSize_temp = 0;
-            int _imageWidth = CCstatus.ImageWidth;
-            int _imageHeight = CCstatus.ImageHeight;
-            int _offsetx = zoomOffsetX;
-            int _offsety = zoomOffsetY;
-            int frameSizeX;
-            int frameSizeY;
-
-            switch (s->id.PID)
-            {
-            case OV5640_PID:
-                frameSizeX = 2592;
-                frameSizeY = 1944;
-                // max imageSize = ((frameSizeX - CCstatus.ImageWidth) / 8 / 4) - 1
-                // 59 = ((2560 - 640) / 8 / 4) - 1
-                imageSize = min(59, max(0, imageSize));
-                _imageSize_temp = (59 - imageSize);
-                SanitizeZoomParams(_imageSize_temp, frameSizeX, frameSizeY, _imageWidth, _imageHeight, _offsetx, _offsety);
-                SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth, CCstatus.ImageHeight, imageVflip);
-                break;
-
-            case OV3660_PID:
-                frameSizeX = 2048;
-                frameSizeY = 1536;
-                // max imageSize = ((frameSizeX - CCstatus.ImageWidth) / 8 / 4) -1
-                // 43 = ((2048 - 640) / 8 / 4) - 1
-                imageSize = min(43, max(0, imageSize));
-                _imageSize_temp = (43 - imageSize);
-                SanitizeZoomParams(_imageSize_temp, frameSizeX, frameSizeY, _imageWidth, _imageHeight, _offsetx, _offsety);
-                SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth, CCstatus.ImageHeight, imageVflip);
-                break;
-
-            case OV2640_PID:
-                frameSizeX = 1600;
-                frameSizeY = 1200;
-                // max imageSize = ((frameSizeX - CCstatus.ImageWidth) / 8 / 4) -1
-                // 29 = ((1600 - 640) / 8 / 4) - 1
-                imageSize = min(29, max(0, imageSize));
-                _imageSize_temp = (29 - imageSize);
-                SanitizeZoomParams(_imageSize_temp, frameSizeX, frameSizeY, _imageWidth, _imageHeight, _offsetx, _offsety);
-                SetCamWindow(s, frameSizeX, frameSizeY, _offsetx, _offsety, _imageWidth, _imageHeight, CCstatus.ImageWidth, CCstatus.ImageHeight, imageVflip);
-                break;
-
-            default:
-                // do nothing
-                break;
-            }
-        }
-        else
-        {
-            s->set_framesize(s, CCstatus.ImageFrameSize);
-        }
+        return s->set_framesize(s, settings.ImageFrameSize) == 0 ? ESP_OK : ESP_FAIL;
     }
+
+    int frameSizeX = 0;
+    int frameSizeY = 0;
+    int maxZoom = 0;
+    switch (s->id.PID)
+    {
+    case OV5640_PID:
+        frameSizeX = 2592;
+        frameSizeY = 1944;
+        maxZoom = 59;
+        break;
+    case OV3660_PID:
+        frameSizeX = 2048;
+        frameSizeY = 1536;
+        maxZoom = 43;
+        break;
+    case OV2640_PID:
+        frameSizeX = 1600;
+        frameSizeY = 1200;
+        maxZoom = 29;
+        break;
+    default:
+        ESP_LOGE(TAG, "SetZoomSize: unsupported sensor PID 0x%04x", s->id.PID);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    const int zoomSize = min(maxZoom, max(0, settings.ImageZoomSize));
+    const int zoomDelta = maxZoom - zoomSize;
+    int imageWidth = settings.ImageWidth;
+    int imageHeight = settings.ImageHeight;
+    int offsetX = settings.ImageZoomOffsetX;
+    int offsetY = settings.ImageZoomOffsetY;
+
+    SanitizeZoomParams(settings, zoomDelta, frameSizeX, frameSizeY,
+                       imageWidth, imageHeight, offsetX, offsetY);
+    SetCamWindow(s, frameSizeX, frameSizeY, offsetX, offsetY,
+                 imageWidth, imageHeight, settings.ImageWidth, settings.ImageHeight,
+                 settings.ImageVflip);
+    return ESP_OK;
 }
 
-void CCamera::SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip)
+esp_err_t CCamera::SetQualityZoomSize(CameraSettings &settings)
 {
     ScopedCameraLock cameraLock(m_cameraMutex);
-    if (!cameraLock.acquired())
-    {
-        ESP_LOGW(TAG, "SetQualityZoomSize: camera mutex unavailable");
-        return;
-    }
+    if (!cameraLock.acquired()) return ESP_ERR_TIMEOUT;
 
     sensor_t *s = esp_camera_sensor_get();
-    if (s == NULL)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SetQualityZoomSize: failed to get camera sensor");
-        return;
-    }
+    if (s == NULL) return ESP_FAIL;
 
+    SetImageWidthHeightFromResolution(settings);
+    int quality = settings.ImageQuality;
     if (s->id.PID != OV2640_PID)
     {
-        qual = min(63, max(8, qual));
+        quality = min(63, max(8, quality));
     }
+    settings.ImageQuality = quality;
 
-    SetImageWidthHeightFromResolution(resol);
-    s->set_quality(s, qual);
-    SetZoomSize(zoomEnabled, zoomOffsetX, zoomOffsetY, imageSize, imageVflip);
+    const int result = s->set_quality(s, quality);
+    if (result != 0) return ESP_FAIL;
+    return SetZoomSize(settings);
 }
 
 void CCamera::SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip)
@@ -701,6 +753,9 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
         ESP_LOGW(TAG, "CaptureToBasisImage: camera mutex unavailable");
         return ESP_ERR_TIMEOUT;
     }
+    const bool previewCapture = CFstatus.previewCapturePending;
+    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(previewCapture);
+    if (restoreResult != ESP_OK) return restoreResult;
 
     if (_Image == NULL || !_Image->ImageOkay()) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: target image is unavailable");
@@ -785,6 +840,7 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
     const bool copied = _Image->CopyFromMemory(source, static_cast<int>(expectedBytes));
     tmpImage->RGBImageRelease();
     delete tmpImage;
+    if (copied && previewCapture) CFstatus.previewCapturePending = false;
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("CaptureToBasisImage - Done");
@@ -800,7 +856,13 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         ESP_LOGW(TAG, "CaptureToFile: camera mutex unavailable");
         return ESP_ERR_TIMEOUT;
     }
+    const bool previewCapture = CFstatus.previewCapturePending;
+    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(previewCapture);
+    if (restoreResult != ESP_OK) return restoreResult;
 
+    const CameraSettings &captureSettings = previewCapture
+        ? static_cast<const CameraSettings &>(CFstatus)
+        : static_cast<const CameraSettings &>(CCstatus);
     string ftype;
 
     LEDOnOff(true); // Status-LED on
@@ -859,7 +921,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
             captureOkay = (buf != NULL && buf_len > 0);
         } else {
             converted = true;
-            captureOkay = frame2jpg(fb, CCstatus.ImageQuality, &buf, &buf_len) &&
+            captureOkay = frame2jpg(fb, captureSettings.ImageQuality, &buf, &buf_len) &&
                           buf != NULL && buf_len > 0;
             if (!captureOkay) ESP_LOGE(TAG, "JPEG compression failed");
         }
@@ -891,6 +953,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         LightOnOff(false); // Flash-LED off
     }
 
+    if (captureOkay && previewCapture) CFstatus.previewCapturePending = false;
     return captureOkay ? ESP_OK : ESP_FAIL;
 }
 
@@ -904,6 +967,9 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
         httpd_resp_send(req, "Camera is busy", HTTPD_RESP_USE_STRLEN);
         return ESP_ERR_TIMEOUT;
     }
+    const bool previewCapture = CFstatus.previewCapturePending;
+    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(previewCapture);
+    if (restoreResult != ESP_OK) return restoreResult;
 
     esp_err_t res = ESP_OK;
     size_t fb_len = 0;
@@ -952,6 +1018,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
                 fb_len = demoLength;
                 res = httpd_resp_send(req, (const char *)demoData, demoLength);
                 free_psram_heap("Demo image HTTP frame", demoData);
+                if (res == ESP_OK && previewCapture) CFstatus.previewCapturePending = false;
             } else {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToHTTP: could not load demo image");
                 res = ESP_FAIL;
@@ -978,6 +1045,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
     }
 
     esp_camera_fb_return(fb);
+    if (res == ESP_OK && previewCapture) CFstatus.previewCapturePending = false;
     int64_t fr_end = esp_timer_get_time();
 
     ESP_LOGI(TAG, "JPG: %dKB %dms", (int)(fb_len / 1024), (int)((fr_end - fr_start) / 1000));
@@ -997,12 +1065,11 @@ esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
     int64_t fr_start = 0;
     char part_buf[64];
 
-    if (CFstatus.changedCameraSettings)
     {
-        Camera.setSensorDatenFromCCstatus();
-        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
-        Camera.LedIntensity = CCstatus.ImageLedIntensity;
-        CFstatus.changedCameraSettings = false;
+        ScopedCameraLock settingsLock(m_cameraMutex);
+        if (!settingsLock.acquired()) return ESP_ERR_TIMEOUT;
+        const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded();
+        if (restoreResult != ESP_OK) return restoreResult;
     }
 
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Live stream started");
@@ -1178,67 +1245,28 @@ void CCamera::LEDOnOff(bool status)
     }
 }
 
-void CCamera::SetImageWidthHeightFromResolution(framesize_t resol)
+void CCamera::SetImageWidthHeightFromResolution(CameraSettings &settings)
 {
-    if (resol == FRAMESIZE_QVGA)
+    switch (settings.ImageFrameSize)
     {
-        CCstatus.ImageWidth = 320;
-        CCstatus.ImageHeight = 240;
-    }
-    else if (resol == FRAMESIZE_VGA)
-    {
-        CCstatus.ImageWidth = 640;
-        CCstatus.ImageHeight = 480;
-    }
-    else if (resol == FRAMESIZE_SVGA)
-    {
-        CCstatus.ImageWidth = 800;
-        CCstatus.ImageHeight = 600;
-    }
-    else if (resol == FRAMESIZE_XGA)
-    {
-        CCstatus.ImageWidth = 1024;
-        CCstatus.ImageHeight = 768;
-    }
-    else if (resol == FRAMESIZE_HD)
-    {
-        CCstatus.ImageWidth = 1280;
-        CCstatus.ImageHeight = 720;
-    }
-    else if (resol == FRAMESIZE_SXGA)
-    {
-        CCstatus.ImageWidth = 1280;
-        CCstatus.ImageHeight = 1024;
-    }
-    else if (resol == FRAMESIZE_UXGA)
-    {
-        CCstatus.ImageWidth = 1600;
-        CCstatus.ImageHeight = 1200;
-    }
-    else if (resol == FRAMESIZE_QXGA)
-    {
-        CCstatus.ImageWidth = 2048;
-        CCstatus.ImageHeight = 1536;
-    }
-    else if (resol == FRAMESIZE_WQXGA)
-    {
-        CCstatus.ImageWidth = 2560;
-        CCstatus.ImageHeight = 1600;
-    }
-    else if (resol == FRAMESIZE_QSXGA)
-    {
-        CCstatus.ImageWidth = 2560;
-        CCstatus.ImageHeight = 1920;
-    }
-    else
-    {
-        CCstatus.ImageWidth = 640;
-        CCstatus.ImageHeight = 480;
+    case FRAMESIZE_QVGA:   settings.ImageWidth = 320;  settings.ImageHeight = 240;  break;
+    case FRAMESIZE_VGA:    settings.ImageWidth = 640;  settings.ImageHeight = 480;  break;
+    case FRAMESIZE_SVGA:   settings.ImageWidth = 800;  settings.ImageHeight = 600;  break;
+    case FRAMESIZE_XGA:    settings.ImageWidth = 1024; settings.ImageHeight = 768;  break;
+    case FRAMESIZE_HD:     settings.ImageWidth = 1280; settings.ImageHeight = 720;  break;
+    case FRAMESIZE_SXGA:   settings.ImageWidth = 1280; settings.ImageHeight = 1024; break;
+    case FRAMESIZE_UXGA:   settings.ImageWidth = 1600; settings.ImageHeight = 1200; break;
+    case FRAMESIZE_QXGA:   settings.ImageWidth = 2048; settings.ImageHeight = 1536; break;
+    case FRAMESIZE_WQXGA:  settings.ImageWidth = 2560; settings.ImageHeight = 1600; break;
+    case FRAMESIZE_QSXGA: settings.ImageWidth = 2560; settings.ImageHeight = 1920; break;
+    default:
+        ESP_LOGW(TAG, "Unsupported frame size %d; falling back to VGA", static_cast<int>(settings.ImageFrameSize));
+        settings.ImageFrameSize = FRAMESIZE_VGA;
+        settings.ImageWidth = 640;
+        settings.ImageHeight = 480;
+        break;
     }
 }
-
-
-std::vector<std::string> demoFiles;
 
 void CCamera::useDemoMode(void)
 {

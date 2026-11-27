@@ -31,9 +31,12 @@ bool ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image object is unavailable");
         return false;
     }
-    if (rawImage->width != CCstatus.ImageWidth || rawImage->height != CCstatus.ImageHeight ||
+    const CameraSettings &activeSettings = CFstatus.previewCapturePending
+        ? static_cast<const CameraSettings &>(CFstatus)
+        : static_cast<const CameraSettings &>(CCstatus);
+    if (rawImage->width != activeSettings.ImageWidth || rawImage->height != activeSettings.ImageHeight ||
         rawImage->channels != 3) {
-        rawImage->CreateEmptyImage(CCstatus.ImageWidth, CCstatus.ImageHeight, 3);
+        rawImage->CreateEmptyImage(activeSettings.ImageWidth, activeSettings.ImageHeight, 3);
     }
     if (!rawImage->ImageOkay()) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image PSRAM buffer is unavailable");
@@ -512,8 +515,11 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
         }
     }
 
-    Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-    Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
+    if (Camera.ApplySettings(CCstatus) != ESP_OK)
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to apply configured camera settings");
+        return false;
+    }
 
     delete rawImage;
     rawImage = new (std::nothrow) CImageBasis("rawImage");
@@ -556,24 +562,25 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 
     string logPath = CreateLogFolder(zwtime);
 
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    const CameraSettings &activeSettings = CFstatus.previewCapturePending
+        ? static_cast<const CameraSettings &>(CFstatus)
+        : static_cast<const CameraSettings &>(CCstatus);
+    int flash_duration = static_cast<int>(activeSettings.WaitBeforePicture * 1000);
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
 #endif
 
-#ifdef WIFITURNOFF
-    esp_wifi_stop(); // to save power usage and
-#endif
-
-    // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
-    if (CFstatus.changedCameraSettings)
+    if (Camera.RestoreCommittedSettingsIfNeeded(CFstatus.previewCapturePending) != ESP_OK)
     {
-        Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
-        Camera.LedIntensity = CCstatus.ImageLedIntensity;
-        CFstatus.changedCameraSettings = false;
+        if (sharedMemoryLeaseAcquired) psram_deinit_shared_memory_for_take_image_step();
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to restore committed camera settings");
+        return false;
     }
+
+#ifdef WIFITURNOFF
+    esp_wifi_stop(); // save power during image capture
+#endif
 
     const bool captured = takePictureWithFlash(flash_duration);
 
@@ -606,7 +613,10 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 
 esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
 {
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    const CameraSettings &activeSettings = CFstatus.previewCapturePending
+        ? static_cast<const CameraSettings &>(CFstatus)
+        : static_cast<const CameraSettings &>(CCstatus);
+    int flash_duration = static_cast<int>(activeSettings.WaitBeforePicture * 1000);
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 

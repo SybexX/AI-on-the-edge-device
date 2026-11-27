@@ -10,6 +10,9 @@
 struct CameraSettings
 {
     framesize_t ImageFrameSize = FRAMESIZE_VGA;
+    int ImageWidth = 640;
+    int ImageHeight = 480;
+    int CamXclkFreqMhz = 20;
     gainceiling_t ImageGainceiling;
 
     int ImageQuality;

@@ -14,6 +14,8 @@
 
 struct camera_flow_config_temp_t : public CameraSettings
 {
+    // One-shot state for the next preview-image capture.
+    bool previewCapturePending;
     bool changedCameraSettings;
 };
 

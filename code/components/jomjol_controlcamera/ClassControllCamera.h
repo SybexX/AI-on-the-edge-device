@@ -17,8 +17,6 @@ struct camera_controll_config_temp_t : public CameraSettings
 {
     // Hardware identity/dimensions and runtime flags are not camera settings.
     uint16_t CamSensor_id;
-    int ImageWidth;
-    int ImageHeight;
 
     bool CameraInitSuccessful;
     bool DemoMode;
@@ -37,8 +35,9 @@ protected:
     bool loadNextDemoImage(uint8_t **data, size_t *length);
     long GetFileSize(std::string filename);
     void SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip);
-    void SetImageWidthHeightFromResolution(framesize_t resol);
-    void SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, int &imageWidth, int &imageHeight, int &zoomOffsetX, int &zoomOffsetY);
+    void SetImageWidthHeightFromResolution(CameraSettings &settings);
+    void SanitizeZoomParams(const CameraSettings &settings, int imageSize, int frameSizeX, int frameSizeY,
+                            int &imageWidth, int &imageHeight, int &zoomOffsetX, int &zoomOffsetY);
 
 public:
     int LedIntensity = 4096;
@@ -50,7 +49,8 @@ public:
     void LEDOnOff(bool status);
 
     esp_err_t setSensorDatenFromCCstatus(void);
-    esp_err_t ApplySettings(const CameraSettings &settings);
+    esp_err_t ApplySettings(CameraSettings &settings);
+    esp_err_t RestoreCommittedSettingsIfNeeded(bool preserveTemporaryCapture = false);
     esp_err_t getSensorDatenToCCstatus(void);
 
     int SetCamGainceiling(sensor_t *s, gainceiling_t gainceilingLevel);
@@ -61,8 +61,8 @@ public:
     esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0);
     esp_err_t CaptureToStream(httpd_req_t *req, bool FlashlightOn);
 
-    void SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
-    void SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip);
+    esp_err_t SetQualityZoomSize(CameraSettings &settings);
+    esp_err_t SetZoomSize(const CameraSettings &settings);
 
     int SetLEDIntensity(int _intrel);
     bool testCamera(void);
