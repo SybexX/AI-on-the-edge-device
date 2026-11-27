@@ -408,22 +408,6 @@ void wifi_scan(void)
 }
 
 
-void wifiRoamByScanning(void)
-{
-	if (wlan_config.rssi_threshold != 0 && get_WIFI_RSSI() != -127 && (get_WIFI_RSSI() < wlan_config.rssi_threshold)) {
-		LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: Start scan of all channels for SSID " + wlan_config.ssid);
-		wifi_scan();
-
-		if (APWithBetterRSSI) {
-			APWithBetterRSSI = false;
-			LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Roaming: AP with better RSSI in range, disconnecting to switch AP...");
-			esp_wifi_disconnect();
-		} 
-		else {
-			LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Roaming: Scan completed, stay on current AP");
-		}
-	}
-}
 #endif // WLAN_USE_ROAMING_BY_SCANNING
 
 

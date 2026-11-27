@@ -19,7 +19,6 @@ void wifiRoamingQuery(void);
 #endif
 
 #ifdef WLAN_USE_ROAMING_BY_SCANNING
-void wifiRoamByScanning(void);
 #endif
 
 #endif //CONNECT_WLAN_H
