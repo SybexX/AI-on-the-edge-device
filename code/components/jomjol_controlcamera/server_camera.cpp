@@ -178,14 +178,7 @@ esp_err_t handler_capture_with_light(httpd_req_t *req)
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
 #endif        
 
-        Camera.LightOnOff(true);
-        const TickType_t xDelay = delay / portTICK_PERIOD_MS;
-        vTaskDelay(xDelay);
-
-        esp_err_t result;
-        result = Camera.CaptureToHTTP(req);
-
-        Camera.LightOnOff(false);
+        const esp_err_t result = Camera.CaptureToHTTP(req, delay);
 
 #ifdef DEBUG_DETAIL_ON
         LogFile.WriteHeapInfo("handler_capture_with_light - Done");
@@ -211,15 +204,22 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
         char _query[100];
         char _delay[10];
         int delay = 0;
-        char filename[100];
+        char filename[100] = {0};
         std::string fn = "/sdcard/";
 
         if (httpd_req_get_url_query_str(req, _query, 100) == ESP_OK)
         {
             ESP_LOGD(TAG, "Query: %s", _query);
 
-            if (httpd_query_key_value(_query, "filename", filename, 100) == ESP_OK)
+            if (httpd_query_key_value(_query, "filename", filename, sizeof(filename)) == ESP_OK)
             {
+                if (filename[0] == '\0' || strchr(filename, '/') != NULL ||
+                    strchr(filename, '\\') != NULL || strcmp(filename, ".") == 0 ||
+                    strcmp(filename, "..") == 0)
+                {
+                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid filename");
+                    return ESP_ERR_INVALID_ARG;
+                }
                 fn.append(filename);
 #ifdef DEBUG_DETAIL_ON
                 ESP_LOGD(TAG, "Filename: %s", fn.c_str());
@@ -261,17 +261,23 @@ esp_err_t handler_capture_save_to_file(httpd_req_t *req)
         ESP_LOGD(TAG, "Size: %d, Quality: %d", CCstatus.ImageFrameSize, CCstatus.ImageQuality);
 #endif        
 
-        esp_err_t result;
-        result = Camera.CaptureToFile(fn, delay);
+        const esp_err_t result = Camera.CaptureToFile(fn, delay);
+        if (result != ESP_OK)
+        {
+            const char *errorStatus = result == ESP_ERR_TIMEOUT
+                                          ? HTTPD_503_SERVICE_UNAVAILABLE
+                                          : HTTPD_500_INTERNAL_SERVER_ERROR;
+            httpd_resp_send_err(req, errorStatus, "Image capture or file save failed");
+            return result;
+        }
 
-        const char *resp_str = (const char *)fn.c_str();
-        httpd_resp_send(req, resp_str, strlen(resp_str));
+        const esp_err_t responseResult = httpd_resp_send(req, fn.c_str(), fn.length());
 
 #ifdef DEBUG_DETAIL_ON
         LogFile.WriteHeapInfo("handler_capture_save_to_file - Done");
 #endif
 
-        return result;
+        return responseResult;
     }
     else
     {

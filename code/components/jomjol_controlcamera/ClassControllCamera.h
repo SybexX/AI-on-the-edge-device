@@ -6,6 +6,7 @@
 #include <string>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
@@ -72,6 +73,9 @@ extern camera_controll_config_temp_t CCstatus;
 class CCamera
 {
 protected:
+    SemaphoreHandle_t m_cameraMutex;
+    bool m_driverInitialized;
+
     void ledc_init(void);
     bool loadNextDemoImage(uint8_t **data, size_t *length);
     long GetFileSize(std::string filename);

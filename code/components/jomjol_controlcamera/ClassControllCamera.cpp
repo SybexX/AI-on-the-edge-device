@@ -114,7 +114,35 @@ typedef struct
     size_t len;
 } jpg_chunking_t;
 
+// The camera driver and sensor register access are not safe to use concurrently.
+// Recursive locking allows public methods to safely call other locked methods.
+class ScopedCameraLock
+{
+public:
+    explicit ScopedCameraLock(SemaphoreHandle_t mutex, TickType_t timeout = pdMS_TO_TICKS(5000))
+        : m_mutex(mutex),
+          m_acquired(mutex != NULL && xSemaphoreTakeRecursive(mutex, timeout) == pdTRUE)
+    {
+    }
+
+    ~ScopedCameraLock()
+    {
+        if (m_acquired)
+        {
+            xSemaphoreGiveRecursive(m_mutex);
+        }
+    }
+
+    bool acquired() const { return m_acquired; }
+
+private:
+    SemaphoreHandle_t m_mutex;
+    bool m_acquired;
+};
+
 CCamera::CCamera(void)
+    : m_cameraMutex(xSemaphoreCreateRecursiveMutex()),
+      m_driverInitialized(false)
 {
 #ifdef DEBUG_DETAIL_ON
     ESP_LOGD(TAG, "CreateClassCamera");
@@ -130,73 +158,100 @@ CCamera::CCamera(void)
 
 esp_err_t CCamera::InitCam(void)
 {
-    ESP_LOGD(TAG, "Init Camera");
-
-    // De-init in case it was already initialized
-    PowerResetCamera();
-    vTaskDelay(pdMS_TO_TICKS(200));
-	
-    // initialize the camera
-    esp_err_t err = esp_camera_init(&camera_config);
-    if (err != ESP_OK)
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
     {
-        ESP_LOGE(TAG, "Camera Init Failed");
-        return err;
+        ESP_LOGE(TAG, "InitCam: camera mutex unavailable");
+        CCstatus.CameraInitSuccessful = false;
+        return ESP_ERR_NO_MEM;
     }
 
-    CCstatus.CameraInitSuccessful = true;
+    ESP_LOGD(TAG, "Init Camera");
+    CCstatus.CameraInitSuccessful = false;
 
-    // Get a reference to the sensor
+    // Release an earlier driver instance before resetting and reinitializing.
+    if (m_driverInitialized)
+    {
+        const esp_err_t deinitResult = esp_camera_deinit();
+        if (deinitResult != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Camera deinitialization failed: %s", esp_err_to_name(deinitResult));
+            return deinitResult;
+        }
+        m_driverInitialized = false;
+    }
+
+    PowerResetCamera();
+    vTaskDelay(pdMS_TO_TICKS(200));
+
+    const esp_err_t err = esp_camera_init(&camera_config);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Camera Init Failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    m_driverInitialized = true;
+
     sensor_t *s = esp_camera_sensor_get();
-    if (s != NULL)
+    if (s == NULL)
+    {
+        ESP_LOGE(TAG, "Camera sensor handle is unavailable");
+    }
+    else
     {
         CCstatus.CamSensor_id = s->id.PID;
-
-        // Dump camera module, warn for unsupported modules.
         switch (CCstatus.CamSensor_id)
         {
         case OV2640_PID:
             ESP_LOGI(TAG, "OV2640 camera module detected");
+            CCstatus.CameraInitSuccessful = true;
             break;
         case OV3660_PID:
             ESP_LOGI(TAG, "OV3660 camera module detected");
+            CCstatus.CameraInitSuccessful = true;
             break;
         case OV5640_PID:
             ESP_LOGI(TAG, "OV5640 camera module detected");
+            CCstatus.CameraInitSuccessful = true;
             break;
         default:
             ESP_LOGE(TAG, "Camera module is unknown and not properly supported!");
-            CCstatus.CameraInitSuccessful = false;
+            break;
         }
     }
 
-    if (CCstatus.CameraInitSuccessful)
+    if (!CCstatus.CameraInitSuccessful)
     {
-        return ESP_OK;
-    }
-    else
-    {
+        const esp_err_t cleanupResult = esp_camera_deinit();
+        if (cleanupResult != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Failed to clean up unsupported camera: %s", esp_err_to_name(cleanupResult));
+        }
+        m_driverInitialized = (cleanupResult != ESP_OK);
         return ESP_FAIL;
     }
+
+    return ESP_OK;
 }
 
 bool CCamera::testCamera(void)
 {
-    bool success;
-    camera_fb_t *fb = esp_camera_fb_get();
-
-    if (fb)
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
     {
-        success = true;
+        ESP_LOGW(TAG, "testCamera: camera mutex unavailable");
+        return false;
     }
-    else
+
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (fb == NULL)
     {
-        success = false;
+        ESP_LOGW(TAG, "testCamera: framebuffer capture failed");
+        return false;
     }
 
     esp_camera_fb_return(fb);
-
-    return success;
+    return true;
 }
 
 void CCamera::ledc_init(void)
@@ -239,11 +294,19 @@ int CCamera::SetLEDIntensity(int _intrel)
 
 bool CCamera::getCameraInitSuccessful(void)
 {
-    return CCstatus.CameraInitSuccessful;
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    return cameraLock.acquired() && CCstatus.CameraInitSuccessful;
 }
 
 esp_err_t CCamera::setSensorDatenFromCCstatus(void)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "setSensorDatenFromCCstatus: camera mutex unavailable");
+        return ESP_ERR_TIMEOUT;
+    }
+
     sensor_t *s = esp_camera_sensor_get();
 
     if (s != NULL)
@@ -300,6 +363,13 @@ esp_err_t CCamera::setSensorDatenFromCCstatus(void)
 
 esp_err_t CCamera::getSensorDatenToCCstatus(void)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "getSensorDatenToCCstatus: camera mutex unavailable");
+        return ESP_ERR_TIMEOUT;
+    }
+
     sensor_t *s = esp_camera_sensor_get();
 
     if (s != NULL)
@@ -351,6 +421,13 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
 // on the OV5640, gainceiling must be set with the real value (x2>>>gainceilingLevel = 2, .... x128>>>gainceilingLevel = 128)
 int CCamera::SetCamGainceiling(sensor_t *s, gainceiling_t gainceilingLevel)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "SetCamGainceiling: camera mutex unavailable");
+        return ESP_ERR_TIMEOUT;
+    }
+
 	int ret = 0;
 		
     if (CCstatus.CamSensor_id == OV2640_PID)
@@ -375,6 +452,13 @@ int CCamera::SetCamGainceiling(sensor_t *s, gainceiling_t gainceilingLevel)
 
 void CCamera::SetCamSharpness(bool autoSharpnessEnabled, int sharpnessLevel)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "SetCamSharpness: camera mutex unavailable");
+        return;
+    }
+
     sensor_t *s = esp_camera_sensor_get();
 
     if (s != NULL)
@@ -415,6 +499,13 @@ void CCamera::SetCamSharpness(bool autoSharpnessEnabled, int sharpnessLevel)
 
 void CCamera::SetCamSpecialEffect(sensor_t *s, int specialEffect)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "SetCamSpecialEffect: camera mutex unavailable");
+        return;
+    }
+
     if (CCstatus.CamSensor_id == OV2640_PID)
     {
         ov2640_set_special_effect(s, specialEffect);
@@ -427,6 +518,13 @@ void CCamera::SetCamSpecialEffect(sensor_t *s, int specialEffect)
 
 void CCamera::SetCamContrastBrightness(sensor_t *s, int _contrast, int _brightness)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "SetCamContrastBrightness: camera mutex unavailable");
+        return;
+    }
+
     if (CCstatus.CamSensor_id == OV2640_PID)
     {
         ov2640_set_contrast_brightness(s, _contrast, _brightness);
@@ -501,6 +599,13 @@ void CCamera::SanitizeZoomParams(int imageSize, int frameSizeX, int frameSizeY, 
 
 void CCamera::SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "SetZoomSize: camera mutex unavailable");
+        return;
+    }
+
     sensor_t *s = esp_camera_sensor_get();
 
     if (s != NULL)
@@ -570,6 +675,13 @@ void CCamera::SetZoomSize(bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, in
 
 void CCamera::SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, int zoomOffsetX, int zoomOffsetY, int imageSize, int imageVflip)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "SetQualityZoomSize: camera mutex unavailable");
+        return;
+    }
+
     sensor_t *s = esp_camera_sensor_get();
 
     // OV2640 has no lower limit on jpeg quality
@@ -593,6 +705,13 @@ void CCamera::SetQualityZoomSize(int qual, framesize_t resol, bool zoomEnabled, 
 
 void CCamera::SetCamWindow(sensor_t *s, int frameSizeX, int frameSizeY, int xOffset, int yOffset, int xTotal, int yTotal, int xOutput, int yOutput, int imageVflip)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "SetCamWindow: camera mutex unavailable");
+        return;
+    }
+
     if (CCstatus.CamSensor_id == OV2640_PID)
     {
         s->set_res_raw(s, 0, 0, 0, 0, xOffset, yOffset, xTotal, yTotal, xOutput, yOutput, false, false);
@@ -635,6 +754,13 @@ static size_t jpg_encode_stream(void *arg, size_t index, const void *data, size_
 
 esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "CaptureToBasisImage: camera mutex unavailable");
+        return ESP_ERR_TIMEOUT;
+    }
+
     if (_Image == NULL || !_Image->ImageOkay()) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: target image is unavailable");
         return ESP_FAIL;
@@ -655,7 +781,7 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
     camera_fb_t *fb = esp_camera_fb_get();
     if (fb == NULL) {
         LEDOnOff(false);
-        LightOnOff(false);
+        if (delay > 0) LightOnOff(false);
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: camera capture failed");
         return ESP_FAIL;
     }
@@ -727,6 +853,13 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
 
 esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "CaptureToFile: camera mutex unavailable");
+        return ESP_ERR_TIMEOUT;
+    }
+
     string ftype;
 
     LEDOnOff(true); // Status-LED on
@@ -734,8 +867,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
     if (delay > 0)
     {
         LightOnOff(true); // Flash-LED on
-        const TickType_t xDelay = delay / portTICK_PERIOD_MS;
-        vTaskDelay(xDelay);
+        vTaskDelay(pdMS_TO_TICKS(delay));
     }
 
     camera_fb_t *warmup = esp_camera_fb_get();
@@ -745,7 +877,7 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
     if (!fb)
     {
         LEDOnOff(false);   // Status-LED off
-        LightOnOff(false); // Flash-LED off
+        if (delay > 0) LightOnOff(false); // Flash-LED off
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToFile: Capture Failed. "
                                                 "Check camera module and/or proper electrical connection");
         // doReboot();
@@ -823,6 +955,14 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
 
 esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "CaptureToHTTP: camera mutex unavailable");
+        httpd_resp_send_err(req, HTTPD_503_SERVICE_UNAVAILABLE, "Camera is busy");
+        return ESP_ERR_TIMEOUT;
+    }
+
     esp_err_t res = ESP_OK;
     size_t fb_len = 0;
     int64_t fr_start = esp_timer_get_time();
@@ -832,8 +972,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
     if (delay > 0)
     {
         LightOnOff(true); // Flash-LED on
-        const TickType_t xDelay = delay / portTICK_PERIOD_MS;
-        vTaskDelay(xDelay);
+        vTaskDelay(pdMS_TO_TICKS(delay));
     }
 
     camera_fb_t *warmup = esp_camera_fb_get();
@@ -887,7 +1026,10 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
             {
                 jpg_chunking_t jchunk = {req, 0};
                 res = frame2jpg_cb(fb, 80, jpg_encode_stream, &jchunk) ? ESP_OK : ESP_FAIL;
-                httpd_resp_send_chunk(req, NULL, 0);
+                if (res == ESP_OK)
+                {
+                    res = httpd_resp_send_chunk(req, NULL, 0);
+                }
                 fb_len = jchunk.len;
             }
         }
@@ -910,93 +1052,127 @@ esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
 {
     esp_err_t res = ESP_OK;
     size_t fb_len = 0;
-    int64_t fr_start;
+    int64_t fr_start = 0;
     char part_buf[64];
 
-    // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
     if (CFstatus.changedCameraSettings)
     {
-        Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
+        Camera.setSensorDatenFromCCstatus();
         Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
         Camera.LedIntensity = CCstatus.ImageLedIntensity;
         CFstatus.changedCameraSettings = false;
     }
 
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Live stream started");
-
     if (FlashlightOn)
     {
-        LEDOnOff(true);   // Status-LED on
-        LightOnOff(true); // Flash-LED on
+        LEDOnOff(true);
+        LightOnOff(true);
     }
 
-    // httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");  //stream is blocking web interface, only serving to local
+    res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
+    if (res == ESP_OK)
+    {
+        res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+    }
 
-    httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
-    httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+    // Discard one initial frame so that exposure and white balance can settle.
+    if (res == ESP_OK)
+    {
+        ScopedCameraLock warmupLock(m_cameraMutex);
+        if (!warmupLock.acquired())
+        {
+            res = ESP_ERR_TIMEOUT;
+        }
+        else
+        {
+            camera_fb_t *warmup = esp_camera_fb_get();
+            if (warmup != NULL)
+            {
+                esp_camera_fb_return(warmup);
+            }
+        }
+    }
 
-    while (1)
+    while (res == ESP_OK)
     {
         fr_start = esp_timer_get_time();
-        camera_fb_t *warmup = esp_camera_fb_get();
-        if (warmup != NULL) esp_camera_fb_return(warmup);
-        camera_fb_t *fb = esp_camera_fb_get();
-
-        if (!fb)
         {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToStream: Camera framebuffer not available");
-            break;
+            ScopedCameraLock frameLock(m_cameraMutex);
+            if (!frameLock.acquired())
+            {
+                res = ESP_ERR_TIMEOUT;
+            }
+            else
+            {
+                camera_fb_t *fb = esp_camera_fb_get();
+                if (fb == NULL)
+                {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToStream: Camera framebuffer not available");
+                    res = ESP_FAIL;
+                }
+                else
+                {
+                    fb_len = fb->len;
+                    const int headerLength = snprintf(part_buf, sizeof(part_buf), _STREAM_PART,
+                                                       static_cast<unsigned int>(fb_len));
+                    if (headerLength < 0 || static_cast<size_t>(headerLength) >= sizeof(part_buf))
+                    {
+                        res = ESP_FAIL;
+                    }
+                    else
+                    {
+                        res = httpd_resp_send_chunk(req, part_buf, static_cast<size_t>(headerLength));
+                    }
+
+                    if (res == ESP_OK)
+                    {
+                        res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb_len);
+                    }
+                    if (res == ESP_OK)
+                    {
+                        res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+                    }
+
+                    esp_camera_fb_return(fb);
+                }
+            }
         }
-
-        fb_len = fb->len;
-
-        if (res == ESP_OK)
-        {
-            size_t hlen = snprintf((char *)part_buf, sizeof(part_buf), _STREAM_PART, fb_len);
-            res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
-        }
-
-        if (res == ESP_OK)
-        {
-            res = httpd_resp_send_chunk(req, (const char *)fb->buf, fb_len);
-        }
-
-        if (res == ESP_OK)
-        {
-            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-        }
-
-        esp_camera_fb_return(fb);
-
-        int64_t fr_end = esp_timer_get_time();
-        ESP_LOGD(TAG, "JPG: %dKB %dms", (int)(fb_len / 1024), (int)((fr_end - fr_start) / 1000));
 
         if (res != ESP_OK)
         {
-            // Exit loop, e.g. also when closing the webpage
             break;
         }
 
-        int64_t fr_delta_ms = (fr_end - fr_start) / 1000;
-
+        const int64_t fr_end = esp_timer_get_time();
+        ESP_LOGD(TAG, "JPG: %dKB %dms", (int)(fb_len / 1024), (int)((fr_end - fr_start) / 1000));
+        const int64_t fr_delta_ms = (fr_end - fr_start) / 1000;
         if (CAM_LIVESTREAM_REFRESHRATE > fr_delta_ms)
         {
-            const TickType_t xDelay = (CAM_LIVESTREAM_REFRESHRATE - fr_delta_ms) / portTICK_PERIOD_MS;
-            ESP_LOGD(TAG, "Stream: sleep for: %ldms", (long)xDelay * 10);
+            const TickType_t xDelay = pdMS_TO_TICKS(CAM_LIVESTREAM_REFRESHRATE - fr_delta_ms);
+            ESP_LOGD(TAG, "Stream: sleep for: %lu ticks", (unsigned long)xDelay);
             vTaskDelay(xDelay);
         }
     }
 
-    LEDOnOff(false);   // Status-LED off
-    LightOnOff(false); // Flash-LED off
-
+    if (FlashlightOn)
+    {
+        LEDOnOff(false);
+        LightOnOff(false);
+    }
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Live stream stopped");
-
     return res;
 }
 
 void CCamera::LightOnOff(bool status)
 {
+    ScopedCameraLock cameraLock(m_cameraMutex);
+    if (!cameraLock.acquired())
+    {
+        ESP_LOGW(TAG, "LightOnOff: camera mutex unavailable");
+        return;
+    }
+
     GpioHandler *gpioHandler = gpio_handler_get();
 
     if ((gpioHandler != NULL) && (gpioHandler->isEnabled()))
