@@ -709,9 +709,9 @@ int ClassFlowControll::CleanTempFolder() {
     return 0;
 }
 
-esp_err_t ClassFlowControll::SendRawJPG(httpd_req_t *req)
+esp_err_t ClassFlowControll::SendRawJPG(httpd_req_t *req, bool previewCapture)
 {
-    return flowtakeimage != NULL ? flowtakeimage->SendRawJPG(req) : ESP_FAIL;
+    return flowtakeimage != NULL ? flowtakeimage->SendRawJPG(req, previewCapture) : ESP_FAIL;
 }
 
 esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)

@@ -14,17 +14,11 @@
 
 struct camera_flow_config_temp_t : public CameraSettings
 {
-    // One-shot state for the next preview-image capture.
-    bool previewCapturePending;
-    bool changedCameraSettings;
 };
 
 extern camera_flow_config_temp_t CFstatus;
 extern ClassFlowControll flowctrl;
 
-esp_err_t setCCstatusToCFstatus(void); // CCstatus >>> CFstatus
-esp_err_t setCFstatusToCCstatus(void); // CFstatus >>> CCstatus
-esp_err_t setCFstatusToCam(void);      // CFstatus >>> Kamera
 
 void register_server_main_flow_task_uri(httpd_handle_t server);
 
@@ -41,7 +35,7 @@ int getCountFlowRounds(void);
 esp_err_t MQTTCtrlFlowStart(std::string _topic);
 #endif // ENABLE_MQTT
 
-esp_err_t GetRawJPG(httpd_req_t *req);
+esp_err_t GetRawJPG(httpd_req_t *req, bool previewCapture = false);
 esp_err_t GetJPG(std::string _filename, httpd_req_t *req);
 
 #endif // MAINFLOWCONTROL_H
