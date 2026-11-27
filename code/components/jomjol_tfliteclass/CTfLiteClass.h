@@ -45,6 +45,7 @@ class CTfLiteClass
         void GetInputTensorSize();
         bool LoadInputImageBasis(CImageBasis *rs);
         void Invoke();
+        bool LastInvokeSucceeded() const { return lastInvokeSucceeded; }
         int GetAnzOutPut(bool silent = true);        
         int GetOutClassification(int _von = -1, int _bis = -1);
 

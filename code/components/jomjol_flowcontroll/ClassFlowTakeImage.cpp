@@ -4,6 +4,7 @@
 #include <regex>
 
 #include "ClassFlowTakeImage.h"
+#include <new>
 #include "Helper.h"
 #include "ClassLogFile.h"
 
@@ -600,15 +601,22 @@ esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
 
 ImageData *ClassFlowTakeImage::SendRawImage(void)
 {
-    CImageBasis *zw = new CImageBasis("SendRawImage", rawImage);
-    ImageData *id;
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    if (rawImage == NULL || !rawImage->ImageOkay()) return NULL;
+    CImageBasis *zw = new (std::nothrow) CImageBasis("SendRawImage", rawImage);
+    if (zw == NULL || !zw->ImageOkay()) {
+        delete zw;
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SendRawImage: unable to allocate an image copy");
+        return NULL;
+    }
+
+    const int flash_duration = static_cast<int>(CCstatus.WaitBeforePicture * 1000);
     Camera.CaptureToBasisImage(zw, flash_duration);
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    id = zw->writeToMemoryAsJPG();
+    ImageData *id = zw->writeToMemoryAsJPG();
     delete zw;
+    // The caller owns the returned ImageData and must release it with delete.
     return id;
 }
 

@@ -715,8 +715,19 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                     {
                         float f1 = 0, f2 = 0;
 
-                        tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);        
+                        if (!tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image)) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CNN input image could not be copied into Tensor Arena");
+                            continue;
+                        }
                         tflite->Invoke();
+                        if (!tflite->LastInvokeSucceeded()) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite inference failed");
+                            continue;
+                        }
                         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "After Invoke");
 
                         f1 = tflite->GetOutputValue(0);
@@ -739,8 +750,12 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                 case Digit:
                     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: Digit");
                     {
-                        GENERAL[n]->ROI[roi]->result_klasse = 0;
                         GENERAL[n]->ROI[roi]->result_klasse = tflite->GetClassFromImageBasis(GENERAL[n]->ROI[roi]->image);
+                        if (GENERAL[n]->ROI[roi]->result_klasse < 0) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Digit inference failed for ROI " + GENERAL[n]->ROI[roi]->name);
+                            continue;
+                        }
                         ESP_LOGD(TAG, "General result (Digit)%i: %d", roi, GENERAL[n]->ROI[roi]->result_klasse);
 
                         if (isLogImage) {
@@ -764,8 +779,19 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                         float _fit;
                         float _result_save_file;
 
-                        tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);        
+                        if (!tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image)) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CNN input image could not be copied into Tensor Arena");
+                            continue;
+                        }
                         tflite->Invoke();
+                        if (!tflite->LastInvokeSucceeded()) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite inference failed");
+                            continue;
+                        }
                         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "After Invoke");
 
                         _num = tflite->GetOutClassification(0, 9);
@@ -835,8 +861,19 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                         int _num;
                         float _result_save_file;
                         
-                        tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);        
+                        if (!tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image)) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CNN input image could not be copied into Tensor Arena");
+                            continue;
+                        }
                         tflite->Invoke();
+                        if (!tflite->LastInvokeSucceeded()) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite inference failed");
+                            continue;
+                        }
     
                         _num = tflite->GetOutClassification();
                         

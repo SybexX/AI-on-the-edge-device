@@ -32,12 +32,12 @@ void CTfLiteClass::MakeStaticResolver()
 
 float CTfLiteClass::GetOutputValue(int nr)
 {
-    if (this->interpreter == nullptr || nr < 0) return -1000.0f;
+    if (this->interpreter == nullptr || !lastInvokeSucceeded || nr < 0) return -1000.0f;
     TfLiteTensor* output2 = this->interpreter->output(0);
     if (output2 == nullptr || output2->dims == nullptr || output2->dims->size < 2) return -1000.0f;
 
     int numeroutput = output2->dims->data[1];
-    if ((nr+1) > numeroutput)
+    if (nr >= numeroutput || output2->data.f == nullptr)
       return -1000;
 
     return output2->data.f[nr];
@@ -50,20 +50,21 @@ int CTfLiteClass::GetClassFromImageBasis(CImageBasis *rs)
       return -1000;
 
     Invoke();
-
+    if (!lastInvokeSucceeded) return -1000;
     return GetOutClassification();
 }
 
 
 int CTfLiteClass::GetOutClassification(int _von, int _bis)
 {
+  if (interpreter == nullptr || !lastInvokeSucceeded) return -1;
   TfLiteTensor* output2 = interpreter->output(0);
 
   float zw_max;
   float zw;
   int zw_class;
 
-  if (output2 == NULL)
+  if (output2 == NULL || output2->dims == nullptr || output2->dims->size < 2 || output2->data.f == nullptr)
     return -1;
 
   int numeroutput = output2->dims->data[1];
@@ -75,7 +76,7 @@ int CTfLiteClass::GetOutClassification(int _von, int _bis)
   if (_von == -1)
     _von = 0;
 
-  if (_bis >= numeroutput)
+  if (_von < 0 || _bis < _von || _bis >= numeroutput)
   {
     ESP_LOGD(TAG, "NUMBER OF OUTPUT NEURONS does not match required classification!");
     return -1;
@@ -140,6 +141,7 @@ int CTfLiteClass::GetAnzOutPut(bool silent)
   if (output2 == nullptr || output2->dims == nullptr) return 0;
 
   int numdim = output2->dims->size;
+  if (numdim < 2 || output2->data.f == nullptr) return 0;
   if (!silent) ESP_LOGD(TAG, "NumDimension: %d", numdim);
 
   int sizeofdim;
@@ -165,10 +167,10 @@ int CTfLiteClass::GetAnzOutPut(bool silent)
 
 void CTfLiteClass::Invoke()
 {
+    lastInvokeSucceeded = false;
     if (interpreter == nullptr) return;
-    if (interpreter->Invoke() != kTfLiteOk) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite Invoke() failed");
-    }
+    if (interpreter->Invoke() == kTfLiteOk) lastInvokeSucceeded = true;
+    else LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite Invoke() failed");
 }
 
 
@@ -266,6 +268,7 @@ bool CTfLiteClass::MakeAllocate()
         this->interpreter = nullptr;
         return false;
     }
+    lastInvokeSucceeded = false;
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("CTLiteClass::Alloc done");
@@ -376,6 +379,7 @@ CTfLiteClass::CTfLiteClass()
 {
     this->ownsSharedMemoryLease = false;
     this->modelMemoryClaimed = false;
+    this->lastInvokeSucceeded = false;
     this->model = nullptr;
     this->modelfile = NULL;
     this->interpreter = nullptr;
@@ -402,6 +406,7 @@ CTfLiteClass::~CTfLiteClass()
         psram_free_shared_tensor_arena_and_model_memory();
         ownsSharedMemoryLease = false;
         modelMemoryClaimed = false;
+        lastInvokeSucceeded = false;
         tensor_arena = nullptr;
         modelfile = nullptr;
     }

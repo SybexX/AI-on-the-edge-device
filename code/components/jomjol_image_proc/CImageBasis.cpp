@@ -197,9 +197,10 @@ esp_err_t CImageBasis::SendJPGtoHTTP(httpd_req_t *_req, const int quality)
 
 bool CImageBasis::CopyFromMemory(uint8_t* _source, int _size)
 {
-    if (_source == nullptr || rgb_image == nullptr || _size < 0 || width <= 0 || height <= 0 || channels <= 0) return false;
-    const size_t expected = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels);
-    if (expected > INT_MAX || expected != static_cast<size_t>(_size)) {
+    size_t expected = 0;
+    if (_source == nullptr || rgb_image == nullptr || _size < 0 ||
+        !getImageBufferSize(width, height, channels, &expected) ||
+        expected != static_cast<size_t>(_size)) {
         ESP_LOGE(TAG, "Cannot copy image from memory - sizes do not match: should be %u, but is %d",
                  static_cast<unsigned int>(expected), _size);
         return false;
@@ -214,9 +215,12 @@ bool CImageBasis::CopyFromMemory(uint8_t* _source, int _size)
 
 uint8_t CImageBasis::GetPixelColor(int x, int y, int ch)
 {
-    if (rgb_image == nullptr || !isInImage(x, y) || ch < 0 || ch >= channels) return 0;
+    size_t imageSize = 0;
+    if (rgb_image == nullptr || !isInImage(x, y) || ch < 0 || ch >= channels ||
+        !getImageBufferSize(width, height, channels, &imageSize)) return 0;
     const size_t offset = static_cast<size_t>(channels) *
         (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x));
+    if (offset > imageSize || static_cast<size_t>(ch) >= imageSize - offset) return 0;
     return rgb_image[offset + static_cast<size_t>(ch)];
 }
 
@@ -246,11 +250,14 @@ bool CImageBasis::isInImage(int x, int y)
 
 void CImageBasis::setPixelColor(int x, int y, int r, int g, int b)
 {
-    if (rgb_image == nullptr || !isInImage(x, y) || channels <= 0) return;
+    size_t imageSize = 0;
+    if (rgb_image == nullptr || !isInImage(x, y) ||
+        !getImageBufferSize(width, height, channels, &imageSize)) return;
     uint8_t* image = RGBImageLock();
     if (image == nullptr) return;
     const size_t offset = static_cast<size_t>(channels) *
         (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x));
+    if (offset >= imageSize) { RGBImageRelease(); return; }
     uint8_t* pixel = image + offset;
     pixel[0] = static_cast<uint8_t>(r);
     if (channels > 2) { pixel[1] = static_cast<uint8_t>(g); pixel[2] = static_cast<uint8_t>(b); }
@@ -432,10 +439,10 @@ void CImageBasis::CreateEmptyImage(int _width, int _height, int _channels)
 
 void CImageBasis::EmptyImage()
 {
-    if (rgb_image == nullptr || width <= 0 || height <= 0 || channels <= 0) return;
+    size_t size = 0;
+    if (rgb_image == nullptr || !getImageBufferSize(width, height, channels, &size)) return;
     uint8_t* image = RGBImageLock();
     if (image == nullptr) return;
-    const size_t size = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels);
     std::memset(image, 0, size);
     RGBImageRelease();
 }
@@ -477,21 +484,26 @@ void CImageBasis::LoadFromMemory(stbi_uc *_buffer, int len)
 
 void CImageBasis::crop_image(unsigned short cropLeft, unsigned short cropRight, unsigned short cropTop, unsigned short cropBottom)
 {
-    if (rgb_image == nullptr || width <= 0 || height <= 0 || channels <= 0 ||
+    size_t inputSize = 0;
+    if (rgb_image == nullptr || !getImageBufferSize(width, height, channels, &inputSize) ||
         static_cast<unsigned int>(cropLeft) + cropRight >= static_cast<unsigned int>(width) ||
         static_cast<unsigned int>(cropTop) + cropBottom >= static_cast<unsigned int>(height)) return;
-    const unsigned int top = static_cast<unsigned int>(cropTop) * static_cast<unsigned int>(width) * static_cast<unsigned int>(channels);
-    const unsigned int bottom = (static_cast<unsigned int>(width) * static_cast<unsigned int>(height) -
-        static_cast<unsigned int>(cropBottom) * static_cast<unsigned int>(width)) * static_cast<unsigned int>(channels);
+
+    const size_t rowBytes = static_cast<size_t>(width) * static_cast<size_t>(channels);
+    const size_t firstRow = static_cast<size_t>(cropTop) * rowBytes;
+    const size_t endRow = static_cast<size_t>(height - cropBottom) * rowBytes;
     const unsigned int maxX = static_cast<unsigned int>(width) - cropRight;
     const unsigned int newWidth = static_cast<unsigned int>(width) - cropLeft - cropRight;
     const unsigned int newHeight = static_cast<unsigned int>(height) - cropTop - cropBottom;
     size_t writeIndex = 0;
-    const size_t inputSize = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels);
+
     for (size_t i = 0; i < inputSize; i += static_cast<size_t>(channels)) {
         const unsigned int x = static_cast<unsigned int>((i / static_cast<size_t>(channels)) % static_cast<size_t>(width));
-        if (i < top || i >= bottom || x < cropLeft || x >= maxX) continue;
-        for (int channel = 0; channel < channels; ++channel) rgb_image[writeIndex++] = rgb_image[i + static_cast<size_t>(channel)];
+        if (i < firstRow || i >= endRow || x < cropLeft || x >= maxX) continue;
+        for (int channel = 0; channel < channels; ++channel) {
+            if (i + static_cast<size_t>(channel) >= inputSize) return;
+            rgb_image[writeIndex++] = rgb_image[i + static_cast<size_t>(channel)];
+        }
     }
     width = static_cast<int>(newWidth);
     height = static_cast<int>(newHeight);
@@ -644,7 +656,8 @@ CImageBasis::CImageBasis(string _name, std::string _image)
 
 
 bool CImageBasis::ImageOkay(){
-    return rgb_image != NULL;
+    size_t imageSize = 0;
+    return rgb_image != NULL && getImageBufferSize(width, height, channels, &imageSize);
 }
 
 
@@ -663,10 +676,10 @@ CImageBasis::CImageBasis(string _name, uint8_t* _rgb_image, int _channels, int _
 
 void CImageBasis::Negative(void)
 {
-    if (rgb_image == nullptr || width <= 0 || height <= 0 || channels <= 0) return;
+    size_t size = 0;
+    if (rgb_image == nullptr || !getImageBufferSize(width, height, channels, &size)) return;
     uint8_t* image = RGBImageLock();
     if (image == nullptr) return;
-    const size_t size = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels);
     for (size_t i = 0; i < size; i += static_cast<size_t>(channels))
         for (int c = 0; c < channels; ++c) image[i + static_cast<size_t>(c)] = 255 - image[i + static_cast<size_t>(c)];
     RGBImageRelease();
@@ -675,7 +688,8 @@ void CImageBasis::Negative(void)
 
 void CImageBasis::Contrast(float _contrast)
 {
-    if (rgb_image == nullptr || width <= 0 || height <= 0 || channels <= 0) return;
+    size_t imageSize = 0;
+    if (rgb_image == nullptr || !getImageBufferSize(width, height, channels, &imageSize)) return;
     uint8_t* image = RGBImageLock();
     if (image == nullptr) return;
     const float contrast = (_contrast / 100) + 1;
@@ -707,7 +721,8 @@ CImageBasis::~CImageBasis()
 
 void CImageBasis::SaveToFile(std::string _imageout)
 {
-    if (rgb_image == nullptr || width <= 0 || height <= 0 || channels <= 0) return;
+    size_t imageSize = 0;
+    if (rgb_image == nullptr || !getImageBufferSize(width, height, channels, &imageSize)) return;
     const string typ = getFileType(_imageout);
     uint8_t* image = RGBImageLock();
     if (image == nullptr) return;
