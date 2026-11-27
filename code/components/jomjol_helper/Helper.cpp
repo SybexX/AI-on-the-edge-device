@@ -1050,6 +1050,17 @@ string RundeOutput(double _in, int _anzNachkomma)
 }
 
 
+string getMac(void)
+{
+	uint8_t macInt[6];
+	char macFormated[6 * 2 + 5 + 1]; // AA:BB:CC:DD:EE:FF
+
+	esp_read_mac(macInt, ESP_MAC_WIFI_STA);
+	sprintf(macFormated, "%02X:%02X:%02X:%02X:%02X:%02X", macInt[0], macInt[1], macInt[2], macInt[3], macInt[4], macInt[5]);
+
+	return macFormated;
+}
+
 void setSystemStatusFlag(SystemStatusFlag_t flag)
 {
 	systemStatus = systemStatus | flag; // set bit

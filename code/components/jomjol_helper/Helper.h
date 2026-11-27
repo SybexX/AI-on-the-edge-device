@@ -107,4 +107,6 @@ int clipInt(int input, int high, int low);
 bool numericStrToBool(std::string input);
 bool stringToBoolean(std::string input);
 
+string getMac(void);
+
 #endif //HELPER_H
