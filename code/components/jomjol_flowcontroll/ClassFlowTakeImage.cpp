@@ -24,15 +24,6 @@
 
 static const char *TAG = "TAKEIMAGE";
 
-esp_err_t ClassFlowTakeImage::camera_capture(void)
-{
-    string nm = namerawimage;
-    Camera.CaptureToFile(nm);
-    time(&TimeImageTaken);
-    localtime(&TimeImageTaken);
-
-    return ESP_OK;
-}
 
 bool ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
 {
@@ -622,30 +613,6 @@ esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
     return Camera.CaptureToHTTP(req, flash_duration);
 }
 
-ImageData *ClassFlowTakeImage::SendRawImage(void)
-{
-    if (rawImage == NULL || !rawImage->ImageOkay()) return NULL;
-    CImageBasis *zw = new (std::nothrow) CImageBasis("SendRawImage", rawImage);
-    if (zw == NULL || !zw->ImageOkay()) {
-        delete zw;
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SendRawImage: unable to allocate an image copy");
-        return NULL;
-    }
-
-    const int flash_duration = static_cast<int>(CCstatus.WaitBeforePicture * 1000);
-    if (Camera.CaptureToBasisImage(zw, flash_duration) != ESP_OK) {
-        delete zw;
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "SendRawImage: camera capture failed");
-        return NULL;
-    }
-    time(&TimeImageTaken);
-    localtime(&TimeImageTaken);
-
-    ImageData *id = zw->writeToMemoryAsJPG();
-    delete zw;
-    // The caller owns the returned ImageData and must release it with delete.
-    return id;
-}
 
 time_t ClassFlowTakeImage::getTimeImageTaken(void)
 {

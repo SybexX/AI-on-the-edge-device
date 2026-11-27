@@ -1119,51 +1119,6 @@ void CCamera::SetImageWidthHeightFromResolution(framesize_t resol)
     }
 }
 
-framesize_t CCamera::TextToFramesize(const char *_size)
-{
-    if (strcmp(_size, "QVGA") == 0)
-    {
-        return FRAMESIZE_QVGA; // 320x240
-    }
-    else if (strcmp(_size, "VGA") == 0)
-    {
-        return FRAMESIZE_VGA; // 640x480
-    }
-    else if (strcmp(_size, "SVGA") == 0)
-    {
-        return FRAMESIZE_SVGA; // 800x600
-    }
-    else if (strcmp(_size, "XGA") == 0)
-    {
-        return FRAMESIZE_XGA; // 1024x768
-    }
-    else if (strcmp(_size, "SXGA") == 0)
-    {
-        return FRAMESIZE_SXGA; // 1280x1024
-    }
-    else if (strcmp(_size, "UXGA") == 0)
-    {
-        return FRAMESIZE_UXGA; // 1600x1200
-    }
-    else if (strcmp(_size, "QXGA") == 0)
-    {
-        return FRAMESIZE_QXGA; // 2048x1536
-    }
-    else if (strcmp(_size, "WQXGA") == 0)
-    {
-        return FRAMESIZE_WQXGA; // 2560x1600
-    }
-    else if (strcmp(_size, "QSXGA") == 0)
-    {
-        return FRAMESIZE_QSXGA; // 2560x1920
-    }
-    else
-    {
-        return FRAMESIZE_VGA; // 640x480
-    }
-
-    // return CCstatus.ImageFrameSize;
-}
 
 std::vector<std::string> demoFiles;
 

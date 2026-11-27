@@ -107,7 +107,6 @@ public:
     bool getCameraInitSuccessful(void);
     void useDemoMode(void);
 
-    framesize_t TextToFramesize(const char *text);
 
     esp_err_t CaptureToFile(std::string nm, int delay = 0);
     esp_err_t CaptureToBasisImage(CImageBasis *_Image, int delay = 0);
