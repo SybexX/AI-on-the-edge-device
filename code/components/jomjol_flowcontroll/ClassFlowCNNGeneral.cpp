@@ -984,7 +984,11 @@ std::vector<HTMLInfo*> ClassFlowCNNGeneral::GetHTMLInfo() {
                 }
             }
 
-            HTMLInfo *zw = new HTMLInfo;
+            HTMLInfo *zw = new (std::nothrow) HTMLInfo;
+            if (zw == NULL) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate ROI HTML metadata");
+                continue;
+            }
             if (GENERAL[_ana]->name == "default") {
                 zw->filename = GENERAL[_ana]->ROI[i]->name + ".jpg";
                 zw->filename_org = GENERAL[_ana]->ROI[i]->name + ".jpg";

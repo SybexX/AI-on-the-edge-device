@@ -188,7 +188,7 @@ ImageData* CImageBasis::writeToMemoryAsJPG(const int quality)
 
 void CImageBasis::writeToMemoryAsJPG(ImageData* i, const int quality)
 {
-    if (i == nullptr) return;
+    if (i == nullptr || !ImageOkay()) return;
     i->size = 0;
     uint8_t* image = RGBImageLock();
     if (image == nullptr) {
@@ -244,7 +244,7 @@ inline void writejpgtohttphelp(void *context, void *data, int size)
 }
 esp_err_t CImageBasis::SendJPGtoHTTP(httpd_req_t *_req, const int quality)
 {
-    if (_req == nullptr) return ESP_FAIL;
+    if (_req == nullptr || !ImageOkay()) return ESP_FAIL;
     SendJPGHTTP send;
     send.req = _req; send.res = ESP_OK; send.size = 0;
     send.buf = static_cast<char*>(malloc_psram_heap("JPEG HTTP stream buffer", HTTP_BUFFER_SENT, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
@@ -892,7 +892,7 @@ void CImageBasis::Resize(int _new_dx, int _new_dy)
 
 void CImageBasis::Resize(int _new_dx, int _new_dy, CImageBasis *_target)
 {
-    if (_target == NULL || rgb_image == NULL || !_target->ImageOkay() ||
+    if (_target == this || _target == NULL || rgb_image == NULL || !_target->ImageOkay() ||
         _target->height != _new_dy || _target->width != _new_dx ||
         _target->channels != channels) {
         ESP_LOGE(TAG, "Resize - Target image size does not fit or is unavailable!");

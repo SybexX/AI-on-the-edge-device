@@ -36,8 +36,16 @@ esp_err_t ClassFlowTakeImage::camera_capture(void)
 
 bool ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
 {
-    if (rawImage == NULL || !rawImage->ImageOkay()) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image buffer is unavailable");
+    if (rawImage == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image object is unavailable");
+        return false;
+    }
+    if (rawImage->width != CCstatus.ImageWidth || rawImage->height != CCstatus.ImageHeight ||
+        rawImage->channels != 3) {
+        rawImage->CreateEmptyImage(CCstatus.ImageWidth, CCstatus.ImageHeight, 3);
+    }
+    if (!rawImage->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image PSRAM buffer is unavailable");
         return false;
     }
 

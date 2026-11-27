@@ -9,6 +9,7 @@
 #include "Helper.h"
 #include "statusled.h"
 #include "CImageBasis.h"
+#include "psram.h"
 
 #include "server_ota.h"
 #include "server_GPIO.h"
@@ -63,7 +64,6 @@ static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" 
 static const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
-uint8_t *demoImage = NULL;    // Buffer holding the demo image in bytes
 #define DEMO_IMAGE_SIZE 30000 // Max size of demo image in bytes
 
 // Camera module bus communications frequency.
@@ -662,17 +662,24 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
 
     uint8_t *frameData = fb->buf;
     size_t frameLength = fb->len;
-    if (CCstatus.DemoMode && !loadNextDemoImage(&frameData, &frameLength)) {
-        esp_camera_fb_return(fb);
-        LEDOnOff(false);
-        LightOnOff(false);
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: could not load demo image");
-        return ESP_FAIL;
+    uint8_t *demoData = NULL;
+    bool demoBufferAllocated = false;
+    if (CCstatus.DemoMode) {
+        if (!loadNextDemoImage(&demoData, &frameLength)) {
+            esp_camera_fb_return(fb);
+            LEDOnOff(false);
+            LightOnOff(false);
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToBasisImage: could not load demo image");
+            return ESP_FAIL;
+        }
+        frameData = demoData;
+        demoBufferAllocated = true;
     }
 
     CImageBasis *tmpImage = new (std::nothrow) CImageBasis("tmpImage");
     bool decoded = tmpImage != NULL && frameLength <= static_cast<size_t>(INT_MAX) &&
                    tmpImage->LoadFromMemory(frameData, static_cast<int>(frameLength));
+    if (demoBufferAllocated) free_psram_heap("Demo image frame", demoData);
     esp_camera_fb_return(fb);
 
     LEDOnOff(false);
@@ -731,9 +738,9 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         vTaskDelay(xDelay);
     }
 
+    camera_fb_t *warmup = esp_camera_fb_get();
+    if (warmup != NULL) esp_camera_fb_return(warmup);
     camera_fb_t *fb = esp_camera_fb_get();
-    esp_camera_fb_return(fb);
-    fb = esp_camera_fb_get();
 
     if (!fb)
     {
@@ -836,9 +843,9 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
         vTaskDelay(xDelay);
     }
 
+    camera_fb_t *warmup = esp_camera_fb_get();
+    if (warmup != NULL) esp_camera_fb_return(warmup);
     camera_fb_t *fb = esp_camera_fb_get();
-    esp_camera_fb_return(fb);
-    fb = esp_camera_fb_get();
 
     if (!fb)
     {
@@ -870,6 +877,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
             if (loadNextDemoImage(&demoData, &demoLength)) {
                 fb_len = demoLength;
                 res = httpd_resp_send(req, (const char *)demoData, demoLength);
+                free_psram_heap("Demo image HTTP frame", demoData);
             } else {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToHTTP: could not load demo image");
                 res = ESP_FAIL;
@@ -910,7 +918,7 @@ esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
     esp_err_t res = ESP_OK;
     size_t fb_len = 0;
     int64_t fr_start;
-    char *part_buf[64];
+    char part_buf[64];
 
     // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
     if (CFstatus.changedCameraSettings)
@@ -937,9 +945,9 @@ esp_err_t CCamera::CaptureToStream(httpd_req_t *req, bool FlashlightOn)
     while (1)
     {
         fr_start = esp_timer_get_time();
+        camera_fb_t *warmup = esp_camera_fb_get();
+        if (warmup != NULL) esp_camera_fb_return(warmup);
         camera_fb_t *fb = esp_camera_fb_get();
-        esp_camera_fb_return(fb);
-        fb = esp_camera_fb_get();
 
         if (!fb)
         {
@@ -1176,13 +1184,6 @@ void CCamera::useDemoMode(void)
         CCstatus.DemoMode = false;
         return;
     }
-    if (demoImage == NULL) demoImage = static_cast<uint8_t*>(heap_caps_malloc(DEMO_IMAGE_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-    if (demoImage == NULL) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to acquire PSRAM for demo image!");
-        fclose(fd);
-        CCstatus.DemoMode = false;
-        return;
-    }
     while (fgets(line, sizeof(line), fd) != NULL) {
         size_t length = strlen(line);
         while (length > 0 && (line[length-1] == '\n' || line[length-1] == '\r')) line[--length] = '\0';
@@ -1191,8 +1192,6 @@ void CCamera::useDemoMode(void)
     fclose(fd);
     if (demoFiles.empty()) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can not start Demo mode: files.txt contains no image names");
-        heap_caps_free(demoImage);
-        demoImage = NULL;
         CCstatus.DemoMode = false;
         return;
     }
@@ -1203,7 +1202,7 @@ void CCamera::useDemoMode(void)
 
 bool CCamera::loadNextDemoImage(uint8_t **data, size_t *length)
 {
-    if (data == NULL || length == NULL || demoImage == NULL || demoFiles.empty()) return false;
+    if (data == NULL || length == NULL || demoFiles.empty()) return false;
     *data = NULL;
     *length = 0;
 
@@ -1219,12 +1218,24 @@ bool CCamera::loadNextDemoImage(uint8_t **data, size_t *length)
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Demo image has invalid size: " + std::to_string(fileSize));
         return false;
     }
-    const size_t readBytes = fread(demoImage, 1, static_cast<size_t>(fileSize), fp);
+
+    uint8_t *buffer = static_cast<uint8_t*>(malloc_psram_heap(
+        "Demo image frame", static_cast<size_t>(fileSize), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (buffer == NULL) {
+        fclose(fp);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Demo image PSRAM allocation failed");
+        return false;
+    }
+
+    const size_t readBytes = fread(buffer, 1, static_cast<size_t>(fileSize), fp);
     const bool readOkay = (readBytes == static_cast<size_t>(fileSize)) && (ferror(fp) == 0);
     fclose(fp);
-    if (!readOkay) return false;
+    if (!readOkay) {
+        free_psram_heap("Demo image frame (short read)", buffer);
+        return false;
+    }
 
-    *data = demoImage;
+    *data = buffer;
     *length = readBytes;
     return true;
 }

@@ -46,6 +46,8 @@ protected:
 	int aktRunNr;
 
 public:
+	ClassFlowControll();
+	~ClassFlowControll() override;
 	bool SetupModeActive;
 
 	void InitFlow(std::string config);
