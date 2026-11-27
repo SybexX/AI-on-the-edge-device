@@ -121,7 +121,10 @@ void *psram_reserve_shared_stbi_memory(size_t size) {
     if (size == 0) return nullptr;
     if (size < 100000) return malloc_psram_heap("STBI", size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     size_t regionSize = 0;
-    if (!getSharedRegionSize(&regionSize)) return nullptr;
+    if (!getSharedRegionSize(&regionSize)) {
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Shared PSRAM region is unavailable; allocating STBI buffer from PSRAM heap");
+        return malloc_psram_heap("STBI fallback", size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    }
     size_t userOffset = 0, endOffset = 0, available = 0;
     void* result = nullptr;
     SharedMemoryUser currentUser = SharedMemoryUser::None;
@@ -154,7 +157,8 @@ void *psram_reallocate_shared_stbi_memory(void *ptr, size_t newsize) {
     if (ptr == nullptr) return psram_reserve_shared_stbi_memory(newsize);
     if (newsize == 0) { psram_free_shared_stbi_memory(ptr); return nullptr; }
     size_t regionSize = 0;
-    if (!getSharedRegionSize(&regionSize)) return nullptr;
+    if (!getSharedRegionSize(&regionSize))
+        return realloc_psram_heap("STBI", ptr, newsize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     size_t oldSize = 0;
     bool sharedPointer = false, validSharedHeader = false;
     portENTER_CRITICAL(&sharedMemoryMux);
