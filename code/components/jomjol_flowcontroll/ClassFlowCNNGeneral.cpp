@@ -613,8 +613,7 @@ bool ClassFlowCNNGeneral::doAlignAndCut(string time) {
                 }
             }
 
-            region->image_org->Resize(modelxsize, modelysize, region->image);
-            if (!region->image->ImageOkay()) {
+            if (!region->image_org->Resize(modelxsize, modelysize, region->image)) {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI resize failed");
                 return false;
             }

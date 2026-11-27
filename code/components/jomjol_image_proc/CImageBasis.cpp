@@ -890,28 +890,28 @@ void CImageBasis::Resize(int _new_dx, int _new_dy)
 }
 
 
-void CImageBasis::Resize(int _new_dx, int _new_dy, CImageBasis *_target)
+bool CImageBasis::Resize(int _new_dx, int _new_dy, CImageBasis *_target)
 {
     if (_target == this || _target == NULL || rgb_image == NULL || !_target->ImageOkay() ||
         _target->height != _new_dy || _target->width != _new_dx ||
         _target->channels != channels) {
         ESP_LOGE(TAG, "Resize - Target image size does not fit or is unavailable!");
-        return;
+        return false;
     }
 
     size_t sourceSize = 0, targetSize = 0;
     if (!getImageBufferSize(width, height, channels, &sourceSize) ||
         !getImageBufferSize(_new_dx, _new_dy, channels, &targetSize)) {
         ESP_LOGE(TAG, "Resize - Invalid source or target dimensions");
-        return;
+        return false;
     }
 
     uint8_t* source = RGBImageLock();
-    if (source == NULL) return;
+    if (source == NULL) return false;
     uint8_t* target = _target->RGBImageLock();
     if (target == NULL) {
         RGBImageRelease();
-        return;
+        return false;
     }
 
     const int resized = stbir_resize_uint8(source, width, height, 0,
@@ -919,5 +919,6 @@ void CImageBasis::Resize(int _new_dx, int _new_dy, CImageBasis *_target)
     _target->RGBImageRelease();
     RGBImageRelease();
     if (resized == 0) ESP_LOGE(TAG, "Resize - stb resize failed");
+    return resized != 0;
 }
 

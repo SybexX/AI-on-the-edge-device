@@ -89,7 +89,7 @@ class CImageBasis
         CImageBasis(std::string name, CImageBasis *_copyfrom);
 
         void Resize(int _new_dx, int _new_dy);        
-        void Resize(int _new_dx, int _new_dy, CImageBasis *_target);        
+        bool Resize(int _new_dx, int _new_dy, CImageBasis *_target);        
         void crop_image(unsigned short cropLeft, unsigned short cropRight, unsigned short cropTop, unsigned short cropBottom);
 
         bool LoadFromMemory(stbi_uc *_buffer, int len);
