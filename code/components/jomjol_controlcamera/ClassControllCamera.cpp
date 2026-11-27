@@ -28,6 +28,7 @@
 
 #include "server_camera.h"
 #include "esp_camera.h"
+#include "esp_heap_caps.h"
 
 #include "driver/ledc.h"
 #include "MainFlowControl.h"
@@ -1180,82 +1181,56 @@ std::vector<std::string> demoFiles;
 void CCamera::useDemoMode(void)
 {
     char line[50];
-
+    demoFiles.clear();
     FILE *fd = fopen("/sdcard/demo/files.txt", "r");
-
-    if (!fd)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can not start Demo mode, the folder '/sdcard/demo/' does not contain the needed files!");
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "See Details on https://jomjol.github.io/AI-on-the-edge-device-docs/Demo-Mode!");
+    if (fd == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can not start Demo mode: '/sdcard/demo/files.txt' is missing!");
+        CCstatus.DemoMode = false;
         return;
     }
-
-    demoImage = (uint8_t *)malloc(DEMO_IMAGE_SIZE);
-
-    if (demoImage == NULL)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to acquire required memory for demo image!");
+    if (demoImage == NULL) demoImage = static_cast<uint8_t*>(heap_caps_malloc(DEMO_IMAGE_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (demoImage == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to acquire PSRAM for demo image!");
         fclose(fd);
+        CCstatus.DemoMode = false;
         return;
     }
-
-    while (fgets(line, sizeof(line), fd) != NULL)
-    {
-        line[strlen(line) - 1] = '\0';
-        demoFiles.push_back(line);
+    while (fgets(line, sizeof(line), fd) != NULL) {
+        size_t length = strlen(line);
+        while (length > 0 && (line[length-1] == '\n' || line[length-1] == '\r')) line[--length] = '\0';
+        if (length > 0) demoFiles.push_back(line);
     }
-
     fclose(fd);
-
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Using Demo mode (" + std::to_string(demoFiles.size()) + " files) instead of real camera image!");
-
-    for (auto file : demoFiles)
-    {
-        LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, file);
+    if (demoFiles.empty()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can not start Demo mode: files.txt contains no image names");
+        heap_caps_free(demoImage);
+        demoImage = NULL;
+        CCstatus.DemoMode = false;
+        return;
     }
-
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Using Demo mode (" + std::to_string(demoFiles.size()) + " files) instead of real camera image!");
+    for (const auto& file : demoFiles) LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, file);
     CCstatus.DemoMode = true;
 }
 
 bool CCamera::loadNextDemoImage(camera_fb_t *fb)
 {
-    char filename[50];
-    int readBytes;
-    long fileSize;
-
-    snprintf(filename, sizeof(filename), "/sdcard/demo/%s", demoFiles[getCountFlowRounds() % demoFiles.size()].c_str());
-
-    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Using " + std::string(filename) + " as demo image");
-
-    /* Inject saved image */
-
-    FILE *fp = fopen(filename, "rb");
-
-    if (!fp)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to read file: " + std::string(filename) + "!");
-        return false;
-    }
-
-    fileSize = GetFileSize(filename);
-
-    if (fileSize > DEMO_IMAGE_SIZE)
-    {
-        char buf[100];
-        snprintf(buf, sizeof(buf), "Demo Image (%d bytes) is larger than provided buffer (%d bytes)!", (int)fileSize, DEMO_IMAGE_SIZE);
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, std::string(buf));
+    if (fb == NULL || demoImage == NULL || demoFiles.empty()) return false;
+    const std::string filename = "/sdcard/demo/" + demoFiles[static_cast<size_t>(getCountFlowRounds()) % demoFiles.size()];
+    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Using " + filename + " as demo image");
+    FILE *fp = fopen(filename.c_str(), "rb");
+    if (fp == NULL) return false;
+    const long fileSize = GetFileSize(filename);
+    if (fileSize <= 0 || fileSize > DEMO_IMAGE_SIZE) {
         fclose(fp);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Demo image has invalid size: " + std::to_string(fileSize));
         return false;
     }
-
-    readBytes = fread(demoImage, 1, DEMO_IMAGE_SIZE, fp);
-    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "read " + std::to_string(readBytes) + " bytes");
+    const size_t readBytes = fread(demoImage, 1, static_cast<size_t>(fileSize), fp);
     fclose(fp);
-
-    fb->buf = demoImage; // Update pointer
-    fb->len = readBytes;
-    // ToDo do we also need to set height, width, format and timestamp?
-
+    if (readBytes != static_cast<size_t>(fileSize)) return false;
+    fb->buf = demoImage;
+    fb->len = static_cast<int>(readBytes);
     return true;
 }
 

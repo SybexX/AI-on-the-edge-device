@@ -4,6 +4,9 @@
 #define CIMAGEBASIS_H
 
 #include <stdint.h>
+#include <stddef.h>
+#include <new>
+#include <stdlib.h>
 #include <string>
 #include <esp_http_server.h>
 
@@ -21,6 +24,17 @@ struct ImageData
 {
     uint8_t data[MAX_JPG_SIZE];
     size_t size = 0;
+
+    static void* operator new(size_t size) {
+        void* ptr = heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (ptr == nullptr) abort();
+        return ptr;
+    }
+    static void* operator new(size_t size, const std::nothrow_t&) noexcept {
+        return heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    }
+    static void operator delete(void* ptr) noexcept { heap_caps_free(ptr); }
+    static void operator delete(void* ptr, const std::nothrow_t&) noexcept { heap_caps_free(ptr); }
 };
 
 
