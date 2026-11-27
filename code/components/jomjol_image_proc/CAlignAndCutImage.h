@@ -20,7 +20,7 @@ class CAlignAndCutImage : public CImageBasis
 //        void Align(std::string _template1, int x1, int y1, std::string _template2, int x2, int y2, int deltax = 40, int deltay = 40, std::string imageROI = "");
         void CutAndSave(std::string _template1, int x1, int y1, int dx, int dy);
         CImageBasis* CutAndSave(int x1, int y1, int dx, int dy);
-        void CutAndSave(int x1, int y1, int dx, int dy, CImageBasis *_target);
+        bool CutAndSave(int x1, int y1, int dx, int dy, CImageBasis *_target);
         void GetRefSize(int *ref_dx, int *ref_dy);
 };
 

@@ -601,8 +601,7 @@ bool ClassFlowCNNGeneral::doAlignAndCut(string time) {
             }
             ESP_LOGD(TAG, "General %d - Align&Cut", i);
 
-            caic->CutAndSave(region->posx, region->posy, region->deltax, region->deltay, region->image_org);
-            if (!region->image_org->ImageOkay()) {
+            if (!caic->CutAndSave(region->posx, region->posy, region->deltax, region->deltay, region->image_org)) {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI crop failed");
                 return false;
             }

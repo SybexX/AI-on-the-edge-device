@@ -203,26 +203,26 @@ void CAlignAndCutImage::CutAndSave(std::string _template1, int x1, int y1, int d
     free_psram_heap(std::string(TAG) + "->odata", output);
 }
 
-void CAlignAndCutImage::CutAndSave(int x1, int y1, int dx, int dy, CImageBasis *_target)
+bool CAlignAndCutImage::CutAndSave(int x1, int y1, int dx, int dy, CImageBasis *_target)
 {
-    if (_target == NULL || rgb_image == NULL || channels <= 0) return;
+    if (_target == NULL || rgb_image == NULL || channels <= 0) return false;
 
     int x2 = 0, y2 = 0;
-    if (!getCutRectangle(width, height, x1, y1, dx, dy, &x2, &y2)) return;
+    if (!getCutRectangle(width, height, x1, y1, dx, dy, &x2, &y2)) return false;
     const int cropWidth = x2 - x1;
     const int cropHeight = y2 - y1;
     if (_target->height != cropHeight || _target->width != cropWidth ||
         _target->channels != channels || !_target->ImageOkay()) {
         ESP_LOGD(TAG, "CAlignAndCutImage::CutAndSave - Image size does not match!");
-        return;
+        return false;
     }
 
     uint8_t* output = _target->RGBImageLock();
-    if (output == NULL) return;
+    if (output == NULL) return false;
     uint8_t* source = RGBImageLock();
     if (source == NULL) {
         _target->RGBImageRelease();
-        return;
+        return false;
     }
 
     const size_t rowBytes = static_cast<size_t>(cropWidth) * static_cast<size_t>(channels);
@@ -234,6 +234,7 @@ void CAlignAndCutImage::CutAndSave(int x1, int y1, int dx, int dy, CImageBasis *
 
     RGBImageRelease();
     _target->RGBImageRelease();
+    return true;
 }
 
 CImageBasis* CAlignAndCutImage::CutAndSave(int x1, int y1, int dx, int dy)
