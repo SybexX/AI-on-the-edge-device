@@ -748,8 +748,7 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
         ESP_LOGW(TAG, "CaptureToBasisImage: camera mutex unavailable");
         return ESP_ERR_TIMEOUT;
     }
-    const bool previewCapture = CFstatus.previewCapturePending;
-    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(previewCapture);
+    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded();
     if (restoreResult != ESP_OK) return restoreResult;
 
     if (_Image == NULL || !_Image->ImageOkay()) {
@@ -835,7 +834,6 @@ esp_err_t CCamera::CaptureToBasisImage(CImageBasis *_Image, int delay)
     const bool copied = _Image->CopyFromMemory(source, static_cast<int>(expectedBytes));
     tmpImage->RGBImageRelease();
     delete tmpImage;
-    if (copied && previewCapture) CFstatus.previewCapturePending = false;
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("CaptureToBasisImage - Done");
@@ -851,13 +849,10 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         ESP_LOGW(TAG, "CaptureToFile: camera mutex unavailable");
         return ESP_ERR_TIMEOUT;
     }
-    const bool previewCapture = CFstatus.previewCapturePending;
-    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(previewCapture);
+    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded();
     if (restoreResult != ESP_OK) return restoreResult;
 
-    const CameraSettings &captureSettings = previewCapture
-        ? static_cast<const CameraSettings &>(CFstatus)
-        : static_cast<const CameraSettings &>(CCstatus);
+    const CameraSettings &captureSettings = static_cast<const CameraSettings &>(CCstatus);
     string ftype;
 
     LEDOnOff(true); // Status-LED on
@@ -948,11 +943,10 @@ esp_err_t CCamera::CaptureToFile(std::string nm, int delay)
         LightOnOff(false); // Flash-LED off
     }
 
-    if (captureOkay && previewCapture) CFstatus.previewCapturePending = false;
     return captureOkay ? ESP_OK : ESP_FAIL;
 }
 
-esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
+esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay, bool preserveTemporaryCapture)
 {
     ScopedCameraLock cameraLock(m_cameraMutex);
     if (!cameraLock.acquired())
@@ -962,8 +956,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
         httpd_resp_send(req, "Camera is busy", HTTPD_RESP_USE_STRLEN);
         return ESP_ERR_TIMEOUT;
     }
-    const bool previewCapture = CFstatus.previewCapturePending;
-    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(previewCapture);
+    const esp_err_t restoreResult = RestoreCommittedSettingsIfNeeded(preserveTemporaryCapture);
     if (restoreResult != ESP_OK) return restoreResult;
 
     esp_err_t res = ESP_OK;
@@ -1013,7 +1006,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
                 fb_len = demoLength;
                 res = httpd_resp_send(req, (const char *)demoData, demoLength);
                 free_psram_heap("Demo image HTTP frame", demoData);
-                if (res == ESP_OK && previewCapture) CFstatus.previewCapturePending = false;
+                if (res == ESP_OK && preserveTemporaryCapture) CFstatus.previewCapturePending = false;
             } else {
                 LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CaptureToHTTP: could not load demo image");
                 res = ESP_FAIL;
@@ -1040,7 +1033,7 @@ esp_err_t CCamera::CaptureToHTTP(httpd_req_t *req, int delay)
     }
 
     esp_camera_fb_return(fb);
-    if (res == ESP_OK && previewCapture) CFstatus.previewCapturePending = false;
+    if (res == ESP_OK && preserveTemporaryCapture) CFstatus.previewCapturePending = false;
     int64_t fr_end = esp_timer_get_time();
 
     ESP_LOGI(TAG, "JPG: %dKB %dms", (int)(fb_len / 1024), (int)((fr_end - fr_start) / 1000));

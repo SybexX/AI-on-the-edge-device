@@ -31,9 +31,7 @@ bool ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image object is unavailable");
         return false;
     }
-    const CameraSettings &activeSettings = CFstatus.previewCapturePending
-        ? static_cast<const CameraSettings &>(CFstatus)
-        : static_cast<const CameraSettings &>(CCstatus);
+    const CameraSettings &activeSettings = static_cast<const CameraSettings &>(CCstatus);
     if (rawImage->width != activeSettings.ImageWidth || rawImage->height != activeSettings.ImageHeight ||
         rawImage->channels != 3) {
         rawImage->CreateEmptyImage(activeSettings.ImageWidth, activeSettings.ImageHeight, 3);
@@ -563,16 +561,14 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 
     string logPath = CreateLogFolder(zwtime);
 
-    const CameraSettings &activeSettings = CFstatus.previewCapturePending
-        ? static_cast<const CameraSettings &>(CFstatus)
-        : static_cast<const CameraSettings &>(CCstatus);
+    const CameraSettings &activeSettings = static_cast<const CameraSettings &>(CCstatus);
     int flash_duration = static_cast<int>(activeSettings.WaitBeforePicture * 1000);
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
 #endif
 
-    if (Camera.RestoreCommittedSettingsIfNeeded(CFstatus.previewCapturePending) != ESP_OK)
+    if (Camera.RestoreCommittedSettingsIfNeeded() != ESP_OK)
     {
         if (sharedMemoryLeaseAcquired) psram_deinit_shared_memory_for_take_image_step();
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to restore committed camera settings");
@@ -614,14 +610,15 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
 
 esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
 {
-    const CameraSettings &activeSettings = CFstatus.previewCapturePending
+    const bool previewCapture = CFstatus.previewCapturePending;
+    const CameraSettings &activeSettings = previewCapture
         ? static_cast<const CameraSettings &>(CFstatus)
         : static_cast<const CameraSettings &>(CCstatus);
     int flash_duration = static_cast<int>(activeSettings.WaitBeforePicture * 1000);
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    return Camera.CaptureToHTTP(req, flash_duration);
+    return Camera.CaptureToHTTP(req, flash_duration, previewCapture);
 }
 
 

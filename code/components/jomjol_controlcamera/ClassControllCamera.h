@@ -60,7 +60,7 @@ public:
     void SetCamSpecialEffect(sensor_t *s, int specialEffect);
     void SetCamContrastBrightness(sensor_t *s, int _contrast, int _brightness);
 
-    esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0);
+    esp_err_t CaptureToHTTP(httpd_req_t *req, int delay = 0, bool preserveTemporaryCapture = false);
     esp_err_t CaptureToStream(httpd_req_t *req, bool FlashlightOn);
 
     esp_err_t SetQualityZoomSize(CameraSettings &settings);
