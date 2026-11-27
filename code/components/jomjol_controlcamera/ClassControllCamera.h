@@ -4,6 +4,7 @@
 #define CLASSCONTROLLCAMERA_H
 
 #include <string>
+#include <vector>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
@@ -30,6 +31,7 @@ class CCamera
 protected:
     SemaphoreHandle_t m_cameraMutex;
     bool m_driverInitialized;
+    std::vector<std::string> m_demoFiles;
 
     void ledc_init(void);
     bool loadNextDemoImage(uint8_t **data, size_t *length);

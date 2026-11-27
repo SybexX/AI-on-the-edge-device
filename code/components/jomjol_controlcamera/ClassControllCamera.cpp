@@ -1266,7 +1266,7 @@ void CCamera::SetImageWidthHeightFromResolution(CameraSettings &settings)
 void CCamera::useDemoMode(void)
 {
     char line[50];
-    demoFiles.clear();
+    m_demoFiles.clear();
     FILE *fd = fopen("/sdcard/demo/files.txt", "r");
     if (fd == NULL) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can not start Demo mode: '/sdcard/demo/files.txt' is missing!");
@@ -1276,27 +1276,27 @@ void CCamera::useDemoMode(void)
     while (fgets(line, sizeof(line), fd) != NULL) {
         size_t length = strlen(line);
         while (length > 0 && (line[length-1] == '\n' || line[length-1] == '\r')) line[--length] = '\0';
-        if (length > 0) demoFiles.push_back(line);
+        if (length > 0) m_demoFiles.push_back(line);
     }
     fclose(fd);
-    if (demoFiles.empty()) {
+    if (m_demoFiles.empty()) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can not start Demo mode: files.txt contains no image names");
         CCstatus.DemoMode = false;
         return;
     }
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Using Demo mode (" + std::to_string(demoFiles.size()) + " files) instead of real camera image!");
-    for (const auto& file : demoFiles) LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, file);
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Using Demo mode (" + std::to_string(m_demoFiles.size()) + " files) instead of real camera image!");
+    for (const auto& file : m_demoFiles) LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, file);
     CCstatus.DemoMode = true;
 }
 
 bool CCamera::loadNextDemoImage(uint8_t **data, size_t *length)
 {
-    if (data == NULL || length == NULL || demoFiles.empty()) return false;
+    if (data == NULL || length == NULL || m_demoFiles.empty()) return false;
     *data = NULL;
     *length = 0;
 
-    const size_t index = static_cast<size_t>(getCountFlowRounds()) % demoFiles.size();
-    const std::string filename = "/sdcard/demo/" + demoFiles[index];
+    const size_t index = static_cast<size_t>(getCountFlowRounds()) % m_demoFiles.size();
+    const std::string filename = "/sdcard/demo/" + m_demoFiles[index];
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Using " + filename + " as demo image");
 
     FILE *fp = fopen(filename.c_str(), "rb");
