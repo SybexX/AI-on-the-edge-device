@@ -198,38 +198,39 @@ bool CTfLiteClass::LoadInputImageBasis(CImageBasis *rs)
 
 bool CTfLiteClass::MakeAllocate()
 {
+    if (!ownsSharedMemoryLease || tensor_arena == NULL || model == nullptr) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "MakeAllocate: Tensor Arena lease or model is unavailable");
+        return false;
+    }
     MakeStaticResolver();
 
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTLiteClass::Alloc start");
-    #endif
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTLiteClass::Alloc start");
+#endif
 
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::MakeAllocate");
-    this->interpreter = new tflite::MicroInterpreter(this->model, resolver, this->tensor_arena, this->kTensorArenaSize);
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Trying to load the model. If it crashes here, it ist most likely due to a corrupted model!");
+    delete this->interpreter;
+    this->interpreter = new (std::nothrow) tflite::MicroInterpreter(
+        this->model, resolver, this->tensor_arena, this->kTensorArenaSize);
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Trying to load the model. If it crashes here, it is most likely due to a corrupted model!");
 
-    if (this->interpreter) 
-    {
-        TfLiteStatus allocate_status = this->interpreter->AllocateTensors();
-        if (allocate_status != kTfLiteOk) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed");
-
-            this->GetInputDimension();   
-            return false;
-        }
-    }
-    else 
-    {
+    if (this->interpreter == nullptr) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "new tflite::MicroInterpreter failed");
         LogFile.WriteHeapInfo("CTfLiteClass::MakeAllocate-new tflite::MicroInterpreter failed");
         return false;
     }
 
+    const TfLiteStatus allocate_status = this->interpreter->AllocateTensors();
+    if (allocate_status != kTfLiteOk) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "AllocateTensors() failed");
+        delete this->interpreter;
+        this->interpreter = nullptr;
+        return false;
+    }
 
-    #ifdef DEBUG_DETAIL_ON 
-        LogFile.WriteHeapInfo("CTLiteClass::Alloc done");
-    #endif
-
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTLiteClass::Alloc done");
+#endif
     return true;
 }
 
@@ -264,55 +265,54 @@ long CTfLiteClass::GetFileSize(std::string filename)
 bool CTfLiteClass::ReadFileToModel(std::string _fn)
 {
     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CTfLiteClass::ReadFileToModel: " + _fn);
-    
-    long size = GetFileSize(_fn);
-
-    if (size == -1)
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Model file doesn't exist: " + _fn + "!");
-        return false;
-    }
-    else if(size > MAX_MODEL_SIZE) {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to load model '" + _fn + "'! It does not fit in the reserved shared memory in PSRAM!");
+    if (!ownsSharedMemoryLease || tensor_arena == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ReadFileToModel: Tensor Arena shared-memory lease was not acquired");
         return false;
     }
 
-    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Loading Model " + _fn + " /size: " + std::to_string(size) + " bytes...");
+    const long size = GetFileSize(_fn);
+    if (size <= 0) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Model file is missing or empty: " + _fn);
+        return false;
+    }
+    if (static_cast<unsigned long>(size) > static_cast<unsigned long>(MAX_MODEL_SIZE)) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Model file is larger than the reserved shared model region: " + _fn);
+        return false;
+    }
 
-#ifdef DEBUG_DETAIL_ON      
-        LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile start");
-#endif
+    FILE *pFile = fopen(_fn.c_str(), "rb");
+    if (pFile == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ReadFileToModel: Could not open model file " + _fn);
+        return false;
+    }
 
-    modelfile = (unsigned char*)psram_get_shared_model_memory();
-  
-    if (modelfile != NULL)
-    {
-        FILE *pFile = fopen(_fn.c_str(), "rb"); // previously only "rb
-    
-        if (pFile != NULL)
-        {
-          fread(modelfile, 1, size, pFile);
-          fclose(pFile);
+    if (!modelMemoryClaimed) {
+        modelfile = static_cast<unsigned char*>(psram_get_shared_model_memory());
+        modelMemoryClaimed = (modelfile != NULL);
+    }
+    if (modelfile == NULL) {
+        fclose(pFile);
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ReadFileToModel: Unable to claim shared model memory");
+        LogFile.WriteHeapInfo("CTfLiteClass::ReadFileToModel");
+        return false;
+    }
 
 #ifdef DEBUG_DETAIL_ON
-          LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile successful");
+    LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile start");
 #endif
 
-          return true;
-        }
-        else
-        {
-          LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::ReadFileToModel: Model does not exist");
-          return false;
-        }
-    }   
-    else 
-    {
-        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CTfLiteClass::ReadFileToModel: Can't allocate enough memory: " + std::to_string(size));
-        LogFile.WriteHeapInfo("CTfLiteClass::ReadFileToModel");
-
+    const size_t bytesRead = fread(modelfile, 1, static_cast<size_t>(size), pFile);
+    const int closeResult = fclose(pFile);
+    if (bytesRead != static_cast<size_t>(size) || closeResult != 0) {
+        model = nullptr;
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ReadFileToModel: Short read or close error while loading " + _fn);
         return false;
     }
+
+#ifdef DEBUG_DETAIL_ON
+    LogFile.WriteHeapInfo("CTLiteClass::Alloc modelfile successful");
+#endif
+    return true;
 }
 
 
@@ -335,19 +335,32 @@ bool CTfLiteClass::LoadModel(std::string _fn)
 
 CTfLiteClass::CTfLiteClass()
 {
+    this->ownsSharedMemoryLease = false;
+    this->modelMemoryClaimed = false;
     this->model = nullptr;
     this->modelfile = NULL;
     this->interpreter = nullptr;
     this->input = nullptr;
     this->output = nullptr;
     this->kTensorArenaSize = TENSOR_ARENA_SIZE;
-    this->tensor_arena = (uint8_t*)psram_get_shared_tensor_arena_memory();
+    this->tensor_arena = static_cast<uint8_t*>(psram_get_shared_tensor_arena_memory());
+    this->ownsSharedMemoryLease = (this->tensor_arena != NULL);
+    if (!this->ownsSharedMemoryLease) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to acquire shared Tensor Arena memory");
+        LogFile.WriteHeapInfo("CTfLiteClass constructor");
+    }
 }
 
 
 CTfLiteClass::~CTfLiteClass()
 {
-  delete this->interpreter;
-
-  psram_free_shared_tensor_arena_and_model_memory();
+    delete this->interpreter;
+    this->interpreter = nullptr;
+    if (ownsSharedMemoryLease) {
+        psram_free_shared_tensor_arena_and_model_memory();
+        ownsSharedMemoryLease = false;
+        modelMemoryClaimed = false;
+        tensor_arena = nullptr;
+        modelfile = nullptr;
+    }
 }        

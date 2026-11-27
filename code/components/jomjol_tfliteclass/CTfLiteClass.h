@@ -23,6 +23,8 @@ class CTfLiteClass
 
         int kTensorArenaSize;
         uint8_t *tensor_arena;
+        bool ownsSharedMemoryLease;
+        bool modelMemoryClaimed;
 
         unsigned char *modelfile = NULL;
 

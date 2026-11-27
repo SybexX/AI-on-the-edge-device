@@ -1,4 +1,5 @@
 #include "MainFlowControl.h"
+#include <new>
 
 #include <string>
 #include <vector>
@@ -939,22 +940,28 @@ esp_err_t handler_editflow(httpd_req_t *req)
         {
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Taking image for Alignment Mark Update...");
 
-            CAlignAndCutImage *caic = new CAlignAndCutImage("cutref", in);
-            caic->CutAndSave(out2, x, y, dx, dy);
-            delete caic;
+            bool operationOk = false;
+            CAlignAndCutImage *caic = new (std::nothrow) CAlignAndCutImage("cutref", in);
+            if (caic != NULL) {
+                caic->CutAndSave(out2, x, y, dx, dy);
+                delete caic;
 
-            CImageBasis *cim = new CImageBasis("cutref", out2);
-
-            if (enhance)
-            {
-                cim->Contrast(90);
+                CImageBasis *cim = new (std::nothrow) CImageBasis("cutref", out2);
+                if (cim != NULL && cim->ImageOkay()) {
+                    if (enhance) cim->Contrast(90);
+                    cim->SaveToFile(out);
+                    operationOk = true;
+                }
+                delete cim;
+            }
+            if (operationOk) zw = "CutImage Done";
+            else {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Alignment mark update failed due to an allocation or image I/O error");
+                zw = "CutImage Failed";
             }
 
-            cim->SaveToFile(out);
-            delete cim;
-
+            // Release only after every STBI-backed temporary image has been destroyed.
             psram_deinit_shared_memory_for_take_image_step();
-            zw = "CutImage Done";
         }
         else
         {

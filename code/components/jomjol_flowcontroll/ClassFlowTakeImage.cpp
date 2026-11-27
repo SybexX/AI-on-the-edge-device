@@ -540,7 +540,10 @@ string ClassFlowTakeImage::getHTMLSingleStep(string host)
 // wird bei jeder Auswertrunde aufgerufen
 bool ClassFlowTakeImage::doFlow(string zwtime)
 {
-    psram_init_shared_memory_for_take_image_step();
+    const bool sharedMemoryLeaseAcquired = psram_init_shared_memory_for_take_image_step();
+    if (!sharedMemoryLeaseAcquired) {
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Shared PSRAM image lease unavailable; STBI will use independent PSRAM allocations");
+    }
 
     string logPath = CreateLogFolder(zwtime);
 
@@ -581,7 +584,7 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After RemoveOldLogs");
 #endif
 
-    psram_deinit_shared_memory_for_take_image_step();
+    if (sharedMemoryLeaseAcquired) psram_deinit_shared_memory_for_take_image_step();
 
     return true;
 }

@@ -40,6 +40,7 @@ protected:
 
 public:
 	ClassFlow(void);
+	virtual ~ClassFlow() = default;
 	ClassFlow(std::vector<ClassFlow*> * lfc);
 	ClassFlow(std::vector<ClassFlow*> * lfc, ClassFlow *_prev);	
 	
