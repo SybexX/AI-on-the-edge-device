@@ -47,6 +47,7 @@ protected:
 
 public:
     ClassFlowCNNGeneral(ClassFlowAlignment *_flowalign, t_CNNType _cnntype = AutoDetect);
+    ~ClassFlowCNNGeneral() override;
 
     bool ReadParameter(FILE* pfile, string& aktparamgraph);
     bool doFlow(string time);

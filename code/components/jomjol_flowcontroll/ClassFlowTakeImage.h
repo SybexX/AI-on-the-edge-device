@@ -15,8 +15,7 @@ protected:
     time_t TimeImageTaken;
     string namerawimage;
 
-    esp_err_t camera_capture(void);
-    void takePictureWithFlash(int flash_duration);
+    bool takePictureWithFlash(int flash_duration);
 
     void SetInitialParameter(void);
 
@@ -31,8 +30,7 @@ public:
     time_t getTimeImageTaken(void);
     string name() { return "ClassFlowTakeImage"; };
 
-    ImageData *SendRawImage(void);
-    esp_err_t SendRawJPG(httpd_req_t *req);
+    esp_err_t SendRawJPG(httpd_req_t *req, bool previewCapture);
 
     ~ClassFlowTakeImage(void);
 };

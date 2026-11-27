@@ -1,9 +1,12 @@
 #include <iostream>
 #include <string>
+#include <limits.h>
+#include <algorithm>
 #include <vector>
 #include <regex>
 
 #include "ClassFlowTakeImage.h"
+#include <new>
 #include "Helper.h"
 #include "ClassLogFile.h"
 
@@ -23,33 +26,31 @@
 
 static const char *TAG = "TAKEIMAGE";
 
-esp_err_t ClassFlowTakeImage::camera_capture(void)
-{
-    string nm = namerawimage;
-    Camera.CaptureToFile(nm);
-    time(&TimeImageTaken);
-    localtime(&TimeImageTaken);
 
-    return ESP_OK;
-}
-
-void ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
+bool ClassFlowTakeImage::takePictureWithFlash(int flash_duration)
 {
-    // in case the image is flipped, it must be reset here //
-    rawImage->width = CCstatus.ImageWidth;
-    rawImage->height = CCstatus.ImageHeight;
+    if (rawImage == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image object is unavailable");
+        return false;
+    }
+    const CameraSettings &activeSettings = static_cast<const CameraSettings &>(CCstatus);
+    if (rawImage->width != activeSettings.ImageWidth || rawImage->height != activeSettings.ImageHeight ||
+        rawImage->channels != 3) {
+        rawImage->CreateEmptyImage(activeSettings.ImageWidth, activeSettings.ImageHeight, 3);
+    }
+    if (!rawImage->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "takePictureWithFlash: raw image PSRAM buffer is unavailable");
+        return false;
+    }
 
     ESP_LOGD(TAG, "flash_duration: %d", flash_duration);
-
-    Camera.CaptureToBasisImage(rawImage, flash_duration);
+    if (Camera.CaptureToBasisImage(rawImage, flash_duration) != ESP_OK) return false;
 
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    if (CCstatus.SaveAllFiles)
-    {
-        rawImage->SaveToFile(namerawimage);
-    }
+    if (CCstatus.SaveAllFiles) rawImage->SaveToFile(namerawimage);
+    return true;
 }
 
 void ClassFlowTakeImage::SetInitialParameter(void)
@@ -112,14 +113,15 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
             if (isStringNumeric(splitted[1]))
             {
                 int _WaitBeforePicture = std::stoi(splitted[1]);
-                if (_WaitBeforePicture != 0)
-                {
-                    CCstatus.WaitBeforePicture = _WaitBeforePicture;
-                }
-                else
-                {
-                    CCstatus.WaitBeforePicture = 2;
-                }
+                CCstatus.WaitBeforePicture = (_WaitBeforePicture != 0) ? max(0, _WaitBeforePicture) : 2;
+            }
+        }
+
+        else if ((toUpper(splitted[0]) == "CAMXCLKFREQMHZ") && (splitted.size() > 1))
+        {
+            if (isStringNumeric(splitted[1]))
+            {
+                CCstatus.CamXclkFreqMhz = clipInt(std::stoi(splitted[1]), 20, 1);
             }
         }
 
@@ -514,11 +516,25 @@ bool ClassFlowTakeImage::ReadParameter(FILE *pfile, string &aktparamgraph)
         }
     }
 
-    Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-    Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
+    if (Camera.ApplySettings(CCstatus) != ESP_OK)
+    {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to apply configured camera settings");
+        return false;
+    }
 
-    rawImage = new CImageBasis("rawImage");
+    delete rawImage;
+    rawImage = new (std::nothrow) CImageBasis("rawImage");
+    if (rawImage == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate raw image object");
+        return false;
+    }
     rawImage->CreateEmptyImage(CCstatus.ImageWidth, CCstatus.ImageHeight, 3);
+    if (!rawImage->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate raw image PSRAM buffer");
+        delete rawImage;
+        rawImage = NULL;
+        return false;
+    }
 
     return true;
 }
@@ -540,30 +556,32 @@ string ClassFlowTakeImage::getHTMLSingleStep(string host)
 // wird bei jeder Auswertrunde aufgerufen
 bool ClassFlowTakeImage::doFlow(string zwtime)
 {
-    psram_init_shared_memory_for_take_image_step();
+    const bool sharedMemoryLeaseAcquired = psram_init_shared_memory_for_take_image_step();
+    if (!sharedMemoryLeaseAcquired) {
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "Shared PSRAM image lease unavailable; STBI will use independent PSRAM allocations");
+    }
 
     string logPath = CreateLogFolder(zwtime);
 
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
+    const CameraSettings &activeSettings = static_cast<const CameraSettings &>(CCstatus);
+    int flash_duration = static_cast<int>(activeSettings.WaitBeforePicture * 1000);
 
 #ifdef DEBUG_DETAIL_ON
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - Before takePictureWithFlash");
 #endif
 
-#ifdef WIFITURNOFF
-    esp_wifi_stop(); // to save power usage and
-#endif
-
-    // wenn die Kameraeinstellungen durch Erstellen eines neuen Referenzbildes verändert wurden, müssen sie neu gesetzt werden
-    if (CFstatus.changedCameraSettings)
+    if (Camera.RestoreCommittedSettingsIfNeeded() != ESP_OK)
     {
-        Camera.setSensorDatenFromCCstatus(); // CCstatus >>> Kamera
-        Camera.SetQualityZoomSize(CCstatus.ImageQuality, CCstatus.ImageFrameSize, CCstatus.ImageZoomEnabled, CCstatus.ImageZoomOffsetX, CCstatus.ImageZoomOffsetY, CCstatus.ImageZoomSize, CCstatus.ImageVflip);
-        Camera.LedIntensity = CCstatus.ImageLedIntensity;
-        CFstatus.changedCameraSettings = false;
+        if (sharedMemoryLeaseAcquired) psram_deinit_shared_memory_for_take_image_step();
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to restore committed camera settings");
+        return false;
     }
 
-    takePictureWithFlash(flash_duration);
+#ifdef WIFITURNOFF
+    esp_wifi_stop(); // save power during image capture
+#endif
+
+    const bool captured = takePictureWithFlash(flash_duration);
 
 #ifdef WIFITURNOFF
     esp_wifi_start();
@@ -573,6 +591,12 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After takePictureWithFlash");
 #endif
 
+    if (!captured) {
+        if (sharedMemoryLeaseAcquired) psram_deinit_shared_memory_for_take_image_step();
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Image capture failed; aborting this flow round");
+        return false;
+    }
+
     LogImage(logPath, "raw", NULL, NULL, zwtime, rawImage);
 
     RemoveOldLogs();
@@ -581,33 +605,26 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
     LogFile.WriteHeapInfo("ClassFlowTakeImage::doFlow - After RemoveOldLogs");
 #endif
 
-    psram_deinit_shared_memory_for_take_image_step();
+    if (sharedMemoryLeaseAcquired) psram_deinit_shared_memory_for_take_image_step();
 
     return true;
 }
 
-esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
+esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req, bool previewCapture)
 {
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    return Camera.CaptureToHTTP(req, flash_duration);
+    if (previewCapture)
+    {
+        return Camera.CaptureToHTTP(req, 0, true);
+    }
+
+    const int waitSeconds = std::max(0, CCstatus.WaitBeforePicture);
+    const int flashDuration = waitSeconds > INT_MAX / 1000 ? INT_MAX : waitSeconds * 1000;
+    return Camera.CaptureToHTTP(req, flashDuration);
 }
 
-ImageData *ClassFlowTakeImage::SendRawImage(void)
-{
-    CImageBasis *zw = new CImageBasis("SendRawImage", rawImage);
-    ImageData *id;
-    int flash_duration = (int)(CCstatus.WaitBeforePicture * 1000);
-    Camera.CaptureToBasisImage(zw, flash_duration);
-    time(&TimeImageTaken);
-    localtime(&TimeImageTaken);
-
-    id = zw->writeToMemoryAsJPG();
-    delete zw;
-    return id;
-}
 
 time_t ClassFlowTakeImage::getTimeImageTaken(void)
 {

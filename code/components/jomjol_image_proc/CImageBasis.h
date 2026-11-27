@@ -4,6 +4,9 @@
 #define CIMAGEBASIS_H
 
 #include <stdint.h>
+#include <stddef.h>
+#include <new>
+#include <stdlib.h>
 #include <string>
 #include <esp_http_server.h>
 
@@ -21,6 +24,17 @@ struct ImageData
 {
     uint8_t data[MAX_JPG_SIZE];
     size_t size = 0;
+
+    static void* operator new(size_t size) {
+        void* ptr = heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (ptr == nullptr) abort();
+        return ptr;
+    }
+    static void* operator new(size_t size, const std::nothrow_t&) noexcept {
+        return heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    }
+    static void operator delete(void* ptr) noexcept { heap_caps_free(ptr); }
+    static void operator delete(void* ptr, const std::nothrow_t&) noexcept { heap_caps_free(ptr); }
 };
 
 
@@ -29,6 +43,7 @@ class CImageBasis
 {
     protected:
         bool externalImage;
+        bool ownsSharedTempImageLease = false;
         std::string filename;
         std::string name; // Just used for diagnostics
         int memsize = 0;
@@ -45,7 +60,6 @@ class CImageBasis
 
         uint8_t * RGBImageLock(int _waitmaxsec = 60);
         void RGBImageRelease();
-        uint8_t * RGBImageGet();
 
         int getWidth(){return this->width;};   
         int getHeight(){return this->height;};   
@@ -61,7 +75,7 @@ class CImageBasis
         bool ImageOkay();
         bool CopyFromMemory(uint8_t* _source, int _size);
 
-        void SetIndepended(){externalImage = false; memsize = width * height * channels;};
+        bool SetIndepended();
 
         void CreateEmptyImage(int _width, int _height, int _channels);
         void EmptyImage();
@@ -74,17 +88,16 @@ class CImageBasis
         CImageBasis(std::string name, CImageBasis *_copyfrom);
 
         void Resize(int _new_dx, int _new_dy);        
-        void Resize(int _new_dx, int _new_dy, CImageBasis *_target);        
+        bool Resize(int _new_dx, int _new_dy, CImageBasis *_target);        
         void crop_image(unsigned short cropLeft, unsigned short cropRight, unsigned short cropTop, unsigned short cropBottom);
 
-        void LoadFromMemory(stbi_uc *_buffer, int len);
+        bool LoadFromMemory(stbi_uc *_buffer, int len);
 
         ImageData* writeToMemoryAsJPG(const int quality = 90);
         void writeToMemoryAsJPG(ImageData* ii, const int quality = 90);
 
         esp_err_t SendJPGtoHTTP(httpd_req_t *req, const int quality = 90);   
 
-        uint8_t GetPixelColor(int x, int y, int ch);
 
         ~CImageBasis();
 

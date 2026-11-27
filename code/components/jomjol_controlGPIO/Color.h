@@ -53,7 +53,7 @@ union Rgb {
     Rgb operator-(const Rgb& in) const;
     Rgb& operator-=(const Rgb& in);
     bool operator==(const Rgb& in) const { return in.value == value; }
-    Rgb& blend(const Rgb& in);
+
     void swap(const Rgb& o) { value = o.value; }
     void linearize() {
         r = channelGamma(r);

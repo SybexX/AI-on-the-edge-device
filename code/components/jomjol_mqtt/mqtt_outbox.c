@@ -3,6 +3,7 @@
 */
 #include "mqtt_outbox.h"
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include "sys/queue.h"
 #include "esp_log.h"
@@ -38,70 +39,84 @@ outbox_handle_t outbox_init(void)
 #else
     outbox_handle_t outbox = calloc(1, sizeof(struct outbox_list_t));
 #endif
-    //ESP_MEM_CHECK(TAG, outbox, return NULL);
+    if (outbox == NULL) {
+        ESP_LOGE(TAG, "Unable to allocate MQTT outbox");
+        return NULL;
+    }
     STAILQ_INIT(outbox);
     return outbox;
 }
 
 outbox_item_handle_t outbox_enqueue(outbox_handle_t outbox, outbox_message_handle_t message, outbox_tick_t tick)
 {
+    if (outbox == NULL || message == NULL || message->len < 0 || message->remaining_len < 0 ||
+        message->len > INT_MAX - message->remaining_len) return NULL;
+    const size_t totalLength = (size_t)message->len + (size_t)message->remaining_len;
+    if ((message->len > 0 && message->data == NULL) ||
+        (message->remaining_len > 0 && message->remaining_data == NULL)) return NULL;
 #ifdef USE_PSRAM
     outbox_item_handle_t item = heap_caps_calloc(1, sizeof(outbox_item_t), MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
 #else
     outbox_item_handle_t item = calloc(1, sizeof(outbox_item_t));
 #endif
-    //ESP_MEM_CHECK(TAG, item, return NULL);
+    if (item == NULL) return NULL;
+#ifdef USE_PSRAM
+    item->buffer = heap_caps_malloc(totalLength == 0 ? 1 : totalLength, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+#else
+    item->buffer = malloc(totalLength == 0 ? 1 : totalLength);
+#endif
+    if (item->buffer == NULL) {
+#ifdef USE_PSRAM
+        heap_caps_free(item);
+#else
+        free(item);
+#endif
+        return NULL;
+    }
     item->msg_id = message->msg_id;
     item->msg_type = message->msg_type;
     item->msg_qos = message->msg_qos;
     item->tick = tick;
-    item->len =  message->len + message->remaining_len;
+    item->len = (int)totalLength;
     item->pending = QUEUED;
-#ifdef USE_PSRAM
-    item->buffer = heap_caps_malloc(message->len + message->remaining_len, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
-#else
-    item->buffer = malloc(message->len + message->remaining_len);
-#endif
-    /*ESP_MEM_CHECK(TAG, item->buffer, {
-        free(item);
-        return NULL;
-    });*/
-    memcpy(item->buffer, message->data, message->len);
-    if (message->remaining_data) {
-        memcpy(item->buffer + message->len, message->remaining_data, message->remaining_len);
-    }
+    if (message->len > 0) memcpy(item->buffer, message->data, (size_t)message->len);
+    if (message->remaining_len > 0) memcpy(item->buffer + message->len, message->remaining_data, (size_t)message->remaining_len);
     STAILQ_INSERT_TAIL(outbox, item, next);
-    ESP_LOGD(TAG, "ENQUEUE msgid=%d, msg_type=%d, len=%d, size=%d", message->msg_id, message->msg_type, message->len + message->remaining_len, outbox_get_size(outbox));
+    ESP_LOGD(TAG, "ENQUEUE msgid=%d, msg_type=%d, len=%d, size=%d", message->msg_id, message->msg_type, item->len, outbox_get_size(outbox));
     return item;
 }
 
 outbox_item_handle_t outbox_get(outbox_handle_t outbox, int msg_id)
 {
+    if (outbox == NULL) return NULL;
     outbox_item_handle_t item;
-    STAILQ_FOREACH(item, outbox, next) {
-        if (item->msg_id == msg_id) {
-            return item;
-        }
-    }
+    STAILQ_FOREACH(item, outbox, next) if (item->msg_id == msg_id) return item;
     return NULL;
 }
 
 outbox_item_handle_t outbox_dequeue(outbox_handle_t outbox, pending_state_t pending, outbox_tick_t *tick)
 {
+    if (outbox == NULL) return NULL;
     outbox_item_handle_t item;
     STAILQ_FOREACH(item, outbox, next) {
-        if (item->pending == pending) {
-            if (tick) {
-                *tick = item->tick;
-            }
-            return item;
-        }
+        if (item->pending == pending) { if (tick) *tick = item->tick; return item; }
     }
     return NULL;
 }
 
+uint8_t *outbox_item_get_data(outbox_item_handle_t item, size_t *len, uint16_t *msg_id, int *msg_type, int *qos)
+{
+    if (item == NULL) return NULL;
+    if (len != NULL) *len = (size_t)item->len;
+    if (msg_id != NULL) *msg_id = (uint16_t)item->msg_id;
+    if (msg_type != NULL) *msg_type = item->msg_type;
+    if (qos != NULL) *qos = item->msg_qos;
+    return (uint8_t*)item->buffer;
+}
+
 esp_err_t outbox_delete_item(outbox_handle_t outbox, outbox_item_handle_t item_to_delete)
 {
+    if (outbox == NULL || item_to_delete == NULL) { return ESP_FAIL; }
     outbox_item_handle_t item;
     STAILQ_FOREACH(item, outbox, next) {
         if (item == item_to_delete) {
@@ -133,6 +148,7 @@ uint8_t *outbox_item_get_data(outbox_item_handle_t item,  size_t *len, uint16_t 
 
 esp_err_t outbox_delete(outbox_handle_t outbox, int msg_id, int msg_type)
 {
+    if (outbox == NULL) { return ESP_FAIL; }
     outbox_item_handle_t item, tmp;
     STAILQ_FOREACH_SAFE(item, outbox, next, tmp) {
         if (item->msg_id == msg_id && (0xFF & (item->msg_type)) == msg_type) {
@@ -153,6 +169,7 @@ esp_err_t outbox_delete(outbox_handle_t outbox, int msg_id, int msg_type)
 }
 esp_err_t outbox_delete_msgid(outbox_handle_t outbox, int msg_id)
 {
+    if (outbox == NULL) { return ESP_FAIL; }
     outbox_item_handle_t item, tmp;
     STAILQ_FOREACH_SAFE(item, outbox, next, tmp) {
         if (item->msg_id == msg_id) {
@@ -199,6 +216,7 @@ esp_err_t outbox_set_tick(outbox_handle_t outbox, int msg_id, outbox_tick_t tick
 
 esp_err_t outbox_delete_msgtype(outbox_handle_t outbox, int msg_type)
 {
+    if (outbox == NULL) { return ESP_FAIL; }
     outbox_item_handle_t item, tmp;
     STAILQ_FOREACH_SAFE(item, outbox, next, tmp) {
         if (item->msg_type == msg_type) {
@@ -217,6 +235,7 @@ esp_err_t outbox_delete_msgtype(outbox_handle_t outbox, int msg_type)
 }
 int outbox_delete_single_expired(outbox_handle_t outbox, outbox_tick_t current_tick, outbox_tick_t timeout)
 {
+    if (outbox == NULL) { return -1; }
     int msg_id = -1;
     outbox_item_handle_t item;
     STAILQ_FOREACH(item, outbox, next) {
@@ -246,6 +265,7 @@ int outbox_delete_single_expired(outbox_handle_t outbox, outbox_tick_t current_t
 
 int outbox_delete_expired(outbox_handle_t outbox, outbox_tick_t current_tick, outbox_tick_t timeout)
 {
+    if (outbox == NULL) { return 0; }
     int deleted_items = 0;
     outbox_item_handle_t item, tmp;
     STAILQ_FOREACH_SAFE(item, outbox, next, tmp) {
@@ -267,32 +287,35 @@ int outbox_delete_expired(outbox_handle_t outbox, outbox_tick_t current_tick, ou
 
 int outbox_get_size(outbox_handle_t outbox)
 {
-    int siz = 0;
+    if (outbox == NULL) return 0;
+    int size = 0;
     outbox_item_handle_t item;
     STAILQ_FOREACH(item, outbox, next) {
-        // Suppressing "use after free" warning as this could happen only if queue is in inconsistent state
-        // which never happens if STAILQ interface used
-        siz += item->len; // NOLINT(clang-analyzer-unix.Malloc)
+        if (item->len > INT_MAX - size) return INT_MAX;
+        size += item->len;
     }
-    return siz;
+    return size;
 }
 
 void outbox_delete_all_items(outbox_handle_t outbox)
 {
+    if (outbox == NULL) return;
     outbox_item_handle_t item, tmp;
     STAILQ_FOREACH_SAFE(item, outbox, next, tmp) {
         STAILQ_REMOVE(outbox, item, outbox_item, next);
 #ifdef USE_PSRAM
-            heap_caps_free(item->buffer);
-            heap_caps_free(item);
+        heap_caps_free(item->buffer);
+        heap_caps_free(item);
 #else
-            free(item->buffer);
-            free(item);
+        free(item->buffer);
+        free(item);
 #endif
     }
 }
+
 void outbox_destroy(outbox_handle_t outbox)
 {
+    if (outbox == NULL) { return; }
     outbox_delete_all_items(outbox);
 
 #ifdef USE_PSRAM

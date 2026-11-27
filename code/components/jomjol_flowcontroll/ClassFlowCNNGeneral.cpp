@@ -1,7 +1,8 @@
 #include "ClassFlowCNNGeneral.h"
 
 #include <math.h>
-#include <iomanip> 
+#include <iomanip>
+#include <new> 
 #include <sys/types.h>
 #include <sstream>      // std::stringstream
 
@@ -35,6 +36,24 @@ ClassFlowCNNGeneral::ClassFlowCNNGeneral(ClassFlowAlignment *_flowalign, t_CNNTy
     CNNType = _cnntype;
     flowpostalignment = _flowalign;
     imagesRetention = 5;
+}
+
+ClassFlowCNNGeneral::~ClassFlowCNNGeneral()
+{
+    for (general* sequence : GENERAL) {
+        if (sequence == NULL) continue;
+        for (roi* region : sequence->ROI) {
+            if (region == NULL) continue;
+            delete region->image;
+            region->image = NULL;
+            delete region->image_org;
+            region->image_org = NULL;
+            delete region;
+        }
+        sequence->ROI.clear();
+        delete sequence;
+    }
+    GENERAL.clear();
 }
 
 string ClassFlowCNNGeneral::getReadout(int _analog = 0, bool _extendedResolution, int prev, float _before_narrow_Analog, float AnalogToDigitTransitionStart, bool ContinuousLastDigit) {
@@ -386,6 +405,11 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE* pfile, string& aktparamgraph) {
         
         if (splitted.size() >= 5) {
             general* _analog = GetGENERAL(splitted[0], true);
+            if (_analog == NULL || _analog->ROI.empty()) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to create ROI " + splitted[0]);
+                disabled = true;
+                return false;
+            }
             roi* neuroi = _analog->ROI[_analog->ROI.size()-1];
             neuroi->posx = std::stoi(splitted[1]);
             neuroi->posy = std::stoi(splitted[2]);
@@ -415,10 +439,20 @@ bool ClassFlowCNNGeneral::ReadParameter(FILE* pfile, string& aktparamgraph) {
 
     for (int _ana = 0; _ana < GENERAL.size(); ++_ana) {
         for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i) {
-            GENERAL[_ana]->ROI[i]->image = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name, 
+            GENERAL[_ana]->ROI[i]->image = new (std::nothrow) CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name,
                     modelxsize, modelysize, modelchannel);
-            GENERAL[_ana]->ROI[i]->image_org = new CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name + " original",
+            GENERAL[_ana]->ROI[i]->image_org = new (std::nothrow) CImageBasis("ROI " + GENERAL[_ana]->ROI[i]->name + " original",
                     GENERAL[_ana]->ROI[i]->deltax, GENERAL[_ana]->ROI[i]->deltay, 3);
+            if (GENERAL[_ana]->ROI[i]->image == NULL || GENERAL[_ana]->ROI[i]->image_org == NULL ||
+                !GENERAL[_ana]->ROI[i]->image->ImageOkay() || !GENERAL[_ana]->ROI[i]->image_org->ImageOkay()) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate ROI image buffers for " + GENERAL[_ana]->ROI[i]->name);
+                delete GENERAL[_ana]->ROI[i]->image;
+                GENERAL[_ana]->ROI[i]->image = NULL;
+                delete GENERAL[_ana]->ROI[i]->image_org;
+                GENERAL[_ana]->ROI[i]->image_org = NULL;
+                disabled = true;
+                return false;
+            }
         }
     }
 
@@ -462,14 +496,27 @@ general* ClassFlowCNNGeneral::GetGENERAL(string _name, bool _create = true) {
     }
 
     if (_ret == NULL) {
-        _ret = new general;
+        _ret = new (std::nothrow) general;
+        if (_ret == NULL) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate GENERAL sequence");
+            return NULL;
+        }
         _ret->name = _analog;
         GENERAL.push_back(_ret);
     }
 
-    roi* neuroi = new roi;
+    roi* neuroi = new (std::nothrow) roi;
+    if (neuroi == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate ROI descriptor");
+        return NULL;
+    }
+    neuroi->image = NULL;
+    neuroi->image_org = NULL;
+    neuroi->result_float = -1;
+    neuroi->result_klasse = -1;
+    neuroi->isReject = true;
+    neuroi->CCW = false;
     neuroi->name = _roi;
-
     _ret->ROI.push_back(neuroi);
 
     ESP_LOGD(TAG, "GetGENERAL - GENERAL %s - roi %s - CCW: %d", _analog.c_str(), _roi.c_str(), neuroi->CCW);
@@ -535,39 +582,56 @@ bool ClassFlowCNNGeneral::doAlignAndCut(string time) {
         return true;
     }
 
-    CAlignAndCutImage *caic = flowpostalignment->GetAlignAndCutImage();    
+    if (flowpostalignment == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Alignment flow is unavailable");
+        return false;
+    }
+    CAlignAndCutImage *caic = flowpostalignment->GetAlignAndCutImage();
+    if (caic == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Aligned source image is unavailable");
+        return false;
+    }
 
     for (int _ana = 0; _ana < GENERAL.size(); ++_ana) {
         for (int i = 0; i < GENERAL[_ana]->ROI.size(); ++i) {
+            roi *region = GENERAL[_ana]->ROI[i];
+            if (region == NULL || region->image_org == NULL || region->image == NULL) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI image buffers are unavailable");
+                return false;
+            }
             ESP_LOGD(TAG, "General %d - Align&Cut", i);
-            
-            caic->CutAndSave(GENERAL[_ana]->ROI[i]->posx, GENERAL[_ana]->ROI[i]->posy, GENERAL[_ana]->ROI[i]->deltax, GENERAL[_ana]->ROI[i]->deltay, GENERAL[_ana]->ROI[i]->image_org);
-            if (SaveAllFiles) {
-                if (GENERAL[_ana]->name == "default") {
-                    GENERAL[_ana]->ROI[i]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
-                }
-                else {
-                    GENERAL[_ana]->ROI[i]->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
-                }
-            } 
 
-            GENERAL[_ana]->ROI[i]->image_org->Resize(modelxsize, modelysize, GENERAL[_ana]->ROI[i]->image);
+            if (!caic->CutAndSave(region->posx, region->posy, region->deltax, region->deltay, region->image_org)) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI crop failed");
+                return false;
+            }
             if (SaveAllFiles) {
                 if (GENERAL[_ana]->name == "default") {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+                    region->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + region->name + ".jpg"));
+                } else {
+                    region->image_org->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + region->name + ".jpg"));
                 }
-                else {
-                    GENERAL[_ana]->ROI[i]->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + GENERAL[_ana]->ROI[i]->name + ".jpg"));
+            }
+
+            if (!region->image_org->Resize(modelxsize, modelysize, region->image)) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ROI resize failed");
+                return false;
+            }
+            if (SaveAllFiles) {
+                if (GENERAL[_ana]->name == "default") {
+                    region->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + region->name + ".jpg"));
+                } else {
+                    region->image->SaveToFile(FormatFileName("/sdcard/img_tmp/" + GENERAL[_ana]->name + "_" + region->name + ".jpg"));
                 }
-            } 
+            }
         }
     }
-
     return true;
 } 
 
 void ClassFlowCNNGeneral::DrawROI(CImageBasis *_zw) {
-    if (_zw->ImageOkay()) { 
+    if (_zw == NULL || !_zw->ImageOkay()) return;
+    { 
         if (CNNType == Analogue || CNNType == Analogue100) {
             int r = 0;
             int g = 255;
@@ -597,7 +661,12 @@ bool ClassFlowCNNGeneral::getNetworkParameter() {
         return true;
     }
 
-    CTfLiteClass *tflite = new CTfLiteClass;  
+    CTfLiteClass *tflite = new (std::nothrow) CTfLiteClass;
+    if (tflite == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate CTfLiteClass object");
+        LogFile.WriteHeapInfo("CTfLiteClass object allocation");
+        return false;
+    }  
     string zwcnn = "/sdcard" + cnnmodelfile;
     zwcnn = FormatFileName(zwcnn);
     ESP_LOGD(TAG, "%s", zwcnn.c_str());
@@ -671,7 +740,12 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
 
     string logPath = CreateLogFolder(time);
 
-    CTfLiteClass *tflite = new CTfLiteClass;  
+    CTfLiteClass *tflite = new (std::nothrow) CTfLiteClass;
+    if (tflite == NULL) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate CTfLiteClass object");
+        LogFile.WriteHeapInfo("CTfLiteClass object allocation");
+        return false;
+    }  
     string zwcnn = "/sdcard" + cnnmodelfile;
     zwcnn = FormatFileName(zwcnn);
     ESP_LOGD(TAG, "%s", zwcnn.c_str());
@@ -704,8 +778,19 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                     {
                         float f1 = 0, f2 = 0;
 
-                        tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);        
+                        if (!tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image)) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CNN input image could not be copied into Tensor Arena");
+                            continue;
+                        }
                         tflite->Invoke();
+                        if (!tflite->LastInvokeSucceeded()) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite inference failed");
+                            continue;
+                        }
                         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "After Invoke");
 
                         f1 = tflite->GetOutputValue(0);
@@ -728,8 +813,12 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                 case Digit:
                     LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "CNN Type: Digit");
                     {
-                        GENERAL[n]->ROI[roi]->result_klasse = 0;
                         GENERAL[n]->ROI[roi]->result_klasse = tflite->GetClassFromImageBasis(GENERAL[n]->ROI[roi]->image);
+                        if (GENERAL[n]->ROI[roi]->result_klasse < 0) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Digit inference failed for ROI " + GENERAL[n]->ROI[roi]->name);
+                            continue;
+                        }
                         ESP_LOGD(TAG, "General result (Digit)%i: %d", roi, GENERAL[n]->ROI[roi]->result_klasse);
 
                         if (isLogImage) {
@@ -753,8 +842,19 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                         float _fit;
                         float _result_save_file;
 
-                        tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);        
+                        if (!tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image)) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CNN input image could not be copied into Tensor Arena");
+                            continue;
+                        }
                         tflite->Invoke();
+                        if (!tflite->LastInvokeSucceeded()) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite inference failed");
+                            continue;
+                        }
                         LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "After Invoke");
 
                         _num = tflite->GetOutClassification(0, 9);
@@ -824,8 +924,19 @@ bool ClassFlowCNNGeneral::doNeuralNetwork(string time) {
                         int _num;
                         float _result_save_file;
                         
-                        tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image);        
+                        if (!tflite->LoadInputImageBasis(GENERAL[n]->ROI[roi]->image)) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "CNN input image could not be copied into Tensor Arena");
+                            continue;
+                        }
                         tflite->Invoke();
+                        if (!tflite->LastInvokeSucceeded()) {
+                            GENERAL[n]->ROI[roi]->isReject = true;
+                            GENERAL[n]->ROI[roi]->result_float = -1;
+                            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "TensorFlow Lite inference failed");
+                            continue;
+                        }
     
                         _num = tflite->GetOutClassification();
                         
@@ -890,7 +1001,11 @@ std::vector<HTMLInfo*> ClassFlowCNNGeneral::GetHTMLInfo() {
                 }
             }
 
-            HTMLInfo *zw = new HTMLInfo;
+            HTMLInfo *zw = new (std::nothrow) HTMLInfo;
+            if (zw == NULL) {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate ROI HTML metadata");
+                continue;
+            }
             if (GENERAL[_ana]->name == "default") {
                 zw->filename = GENERAL[_ana]->ROI[i]->name + ".jpg";
                 zw->filename_org = GENERAL[_ana]->ROI[i]->name + ".jpg";

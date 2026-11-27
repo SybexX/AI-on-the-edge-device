@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 
 #include <sys/stat.h>
+#include <new>
 
 #ifdef __cplusplus
 extern "C" {
@@ -204,14 +205,36 @@ bool ClassFlowControll::StartMQTTService()
 }
 #endif //ENABLE_MQTT
 
+ClassFlowControll::ClassFlowControll()
+{
+    SetInitialParameter();
+}
+
+ClassFlowControll::~ClassFlowControll()
+{
+    // Destroy dependants before the flows they reference (PostProcessing, CNN,
+    // Alignment, then TakeImage), so borrowed image pointers remain valid.
+    for (auto it = FlowControll.rbegin(); it != FlowControll.rend(); ++it) {
+        delete *it;
+    }
+    FlowControll.clear();
+    flowpostprocessing = NULL;
+    flowdigit = NULL;
+    flowanalog = NULL;
+    flowalignment = NULL;
+    flowtakeimage = NULL;
+}
+
 void ClassFlowControll::SetInitialParameter(void)
 {
     AutoStart = true;
     SetupModeActive = false;
-    AutoInterval = 10; // Minutes
+    AutoInterval = 10;
     flowdigit = NULL;
     flowanalog = NULL;
     flowpostprocessing = NULL;
+    flowalignment = NULL;
+    flowtakeimage = NULL;
     disabled = false;
     aktRunNr = 0;
     setStatus("Flow task not yet created", "Flow task not yet created");
@@ -235,55 +258,57 @@ ClassFlow* ClassFlowControll::CreateClassFlow(std::string _type)
     _type = trim(_type);
 
     if (toUpper(_type).compare("[TAKEIMAGE]") == 0) {
-        cfc = new ClassFlowTakeImage(&FlowControll);
+        cfc = new (std::nothrow) ClassFlowTakeImage(&FlowControll);
         flowtakeimage = (ClassFlowTakeImage*) cfc;
     }
 	
     if (toUpper(_type).compare("[ALIGNMENT]") == 0) {
-        cfc = new ClassFlowAlignment(&FlowControll);
+        cfc = new (std::nothrow) ClassFlowAlignment(&FlowControll);
         flowalignment = (ClassFlowAlignment*) cfc;
     }
 	
     if (toUpper(_type).compare("[ANALOG]") == 0) {
-        cfc = new ClassFlowCNNGeneral(flowalignment);
+        cfc = new (std::nothrow) ClassFlowCNNGeneral(flowalignment);
         flowanalog = (ClassFlowCNNGeneral*) cfc;
     }
 	
     if (toUpper(_type).compare(0, 7, "[DIGITS") == 0) {
-        cfc = new ClassFlowCNNGeneral(flowalignment);
+        cfc = new (std::nothrow) ClassFlowCNNGeneral(flowalignment);
         flowdigit = (ClassFlowCNNGeneral*) cfc;
     }
 	
     #ifdef ENABLE_MQTT
         if (toUpper(_type).compare("[MQTT]") == 0) {
-            cfc = new ClassFlowMQTT(&FlowControll);
+            cfc = new (std::nothrow) ClassFlowMQTT(&FlowControll);
         }
     #endif //ENABLE_MQTT
 	
     #ifdef ENABLE_INFLUXDB
         if (toUpper(_type).compare("[INFLUXDB]") == 0) {
-            cfc = new ClassFlowInfluxDB(&FlowControll);
+            cfc = new (std::nothrow) ClassFlowInfluxDB(&FlowControll);
         }
 
         if (toUpper(_type).compare("[INFLUXDBV2]") == 0) {
-            cfc = new ClassFlowInfluxDBv2(&FlowControll);
+            cfc = new (std::nothrow) ClassFlowInfluxDBv2(&FlowControll);
         }
     #endif //ENABLE_INFLUXDB
 	
     #ifdef ENABLE_WEBHOOK
         if (toUpper(_type).compare("[WEBHOOK]") == 0) {
-            cfc = new ClassFlowWebhook(&FlowControll);
+            cfc = new (std::nothrow) ClassFlowWebhook(&FlowControll);
         }
     #endif //ENABLE_WEBHOOK
 
     if (toUpper(_type).compare("[POSTPROCESSING]") == 0) {
-        cfc = new ClassFlowPostProcessing(&FlowControll, flowanalog, flowdigit); 
+        cfc = new (std::nothrow) ClassFlowPostProcessing(&FlowControll, flowanalog, flowdigit); 
         flowpostprocessing = (ClassFlowPostProcessing*) cfc;
     }
 
-    if (cfc) {                           
-        // Attached only if it is not [AutoTimer], because this is for FlowControll
+    if (cfc) {
         FlowControll.push_back(cfc);
+    } else if (_type != "[AUTOTIMER]" && _type != "[DATALOGGING]" &&
+               _type != "[DEBUG]" && _type != "[SYSTEM]") {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to allocate flow component " + _type);
     }
 
     if (toUpper(_type).compare("[AUTOTIMER]") == 0) {
@@ -684,9 +709,9 @@ int ClassFlowControll::CleanTempFolder() {
     return 0;
 }
 
-esp_err_t ClassFlowControll::SendRawJPG(httpd_req_t *req)
+esp_err_t ClassFlowControll::SendRawJPG(httpd_req_t *req, bool previewCapture)
 {
-    return flowtakeimage != NULL ? flowtakeimage->SendRawJPG(req) : ESP_FAIL;
+    return flowtakeimage != NULL ? flowtakeimage->SendRawJPG(req, previewCapture) : ESP_FAIL;
 }
 
 esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
@@ -702,7 +727,7 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
     bool _sendDelete = false;
 
     if (_fn == "alg.jpg") {
-        if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
+        if (flowalignment && flowalignment->ImageBasis && flowalignment->ImageBasis->ImageOkay()) {
             _send = flowalignment->ImageBasis;
         }
         else {
@@ -807,7 +832,7 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
                 }
                 else {
                     LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: alg_roi.jpg cannot be served -> alg.jpg is going to be served!");
-                    if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
+                    if (flowalignment && flowalignment->ImageBasis && flowalignment->ImageBasis->ImageOkay()) {
                         _send = flowalignment->ImageBasis;
                     }
                     else {
@@ -817,13 +842,14 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
                 }
             }
             else {
-                if (flowalignment && flowalignment->AlgROI) {
+                if (flowalignment && flowalignment->AlgROI &&
+                    flowalignment->AlgROI->size > 0 && flowalignment->AlgROI->size <= MAX_JPG_SIZE) {
                     httpd_resp_set_type(req, "image/jpeg");
                     result = httpd_resp_send(req, (const char *)flowalignment->AlgROI->data, flowalignment->AlgROI->size);
                 }
                 else {
-                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: alg_roi.jpg cannot be served -> alg.jpg is going to be served!");
-                    if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ClassFlowControll::GetJPGStream: alg_roi.jpg is unavailable -> alg.jpg is going to be served!");
+                    if (flowalignment && flowalignment->ImageBasis && flowalignment->ImageBasis->ImageOkay()) {
                         _send = flowalignment->ImageBasis;
                     }
                     else {
@@ -839,26 +865,22 @@ esp_err_t ClassFlowControll::GetJPGStream(std::string _fn, httpd_req_t *req)
                 return ESP_FAIL;
             }
 
-            _send = new CImageBasis("alg_roi", flowalignment->ImageBasis);
-			
-            if (_send->ImageOkay()) {
-                if (flowalignment) { flowalignment->DrawRef(_send); }
-                if (flowdigit) { flowdigit->DrawROI(_send); }
-                if (flowanalog) { flowanalog->DrawROI(_send); }
-                _sendDelete = true; // delete temporary _send element after sending
+            if (flowalignment->ImageBasis == NULL || !flowalignment->ImageBasis->ImageOkay()) {
+                httpd_resp_send(req, NULL, 0);
+                return ESP_FAIL;
             }
-            else {
+            _send = new (std::nothrow) CImageBasis("alg_roi", flowalignment->ImageBasis);
+
+            if (_send != NULL && _send->ImageOkay()) {
+                flowalignment->DrawRef(_send);
+                if (flowdigit) flowdigit->DrawROI(_send);
+                if (flowanalog) flowanalog->DrawROI(_send);
+                _sendDelete = true;
+            } else {
                 LogFile.WriteToFile(ESP_LOG_WARN, TAG, "ClassFlowControll::GetJPGStream: Not enough memory to create alg_roi.jpg -> alg.jpg is going to be served!");
                 delete _send;
-                _send = NULL;
-
-                if (flowalignment && flowalignment->ImageBasis->ImageOkay()) {
-                    _send = flowalignment->ImageBasis;
-                }
-                else {
-                    httpd_resp_send(req, NULL, 0);
-                    return ESP_OK;
-                }
+                _send = flowalignment->ImageBasis;
+                _sendDelete = false;
             }
         #endif
     }

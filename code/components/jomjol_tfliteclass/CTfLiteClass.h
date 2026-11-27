@@ -23,6 +23,9 @@ class CTfLiteClass
 
         int kTensorArenaSize;
         uint8_t *tensor_arena;
+        bool ownsSharedMemoryLease;
+        bool modelMemoryClaimed;
+        bool lastInvokeSucceeded;
 
         unsigned char *modelfile = NULL;
 
@@ -40,9 +43,9 @@ class CTfLiteClass
         ~CTfLiteClass();        
         bool LoadModel(std::string _fn);
         bool MakeAllocate();
-        void GetInputTensorSize();
         bool LoadInputImageBasis(CImageBasis *rs);
         void Invoke();
+        bool LastInvokeSucceeded() const { return lastInvokeSucceeded; }
         int GetAnzOutPut(bool silent = true);        
         int GetOutClassification(int _von = -1, int _bis = -1);
 

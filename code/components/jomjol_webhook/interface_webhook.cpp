@@ -112,6 +112,10 @@ bool WebhookPublish(std::vector<NumberPost*>* numbers)
 }
 
 void WebhookUploadPic(ImageData *Img) {
+    if (Img == NULL || Img->size == 0 || Img->size > MAX_JPG_SIZE) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "WebhookUploadPic aborted: JPEG image buffer is unavailable or invalid");
+        return;
+    }
     if (_webhookURI.empty())
     {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "WebhookUploadPic aborted: no Uri configured");

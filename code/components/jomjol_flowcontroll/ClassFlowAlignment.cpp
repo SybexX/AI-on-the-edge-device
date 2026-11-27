@@ -9,6 +9,7 @@
 #include "ClassLogFile.h"
 #include "psram.h"
 #include "../../include/defines.h"
+#include <new>
 
 static const char *TAG = "ALIGN";
 
@@ -26,9 +27,10 @@ void ClassFlowAlignment::SetInitialParameter(void)
     ListFlowControll = NULL;
     AlignAndCutImage = NULL;
     ImageBasis = NULL;
+    ownsImageBasis = false;
     ImageTMP = NULL;
 #ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
-    AlgROI = (ImageData *)malloc_psram_heap(std::string(TAG) + "->AlgROI", sizeof(ImageData), MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+    AlgROI = new (std::nothrow) ImageData;
 #endif
     previousElement = NULL;
     disabled = false;
@@ -49,8 +51,27 @@ ClassFlowAlignment::ClassFlowAlignment(std::vector<ClassFlow *> *lfc)
     // the function take pictures does not exist --> must be created first ONLY FOR TEST PURPOSES
     if (!ImageBasis)  {
         ESP_LOGD(TAG, "CImageBasis had to be created");
-        ImageBasis = new CImageBasis("ImageBasis", namerawimage);
+        ImageBasis = new (std::nothrow) CImageBasis("ImageBasis", namerawimage);
+        ownsImageBasis = (ImageBasis != NULL);
+        if (ImageBasis != NULL && !ImageBasis->ImageOkay()) { delete ImageBasis; ImageBasis = NULL; ownsImageBasis = false; }
     }
+}
+
+ClassFlowAlignment::~ClassFlowAlignment()
+{
+    delete AlignAndCutImage;
+    AlignAndCutImage = NULL;
+    delete ImageTMP;
+    ImageTMP = NULL;
+    if (ownsImageBasis) {
+        delete ImageBasis;
+        ImageBasis = NULL;
+        ownsImageBasis = false;
+    }
+#ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
+    delete AlgROI;
+    AlgROI = NULL;
+#endif
 }
 
 bool ClassFlowAlignment::ReadParameter(FILE *pfile, string &aktparamgraph)
@@ -169,44 +190,66 @@ string ClassFlowAlignment::getHTMLSingleStep(string host)
 
 bool ClassFlowAlignment::doFlow(string time)
 {
-#ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
-    // AlgROI needs to be allocated before ImageTMP to avoid heap fragmentation
-    if (!AlgROI)  {
-        AlgROI = (ImageData *)heap_caps_realloc(AlgROI, sizeof(ImageData), MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
-
-        if (!AlgROI) {
-            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can't allocate AlgROI");
-            LogFile.WriteHeapInfo("ClassFlowAlignment-doFlow");
-        }
+    if (ImageBasis == NULL || !ImageBasis->ImageOkay()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Alignment has no valid source image");
+        return false;
     }
 
-    if (AlgROI) {
-        ImageBasis->writeToMemoryAsJPG((ImageData *)AlgROI, 90);
+#ifdef ALGROI_LOAD_FROM_MEM_AS_JPG
+    // Reserve the optional JPEG output before tmpImage to reduce PSRAM fragmentation.
+    if (AlgROI == NULL) AlgROI = new (std::nothrow) ImageData;
+    if (AlgROI != NULL) {
+        ImageBasis->writeToMemoryAsJPG(AlgROI, 90);
+    } else {
+        LogFile.WriteToFile(ESP_LOG_WARN, TAG, "AlgROI PSRAM allocation failed; continuing without in-memory ROI JPEG");
+        LogFile.WriteHeapInfo("ClassFlowAlignment-doFlow");
     }
 #endif
 
-    if (!ImageTMP) {
-        ImageTMP = new CImageBasis("tmpImage", ImageBasis); // Make sure the name does not get change, it is relevant for the PSRAM allocation!
-
-        if (!ImageTMP) {
+    if (ImageTMP == NULL) {
+        ImageTMP = new (std::nothrow) CImageBasis("tmpImage", ImageBasis);
+        if (ImageTMP == NULL || !ImageTMP->ImageOkay()) {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can't allocate tmpImage -> Exec this round aborted!");
             LogFile.WriteHeapInfo("ClassFlowAlignment-doFlow");
+            delete ImageTMP;
+            ImageTMP = NULL;
             return false;
         }
     }
 
     delete AlignAndCutImage;
-    AlignAndCutImage = new CAlignAndCutImage("AlignAndCutImage", ImageBasis, ImageTMP);
-
-    if (!AlignAndCutImage) {
+    AlignAndCutImage = new (std::nothrow) CAlignAndCutImage("AlignAndCutImage", ImageBasis, ImageTMP);
+    if (AlignAndCutImage == NULL) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Can't allocate AlignAndCutImage -> Exec this round aborted!");
         LogFile.WriteHeapInfo("ClassFlowAlignment-doFlow");
+        delete ImageTMP;
+        ImageTMP = NULL;
         return false;
     }
 
     CRotateImage rt("rawImage", AlignAndCutImage, ImageTMP, initialflip);
 
     if (initialflip) {
+        uint8_t* sourceImage = ImageBasis->RGBImageLock();
+        if (sourceImage == NULL) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to lock source image for initial flip");
+            delete AlignAndCutImage;
+            AlignAndCutImage = NULL;
+            delete ImageTMP;
+            ImageTMP = NULL;
+            return false;
+        }
+        uint8_t* temporaryImage = ImageTMP->RGBImageLock();
+        if (temporaryImage == NULL) {
+            ImageBasis->RGBImageRelease();
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to lock temporary image for initial flip");
+            delete AlignAndCutImage;
+            AlignAndCutImage = NULL;
+            delete ImageTMP;
+            ImageTMP = NULL;
+            return false;
+        }
+
         int _zw = ImageBasis->height;
         ImageBasis->height = ImageBasis->width;
         ImageBasis->width = _zw;
@@ -214,6 +257,9 @@ bool ClassFlowAlignment::doFlow(string time)
         _zw = ImageTMP->width;
         ImageTMP->width = ImageTMP->height;
         ImageTMP->height = _zw;
+
+        ImageTMP->RGBImageRelease();
+        ImageBasis->RGBImageRelease();
     }
 
     if ((initialrotate != 0) || initialflip) {
