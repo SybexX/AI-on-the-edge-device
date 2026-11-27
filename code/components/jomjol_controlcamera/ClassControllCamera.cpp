@@ -336,11 +336,6 @@ esp_err_t CCamera::setSensorDatenFromCCstatus(void)
     return ApplySettings(CCstatus);
 }
 
-esp_err_t CCamera::setSensorDatenFromCCstatus(void)
-{
-    return ApplySettings(CCstatus);
-}
-
 esp_err_t CCamera::ApplySettings(CameraSettings &settings)
 {
     ScopedCameraLock cameraLock(m_cameraMutex);
@@ -453,7 +448,7 @@ esp_err_t CCamera::getSensorDatenToCCstatus(void)
     CCstatus.ImageSaturation = sensorValueOrDefault(s->status.saturation, 0, -2, 2);
     CCstatus.ImageQuality = sensorValueOrDefault(s->status.quality, 12, 6, 63);
     CCstatus.ImageGainceiling = static_cast<gainceiling_t>(
-        sensorValueOrDefault(static_cast<int>(s->status.gainceiling), 1, 1, 6));
+        sensorValueOrDefault(static_cast<int>(s->status.gainceiling), 0, 0, 6));
 
     CCstatus.ImageAgc = sensorBooleanOrDefault(s->status.agc, 1);
     CCstatus.ImageAec = sensorBooleanOrDefault(s->status.aec, 1);
