@@ -230,6 +230,26 @@ bool ClassFlowAlignment::doFlow(string time)
     CRotateImage rt("rawImage", AlignAndCutImage, ImageTMP, initialflip);
 
     if (initialflip) {
+        uint8_t* sourceImage = ImageBasis->RGBImageLock();
+        if (sourceImage == NULL) {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to lock source image for initial flip");
+            delete AlignAndCutImage;
+            AlignAndCutImage = NULL;
+            delete ImageTMP;
+            ImageTMP = NULL;
+            return false;
+        }
+        uint8_t* temporaryImage = ImageTMP->RGBImageLock();
+        if (temporaryImage == NULL) {
+            ImageBasis->RGBImageRelease();
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Unable to lock temporary image for initial flip");
+            delete AlignAndCutImage;
+            AlignAndCutImage = NULL;
+            delete ImageTMP;
+            ImageTMP = NULL;
+            return false;
+        }
+
         int _zw = ImageBasis->height;
         ImageBasis->height = ImageBasis->width;
         ImageBasis->width = _zw;
@@ -237,6 +257,9 @@ bool ClassFlowAlignment::doFlow(string time)
         _zw = ImageTMP->width;
         ImageTMP->width = ImageTMP->height;
         ImageTMP->height = _zw;
+
+        ImageTMP->RGBImageRelease();
+        ImageBasis->RGBImageRelease();
     }
 
     if ((initialrotate != 0) || initialflip) {

@@ -16,6 +16,22 @@
 
 static const char* TAG = "c_align_and_cut_image";
 
+class ScopedImageAccess
+{
+    CImageBasis* image;
+    bool locked;
+public:
+    explicit ScopedImageAccess(CImageBasis* value) : image(value), locked(false)
+    {
+        if (image != NULL) locked = image->RGBImageLock() != NULL;
+    }
+    ~ScopedImageAccess()
+    {
+        if (locked) image->RGBImageRelease();
+    }
+    bool isLocked() const { return locked; }
+};
+
 static bool getCutRectangle(int imageWidth, int imageHeight,
                              int x, int y, int requestedWidth, int requestedHeight,
                              int* right, int* bottom)
@@ -75,6 +91,11 @@ bool CAlignAndCutImage::Align(RefInfo *_temp1, RefInfo *_temp2)
 
     if (_temp1 == NULL || _temp2 == NULL || rgb_image == NULL) {
         LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Align: source image or reference is unavailable");
+        return false;
+    }
+    ScopedImageAccess sourceAccess(this);
+    if (!sourceAccess.isLocked()) {
+        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Align: unable to lock source image");
         return false;
     }
     CFindTemplate* ft = new (std::nothrow) CFindTemplate("align", rgb_image, channels, width, height, bpp);
