@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <limits.h>
+#include <algorithm>
 #include <vector>
 #include <regex>
 
@@ -608,17 +610,19 @@ bool ClassFlowTakeImage::doFlow(string zwtime)
     return true;
 }
 
-esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req)
+esp_err_t ClassFlowTakeImage::SendRawJPG(httpd_req_t *req, bool previewCapture)
 {
-    const bool previewCapture = CFstatus.previewCapturePending;
-    const CameraSettings &activeSettings = previewCapture
-        ? static_cast<const CameraSettings &>(CFstatus)
-        : static_cast<const CameraSettings &>(CCstatus);
-    int flash_duration = static_cast<int>(activeSettings.WaitBeforePicture * 1000);
     time(&TimeImageTaken);
     localtime(&TimeImageTaken);
 
-    return Camera.CaptureToHTTP(req, flash_duration, previewCapture);
+    if (previewCapture)
+    {
+        return Camera.CaptureToHTTP(req, 0, true);
+    }
+
+    const int waitSeconds = std::max(0, CCstatus.WaitBeforePicture);
+    const int flashDuration = waitSeconds > INT_MAX / 1000 ? INT_MAX : waitSeconds * 1000;
+    return Camera.CaptureToHTTP(req, flashDuration);
 }
 
 
